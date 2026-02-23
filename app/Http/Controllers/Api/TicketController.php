@@ -11,6 +11,8 @@ class TicketController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Ticket::class);
+
         $user = $request->user();
 
         if ($user->role === 'landlord') {
@@ -36,6 +38,8 @@ class TicketController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', Ticket::class);
+
         $validated = $request->validate([
             'property_id' => ['required', 'exists:properties,id'],
             'title' => ['required', 'string', 'max:255'],
@@ -61,12 +65,16 @@ class TicketController extends Controller
             'comments.user',
         ])->findOrFail($id);
 
+        $this->authorize('view', $ticket);
+
         return response()->json($ticket);
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
         $ticket = Ticket::findOrFail($id);
+
+        $this->authorize('update', $ticket);
 
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
@@ -90,6 +98,9 @@ class TicketController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $ticket = Ticket::findOrFail($id);
+
+        $this->authorize('delete', $ticket);
+
         $ticket->delete();
 
         return response()->json([

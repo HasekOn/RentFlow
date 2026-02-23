@@ -12,6 +12,8 @@ class PaymentController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Payment::class);
+
         $user = $request->user();
 
         if ($user->role === 'landlord') {
@@ -35,6 +37,8 @@ class PaymentController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', Payment::class);
+
         $validated = $request->validate([
             'lease_id' => ['required', 'exists:leases,id'],
             'type' => ['required', 'in:rent,utilities,deposit,other'],
@@ -60,12 +64,16 @@ class PaymentController extends Controller
     {
         $payment = Payment::with('lease.tenant', 'lease.property')->findOrFail($id);
 
+        $this->authorize('view', $payment);
+
         return response()->json($payment);
     }
 
     public function markPaid(string $id): JsonResponse
     {
         $payment = Payment::findOrFail($id);
+
+        $this->authorize('update', $payment);
 
         $payment->update([
             'paid_date' => now()->toDateString(),
@@ -78,6 +86,8 @@ class PaymentController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $payment = Payment::findOrFail($id);
+
+        $this->authorize('update', $payment);
 
         $validated = $request->validate([
             'type' => ['sometimes', 'in:rent,utilities,deposit,other'],
@@ -97,6 +107,9 @@ class PaymentController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $payment = Payment::findOrFail($id);
+
+        $this->authorize('delete', $payment);
+        
         $payment->delete();
 
         return response()->json([
