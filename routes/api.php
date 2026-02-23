@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InventoryItemController;
@@ -90,4 +91,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('properties/{property}/notices', [NoticeController::class, 'store']);
     Route::put('notices/{notice}', [NoticeController::class, 'update']);
     Route::delete('notices/{notice}', [NoticeController::class, 'destroy']);
+
+    // Dashboard
+    Route::get('dashboard/stats', [DashboardController::class, 'stats']);
+    Route::get('dashboard/finance-chart', [DashboardController::class, 'financeChart']);
+    Route::get('dashboard/occupancy-chart', [DashboardController::class, 'occupancyChart']);
 });
