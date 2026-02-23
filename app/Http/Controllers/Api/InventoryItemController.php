@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreInventoryItemRequest;
+use App\Http\Requests\UpdateInventoryItemRequest;
 use App\Models\InventoryItem;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class InventoryItemController extends Controller
 {
@@ -22,7 +23,7 @@ class InventoryItemController extends Controller
         return response()->json($items);
     }
 
-    public function store(Request $request, string $propertyId): JsonResponse
+    public function store(StoreInventoryItemRequest $request, string $propertyId): JsonResponse
     {
         $property = Property::query()->findOrFail($propertyId);
 
@@ -32,18 +33,10 @@ class InventoryItemController extends Controller
             ], 403);
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'category' => ['nullable', 'string'],
-            'condition' => ['sometimes', 'in:new,good,fair,poor,broken'],
-            'purchase_date' => ['nullable', 'date'],
-            'purchase_price' => ['nullable', 'numeric', 'min:0'],
-            'note' => ['nullable', 'string'],
+        $item = InventoryItem::query()->create([
+            ...$request->validated(),
+            'property_id' => $property->id,
         ]);
-
-        $validated['property_id'] = $property->id;
-
-        $item = InventoryItem::create($validated);
 
         return response()->json($item, 201);
     }
@@ -55,20 +48,11 @@ class InventoryItemController extends Controller
         return response()->json($item);
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateInventoryItemRequest $request, string $id): JsonResponse
     {
         $item = InventoryItem::query()->findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'category' => ['nullable', 'string'],
-            'condition' => ['sometimes', 'in:new,good,fair,poor,broken'],
-            'purchase_date' => ['nullable', 'date'],
-            'purchase_price' => ['nullable', 'numeric', 'min:0'],
-            'note' => ['nullable', 'string'],
-        ]);
-
-        $item->update($validated);
+        $item->update($request->validated());
 
         return response()->json($item);
     }
@@ -76,7 +60,7 @@ class InventoryItemController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $item = InventoryItem::query()->findOrFail($id);
-        
+
         $item->delete();
 
         return response()->json([

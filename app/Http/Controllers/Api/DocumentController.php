@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDocumentRequest;
 use App\Models\Document;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class DocumentController extends Controller
@@ -23,7 +23,7 @@ class DocumentController extends Controller
         return response()->json($documents);
     }
 
-    public function store(Request $request, string $propertyId): JsonResponse
+    public function store(StoreDocumentRequest $request, string $propertyId): JsonResponse
     {
         $property = Property::query()->findOrFail($propertyId);
 
@@ -33,21 +33,15 @@ class DocumentController extends Controller
             ], 403);
         }
 
-        $validated = $request->validate([
-            'file' => ['required', 'file', 'max:10240'], // max 10MB
-            'document_type' => ['required', 'string', 'max:100'],
-            'name' => ['required', 'string', 'max:255'],
-        ]);
-
         $path = $request->file('file')->store(
             'documents/' . $property->id,
             'public'
         );
 
-        $document = Document::create([
+        $document = Document::query()->create([
             'property_id' => $property->id,
-            'document_type' => $validated['document_type'],
-            'name' => $validated['name'],
+            'document_type' => $request->validated('document_type'),
+            'name' => $request->validated('name'),
             'file_path' => $path,
             'uploaded_by' => $request->user()->id,
         ]);
