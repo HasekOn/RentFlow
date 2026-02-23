@@ -2,22 +2,20 @@
 
 namespace Database\Factories;
 
+use App\Models\Property;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Expense>
- */
 class ExpenseFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            //
+            'property_id' => Property::factory(),
+            'type' => fake()->randomElement(['repair', 'insurance', 'tax', 'maintenance', 'other']),
+            'amount' => fake()->randomFloat(2, 500, 50000),
+            'expense_date' => fake()->dateTimeBetween('-1 year', 'now'),
+            'description' => fake()->sentence(6),
+            'invoice_path' => null,
         ];
     }
 }

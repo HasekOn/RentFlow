@@ -2,22 +2,53 @@
 
 namespace Database\Factories;
 
+use App\Models\Property;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Ticket>
- */
 class TicketFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
-        return [
-            //
+        $titles = [
+            'Broken faucet in bathroom',
+            'Heating not working',
+            'Window seal damaged',
+            'Dishwasher leaking',
+            'Doorbell not functioning',
+            'Mold in bathroom ceiling',
+            'Hot water intermittent',
+            'Electrical outlet sparking',
+            'Toilet running constantly',
+            'Refrigerator making noise',
         ];
+
+        return [
+            'property_id' => Property::factory(),
+            'tenant_id' => User::factory()->tenant(),
+            'title' => fake()->randomElement($titles),
+            'description' => fake()->paragraph(2),
+            'category' => fake()->randomElement(['plumbing', 'electrical', 'heating', 'structural', 'appliance', 'other']),
+            'status' => fake()->randomElement(['new', 'in_progress', 'resolved']),
+            'priority' => fake()->randomElement(['low', 'medium', 'high', 'urgent']),
+            'assigned_to' => null,
+            'resolved_at' => null,
+        ];
+    }
+
+    public function resolved(): static
+    {
+        return $this->state(fn() => [
+            'status' => 'resolved',
+            'resolved_at' => fake()->dateTimeBetween('-1 month', 'now'),
+        ]);
+    }
+
+    public function open(): static
+    {
+        return $this->state(fn() => [
+            'status' => 'new',
+            'resolved_at' => null,
+        ]);
     }
 }
