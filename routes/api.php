@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\LeaseController;
+use App\Http\Controllers\Api\MeterController;
+use App\Http\Controllers\Api\MeterReadingController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\TicketCommentController;
@@ -41,4 +43,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('tickets/{ticket}/comments', [TicketCommentController::class, 'index']);
     Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store']);
     Route::delete('tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy']);
+
+    // Meters
+    Route::get('properties/{property}/meters', [MeterController::class, 'index']);
+    Route::post('properties/{property}/meters', [MeterController::class, 'store']);
+    Route::get('meters/{meter}', [MeterController::class, 'show']);
+    Route::put('meters/{meter}', [MeterController::class, 'update']);
+    Route::delete('meters/{meter}', [MeterController::class, 'destroy']);
+
+    // Meter readings
+    Route::get('meters/{meter}/readings', [MeterReadingController::class, 'index']);
+    Route::post('meters/{meter}/readings', [MeterReadingController::class, 'store']);
+    Route::delete('meters/{meter}/readings/{reading}', [MeterReadingController::class, 'destroy']);
 });
