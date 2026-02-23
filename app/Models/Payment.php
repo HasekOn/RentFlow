@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'lease_id',
         'type',
@@ -18,6 +21,11 @@ class Payment extends Model
         'note',
     ];
 
+    public function lease(): BelongsTo
+    {
+        return $this->belongsTo(Lease::class);
+    }
+
     protected function casts(): array
     {
         return [
@@ -25,10 +33,5 @@ class Payment extends Model
             'due_date' => 'date',
             'paid_date' => 'date',
         ];
-    }
-
-    public function lease(): BelongsTo
-    {
-        return $this->belongsTo(Lease::class);
     }
 }

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Property extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'landlord_id',
         'address',
@@ -20,14 +23,6 @@ class Property extends Model
         'purchase_price',
         'description',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'size' => 'decimal:2',
-            'purchase_price' => 'decimal:2',
-        ];
-    }
 
     public function landlord(): BelongsTo
     {
@@ -72,5 +67,13 @@ class Property extends Model
     public function notices(): HasMany
     {
         return $this->hasMany(Notice::class);
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'size' => 'decimal:2',
+            'purchase_price' => 'decimal:2',
+        ];
     }
 }

@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MeterReading extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'meter_id',
         'reading_value',
@@ -14,14 +17,6 @@ class MeterReading extends Model
         'submitted_by',
         'photo_proof',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'reading_value' => 'decimal:3',
-            'reading_date' => 'date',
-        ];
-    }
 
     public function meter(): BelongsTo
     {
@@ -31,5 +26,13 @@ class MeterReading extends Model
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'reading_value' => 'decimal:3',
+            'reading_date' => 'date',
+        ];
     }
 }

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ticket extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'property_id',
         'tenant_id',
@@ -19,13 +22,6 @@ class Ticket extends Model
         'assigned_to',
         'resolved_at',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'resolved_at' => 'datetime',
-        ];
-    }
 
     public function property(): BelongsTo
     {
@@ -45,5 +41,12 @@ class Ticket extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(TicketComment::class);
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'resolved_at' => 'datetime',
+        ];
     }
 }

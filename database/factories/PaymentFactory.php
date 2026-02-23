@@ -9,17 +9,16 @@ class PaymentFactory extends Factory
 {
     public function definition(): array
     {
-        $dueDate = fake()->dateTimeBetween('-6 months', '+1 month');
-        $isPaid = fake()->boolean(70); // 70% paid
+        $dueDate = fake()->dateTimeBetween('-6 months', '-1 month');
 
         return [
             'lease_id' => Lease::factory(),
             'type' => 'rent',
             'amount' => fake()->randomElement([8000, 10000, 12000, 15000, 18000, 22000]),
             'due_date' => $dueDate,
-            'paid_date' => $isPaid ? fake()->dateTimeBetween($dueDate, now()) : null,
-            'variable_symbol' => null, // Set from lease in seeder
-            'status' => $isPaid ? 'paid' : 'unpaid',
+            'paid_date' => null,
+            'variable_symbol' => null,
+            'status' => 'unpaid',
             'note' => null,
         ];
     }
@@ -27,10 +26,15 @@ class PaymentFactory extends Factory
     public function paid(): static
     {
         return $this->state(function (array $attributes) {
-            $dueDate = $attributes['due_date'];
+            $dueDate = now()->parse($attributes['due_date']);
             // Paid 0-3 days after due date (mostly on time)
+            $paidDate = $dueDate->copy()->addDays(fake()->numberBetween(0, 3));
+            // Make sure paid_date is not in the future
+            if ($paidDate->isFuture()) {
+                $paidDate = now();
+            }
             return [
-                'paid_date' => now()->parse($dueDate)->addDays(fake()->numberBetween(0, 3)),
+                'paid_date' => $paidDate,
                 'status' => 'paid',
             ];
         });
@@ -56,10 +60,15 @@ class PaymentFactory extends Factory
     public function latePayment(): static
     {
         return $this->state(function (array $attributes) {
-            $dueDate = $attributes['due_date'];
+            $dueDate = now()->parse($attributes['due_date']);
             // Paid 10-20 days late (hurts trust score)
+            $paidDate = $dueDate->copy()->addDays(fake()->numberBetween(10, 20));
+            // Make sure paid_date is not in the future
+            if ($paidDate->isFuture()) {
+                $paidDate = now();
+            }
             return [
-                'paid_date' => now()->parse($dueDate)->addDays(fake()->numberBetween(10, 20)),
+                'paid_date' => $paidDate,
                 'status' => 'paid',
             ];
         });

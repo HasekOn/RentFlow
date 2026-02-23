@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Lease extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'property_id',
         'tenant_id',
@@ -20,17 +23,6 @@ class Lease extends Model
         'contract_path',
         'status',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'start_date' => 'date',
-            'end_date' => 'date',
-            'rent_amount' => 'decimal:2',
-            'deposit_amount' => 'decimal:2',
-            'utility_advances' => 'decimal:2',
-        ];
-    }
 
     public function property(): BelongsTo
     {
@@ -50,5 +42,16 @@ class Lease extends Model
     public function ratings(): HasMany
     {
         return $this->hasMany(Rating::class);
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'start_date' => 'date',
+            'end_date' => 'date',
+            'rent_amount' => 'decimal:2',
+            'deposit_amount' => 'decimal:2',
+            'utility_advances' => 'decimal:2',
+        ];
     }
 }
