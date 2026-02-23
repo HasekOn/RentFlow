@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\InventoryItemController;
 use App\Http\Controllers\Api\LeaseController;
 use App\Http\Controllers\Api\MeterController;
 use App\Http\Controllers\Api\MeterReadingController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PropertyController;
+use App\Http\Controllers\Api\PropertyImageController;
 use App\Http\Controllers\Api\TicketCommentController;
 use App\Http\Controllers\Api\TicketController;
 use Illuminate\Http\Request;
@@ -55,4 +57,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('meters/{meter}/readings', [MeterReadingController::class, 'index']);
     Route::post('meters/{meter}/readings', [MeterReadingController::class, 'store']);
     Route::delete('meters/{meter}/readings/{reading}', [MeterReadingController::class, 'destroy']);
+
+    // Property images
+    Route::get('properties/{property}/images', [PropertyImageController::class, 'index']);
+    Route::post('properties/{property}/images', [PropertyImageController::class, 'store']);
+    Route::put('property-images/{image}', [PropertyImageController::class, 'update']);
+    Route::delete('property-images/{image}', [PropertyImageController::class, 'destroy']);
+
+    // Inventory
+    Route::get('properties/{property}/inventory', [InventoryItemController::class, 'index']);
+    Route::post('properties/{property}/inventory', [InventoryItemController::class, 'store']);
+    Route::get('inventory/{item}', [InventoryItemController::class, 'show']);
+    Route::put('inventory/{item}', [InventoryItemController::class, 'update']);
+    Route::delete('inventory/{item}', [InventoryItemController::class, 'destroy']);
 });
