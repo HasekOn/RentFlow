@@ -19,10 +19,11 @@ use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// Auth
+// Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -32,21 +33,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('properties', PropertyController::class);
 
     // Leases
-    Route::get('leases/{lease}/generate-pdf', [LeaseController::class, 'generatePdf']);
     Route::apiResource('leases', LeaseController::class);
+    Route::get('leases/{lease}/generate-pdf', [LeaseController::class, 'generatePdf']);
 
     // Payments
     Route::post('payments/import-csv', [PaymentController::class, 'importCsv']);
+    Route::put('payments/{payment}/mark-paid', [PaymentController::class, 'markPaid']);
     Route::apiResource('payments', PaymentController::class);
-    Route::put('payments/{id}/mark-paid', [PaymentController::class, 'markPaid']);
-
-    // Expenses
-    Route::apiResource('expenses', ExpenseController::class);
 
     // Tickets
     Route::apiResource('tickets', TicketController::class);
-
-    // Ticket comments
     Route::get('tickets/{ticket}/comments', [TicketCommentController::class, 'index']);
     Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store']);
     Route::delete('tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy']);
@@ -57,8 +53,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('meters/{meter}', [MeterController::class, 'show']);
     Route::put('meters/{meter}', [MeterController::class, 'update']);
     Route::delete('meters/{meter}', [MeterController::class, 'destroy']);
-
-    // Meter readings
     Route::get('meters/{meter}/readings', [MeterReadingController::class, 'index']);
     Route::post('meters/{meter}/readings', [MeterReadingController::class, 'store']);
     Route::delete('meters/{meter}/readings/{reading}', [MeterReadingController::class, 'destroy']);
@@ -69,35 +63,44 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('property-images/{image}', [PropertyImageController::class, 'update']);
     Route::delete('property-images/{image}', [PropertyImageController::class, 'destroy']);
 
-    // Inventory
-    Route::get('properties/{property}/inventory', [InventoryItemController::class, 'index']);
-    Route::post('properties/{property}/inventory', [InventoryItemController::class, 'store']);
-    Route::get('inventory/{item}', [InventoryItemController::class, 'show']);
-    Route::put('inventory/{item}', [InventoryItemController::class, 'update']);
-    Route::delete('inventory/{item}', [InventoryItemController::class, 'destroy']);
-
-    // Documents
-    Route::get('properties/{property}/documents', [DocumentController::class, 'index']);
-    Route::post('properties/{property}/documents', [DocumentController::class, 'store']);
-    Route::get('documents/{document}/download', [DocumentController::class, 'download']);
-    Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
-
-    // Ratings
-    Route::get('leases/{lease}/ratings', [RatingController::class, 'index']);
-    Route::post('leases/{lease}/ratings', [RatingController::class, 'store']);
-    Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
-
     // Notices
     Route::get('properties/{property}/notices', [NoticeController::class, 'index']);
     Route::post('properties/{property}/notices', [NoticeController::class, 'store']);
     Route::put('notices/{notice}', [NoticeController::class, 'update']);
     Route::delete('notices/{notice}', [NoticeController::class, 'destroy']);
 
-    // Dashboard
-    Route::get('dashboard/stats', [DashboardController::class, 'stats']);
-    Route::get('dashboard/finance-chart', [DashboardController::class, 'financeChart']);
-    Route::get('dashboard/occupancy-chart', [DashboardController::class, 'occupancyChart']);
-    Route::get('tenants/{tenant}/trust-score', [DashboardController::class, 'trustScore']);
+    // Notifications
     Route::get('notifications', [DashboardController::class, 'notifications']);
     Route::put('notifications/{notification}/read', [DashboardController::class, 'markNotificationRead']);
+
+    // Landlord-only routes
+    Route::middleware('role:landlord')->group(function () {
+
+        // Expenses
+        Route::apiResource('expenses', ExpenseController::class);
+
+        // Inventory
+        Route::get('properties/{property}/inventory', [InventoryItemController::class, 'index']);
+        Route::post('properties/{property}/inventory', [InventoryItemController::class, 'store']);
+        Route::get('inventory/{item}', [InventoryItemController::class, 'show']);
+        Route::put('inventory/{item}', [InventoryItemController::class, 'update']);
+        Route::delete('inventory/{item}', [InventoryItemController::class, 'destroy']);
+
+        // Documents
+        Route::get('properties/{property}/documents', [DocumentController::class, 'index']);
+        Route::post('properties/{property}/documents', [DocumentController::class, 'store']);
+        Route::get('documents/{document}/download', [DocumentController::class, 'download']);
+        Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
+
+        // Ratings
+        Route::get('leases/{lease}/ratings', [RatingController::class, 'index']);
+        Route::post('leases/{lease}/ratings', [RatingController::class, 'store']);
+        Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
+
+        // Dashboard
+        Route::get('dashboard/stats', [DashboardController::class, 'stats']);
+        Route::get('dashboard/finance-chart', [DashboardController::class, 'financeChart']);
+        Route::get('dashboard/occupancy-chart', [DashboardController::class, 'occupancyChart']);
+        Route::get('tenants/{tenant}/trust-score', [DashboardController::class, 'trustScore']);
+    });
 });
