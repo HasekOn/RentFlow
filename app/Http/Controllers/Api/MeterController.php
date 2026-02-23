@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreMeterRequest;
+use App\Http\Requests\UpdateMeterRequest;
 use App\Models\Meter;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class MeterController extends Controller
 {
@@ -23,7 +24,7 @@ class MeterController extends Controller
         return response()->json($meters);
     }
 
-    public function store(Request $request, string $propertyId): JsonResponse
+    public function store(StoreMeterRequest $request, string $propertyId): JsonResponse
     {
         $property = Property::query()->findOrFail($propertyId);
 
@@ -33,15 +34,10 @@ class MeterController extends Controller
             ], 403);
         }
 
-        $validated = $request->validate([
-            'meter_type' => ['required', 'in:water,electricity,gas,heat'],
-            'serial_number' => ['nullable', 'string'],
-            'location' => ['nullable', 'string'],
+        $meter = Meter::query()->create([
+            ...$request->validated(),
+            'property_id' => $property->id,
         ]);
-
-        $validated['property_id'] = $property->id;
-
-        $meter = Meter::create($validated);
 
         return response()->json($meter, 201);
     }
@@ -55,17 +51,11 @@ class MeterController extends Controller
         return response()->json($meter);
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateMeterRequest $request, string $id): JsonResponse
     {
         $meter = Meter::query()->findOrFail($id);
 
-        $validated = $request->validate([
-            'meter_type' => ['sometimes', 'in:water,electricity,gas,heat'],
-            'serial_number' => ['nullable', 'string'],
-            'location' => ['nullable', 'string'],
-        ]);
-
-        $meter->update($validated);
+        $meter->update($request->validated());
 
         return response()->json($meter);
     }
@@ -73,7 +63,7 @@ class MeterController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $meter = Meter::query()->findOrFail($id);
-        
+
         $meter->delete();
 
         return response()->json([

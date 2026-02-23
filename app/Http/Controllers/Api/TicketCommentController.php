@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreTicketCommentRequest;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use Illuminate\Http\JsonResponse;
@@ -22,19 +23,16 @@ class TicketCommentController extends Controller
         return response()->json($comments);
     }
 
-    public function store(Request $request, string $ticketId): JsonResponse
+    public function store(StoreTicketCommentRequest $request, string $ticketId): JsonResponse
     {
         $ticket = Ticket::query()->findOrFail($ticketId);
 
-        $validated = $request->validate([
-            'message' => ['required', 'string'],
-            'attachment_path' => ['nullable', 'string'],
+        $comment = TicketComment::query()->create([
+            ...$request->validated(),
+            'ticket_id' => $ticket->id,
+            'user_id' => $request->user()->id,
         ]);
 
-        $validated['ticket_id'] = $ticket->id;
-        $validated['user_id'] = $request->user()->id;
-
-        $comment = TicketComment::create($validated);
         $comment->load('user');
 
         return response()->json($comment, 201);
