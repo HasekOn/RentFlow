@@ -65,10 +65,12 @@ class AuthController extends Controller
         /** @var PersonalAccessToken $token */
         $token = $request->user()->currentAccessToken();
 
-        $token->delete();
+        if ($token && method_exists($token, 'delete')) {
+            $token->delete();
+        }
 
         return response()->json([
-            'message' => 'Logout successful.',
+            'message' => 'Logged out successfully.',
         ]);
     }
 }
