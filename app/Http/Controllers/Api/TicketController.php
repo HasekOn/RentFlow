@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreTicketRequest;
+use App\Http\Requests\UpdateTicketRequest;
 use App\Models\Ticket;
 use App\Notifications\TicketCreatedNotification;
 use App\Notifications\TicketResolvedNotification;
@@ -38,21 +40,16 @@ class TicketController extends Controller
         return response()->json($tickets);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreTicketRequest $request): JsonResponse
     {
         $this->authorize('create', Ticket::class);
 
-        $validated = $request->validate([
-            'property_id' => ['required', 'exists:properties,id'],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'min:10'],
-            'category' => ['sometimes', 'in:plumbing,electrical,heating,structural,appliance,other'],
-            'priority' => ['sometimes', 'in:low,medium,high,urgent'],
-        ]);
+        $validated = $request->validated();
 
         $validated['tenant_id'] = $request->user()->id;
 
-        $ticket = Ticket::create($validated);
+        $ticket = Ticket::query()->create($validated);
+
         $ticket->load(['property', 'tenant']);
 
         // Notify landlord about new ticket
@@ -79,29 +76,13 @@ class TicketController extends Controller
         return response()->json($ticket);
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateTicketRequest $request, string $id): JsonResponse
     {
         $ticket = Ticket::query()->findOrFail($id);
 
         $this->authorize('update', $ticket);
 
-        // Notify tenant when ticket is resolved
-        if (isset($validated['status']) && $validated['status'] === 'resolved') {
-            $ticket->load('tenant');
-
-            if ($ticket->tenant) {
-                $ticket->tenant->notify(new TicketResolvedNotification($ticket));
-            }
-        }
-
-        $validated = $request->validate([
-            'title' => ['sometimes', 'string', 'max:255'],
-            'description' => ['sometimes', 'string', 'min:10'],
-            'category' => ['sometimes', 'in:plumbing,electrical,heating,structural,appliance,other'],
-            'status' => ['sometimes', 'in:new,in_progress,resolved,rejected'],
-            'priority' => ['sometimes', 'in:low,medium,high,urgent'],
-            'assigned_to' => ['nullable', 'exists:users,id'],
-        ]);
+        $validated = $request->validated();
 
         // Auto-set resolved_at when status changes to resolved
         if (isset($validated['status']) && $validated['status'] === 'resolved') {
@@ -109,6 +90,15 @@ class TicketController extends Controller
         }
 
         $ticket->update($validated);
+
+        // Notify tenant when ticket is resolved
+        if (isset($validated['status']) && $validated['status'] === 'resolved') {
+            $ticket->load('tenant');
+            
+            if ($ticket->tenant) {
+                $ticket->tenant->notify(new TicketResolvedNotification($ticket));
+            }
+        }
 
         return response()->json($ticket);
     }

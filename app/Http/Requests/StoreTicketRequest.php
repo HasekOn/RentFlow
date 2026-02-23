@@ -6,23 +6,28 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTicketRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            //
+            'property_id' => ['required', 'exists:properties,id'],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string', 'min:10'],
+            'category' => ['sometimes', 'in:plumbing,electrical,heating,structural,appliance,other'],
+            'priority' => ['sometimes', 'in:low,medium,high,urgent'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'description.min' => 'Please describe the issue in at least 10 characters.',
+            'category.in' => 'Category must be: plumbing, electrical, heating, structural, appliance, or other.',
+            'priority.in' => 'Priority must be: low, medium, high, or urgent.',
         ];
     }
 }

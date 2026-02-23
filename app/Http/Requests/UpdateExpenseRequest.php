@@ -6,23 +6,19 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateExpenseRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            //
+            'type' => ['sometimes', 'in:repair,insurance,tax,maintenance,other'],
+            'amount' => ['sometimes', 'numeric', 'min:0'],
+            'expense_date' => ['sometimes', 'date'],
+            'description' => ['nullable', 'string'],
+            'invoice_path' => ['nullable', 'string'],
         ];
     }
 }

@@ -6,23 +6,27 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTicketRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            //
+            'title' => ['sometimes', 'string', 'max:255'],
+            'description' => ['sometimes', 'string', 'min:10'],
+            'category' => ['sometimes', 'in:plumbing,electrical,heating,structural,appliance,other'],
+            'status' => ['sometimes', 'in:new,in_progress,resolved,rejected'],
+            'priority' => ['sometimes', 'in:low,medium,high,urgent'],
+            'assigned_to' => ['nullable', 'exists:users,id'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'assigned_to.exists' => 'Selected user does not exist.',
         ];
     }
 }
