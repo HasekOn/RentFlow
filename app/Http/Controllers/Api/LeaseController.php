@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreLeaseRequest;
 use App\Http\Requests\UpdateLeaseRequest;
+use App\Http\Resources\LeaseResource;
 use App\Models\Lease;
 use App\Models\Property;
+use App\Models\User;
 use App\Notifications\TenantInvitationNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +21,7 @@ class LeaseController extends Controller
     {
         $this->authorize('viewAny', Lease::class);
 
+        /** @var User $user */
         $user = $request->user();
 
         if ($user->role === 'landlord') {
@@ -30,7 +33,7 @@ class LeaseController extends Controller
             $leases = $user->leases()->with('property')->get();
         }
 
-        return response()->json($leases);
+        return response()->json(LeaseResource::collection($leases));
     }
 
     public function store(StoreLeaseRequest $request): JsonResponse
@@ -52,12 +55,12 @@ class LeaseController extends Controller
         // Send invitation to tenant
         $lease->tenant->notify(new TenantInvitationNotification($lease));
 
-        return response()->json($lease, 201);
+        return response()->json(new LeaseResource($lease), 201);
     }
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $lease = Lease::with([
+        $lease = Lease::query()->with([
             'property',
             'tenant',
             'payments',
@@ -66,7 +69,7 @@ class LeaseController extends Controller
 
         $this->authorize('view', $lease);
 
-        return response()->json($lease);
+        return response()->json(new LeaseResource($lease));
     }
 
     public function destroy(string $id): JsonResponse
@@ -120,11 +123,11 @@ class LeaseController extends Controller
     public function update(UpdateLeaseRequest $request, string $id): JsonResponse
     {
         $lease = Lease::query()->findOrFail($id);
-        
+
         $this->authorize('update', $lease);
 
         $lease->update($request->validated());
 
-        return response()->json($lease);
+        return response()->json(new LeaseResource($lease));
     }
 }

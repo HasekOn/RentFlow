@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
+use App\Http\Resources\PropertyResource;
 use App\Models\Property;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,19 +17,18 @@ class PropertyController extends Controller
     {
         $this->authorize('viewAny', Property::class);
 
+        /** @var User $user */
         $user = $request->user();
 
         if ($user->role === 'landlord') {
             $properties = $user->ownedProperties()->with('leases.tenant')->get();
         } else {
-            $propertyIds = $user->leases()
-                ->where('status', 'active')
-                ->pluck('property_id');
-
-            $properties = Property::query()->whereIn('id', $propertyIds)->get();
+            $properties = Property::query()->whereIn('id',
+                $user->leases()->where('status', 'active')->pluck('property_id')
+            )->get();
         }
 
-        return response()->json($properties);
+        return response()->json(PropertyResource::collection($properties));
     }
 
     public function store(StorePropertyRequest $request): JsonResponse
@@ -39,12 +40,12 @@ class PropertyController extends Controller
             'landlord_id' => $request->user()->id,
         ]);
 
-        return response()->json($property, 201);
+        return response()->json(new PropertyResource($property), 201);
     }
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $property = Property::with([
+        $property = Property::query()->with([
             'landlord',
             'leases.tenant',
             'meters',
@@ -53,17 +54,18 @@ class PropertyController extends Controller
 
         $this->authorize('view', $property);
 
-        return response()->json($property);
+        return response()->json(new PropertyResource($property));
     }
 
     public function update(UpdatePropertyRequest $request, string $id): JsonResponse
     {
         $property = Property::query()->findOrFail($id);
+        
         $this->authorize('update', $property);
 
         $property->update($request->validated());
 
-        return response()->json($property);
+        return response()->json(new PropertyResource($property));
     }
 
     public function destroy(string $id): JsonResponse
