@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreNoticeRequest;
 use App\Http\Requests\UpdateNoticeRequest;
+use App\Http\Resources\NoticeResource;
 use App\Models\Notice;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
@@ -22,7 +23,7 @@ class NoticeController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json($notices);
+        return response()->json(NoticeResource::collection($notices));
     }
 
     public function store(StoreNoticeRequest $request, string $propertyId): JsonResponse
@@ -45,7 +46,7 @@ class NoticeController extends Controller
 
         $notice->load('createdBy');
 
-        return response()->json($notice, 201);
+        return response()->json(new NoticeResource($notice), 201);
     }
 
     public function update(UpdateNoticeRequest $request, string $id): JsonResponse
@@ -56,7 +57,7 @@ class NoticeController extends Controller
 
         $notice->update($request->validated());
 
-        return response()->json($notice);
+        return response()->json(new NoticeResource($notice));
     }
 
     public function destroy(string $id): JsonResponse

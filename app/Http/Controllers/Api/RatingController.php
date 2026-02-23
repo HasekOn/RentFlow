@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRatingRequest;
+use App\Http\Resources\RatingResource;
 use App\Models\Lease;
 use App\Models\Rating;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +20,7 @@ class RatingController extends Controller
             ->with('ratedBy')
             ->get();
 
-        return response()->json($ratings);
+        return response()->json(RatingResource::collection($ratings));
     }
 
     public function store(StoreRatingRequest $request, string $leaseId): JsonResponse
@@ -60,7 +61,7 @@ class RatingController extends Controller
 
         $rating->load('ratedBy');
 
-        return response()->json($rating, 201);
+        return response()->json(new RatingResource($rating), 201);
     }
 
     public function destroy(Request $request, string $id): JsonResponse

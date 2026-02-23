@@ -7,13 +7,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class RatingResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'id' => $this->id,
+            'category' => $this->category,
+            'score' => $this->score,
+            'comment' => $this->comment,
+            'created_at' => $this->created_at->toDateTimeString(),
+            'rated_by' => new UserResource($this->whenLoaded('ratedBy')),
+            'lease' => new LeaseResource($this->whenLoaded('lease')),
+        ];
     }
 }

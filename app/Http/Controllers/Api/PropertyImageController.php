@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePropertyImageRequest;
 use App\Http\Requests\UpdatePropertyImageRequest;
+use App\Http\Resources\PropertyImageResource;
 use App\Models\Property;
 use App\Models\PropertyImage;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,7 @@ class PropertyImageController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        return response()->json($images);
+        return response()->json(PropertyImageResource::collection($images));
     }
 
     public function store(StorePropertyImageRequest $request, string $propertyId): JsonResponse
@@ -42,7 +43,7 @@ class PropertyImageController extends Controller
             'sort_order' => $request->validated('sort_order', 0),
         ]);
 
-        return response()->json($image, 201);
+        return response()->json(new PropertyImageResource($image), 201);
     }
 
     public function update(UpdatePropertyImageRequest $request, string $id): JsonResponse
@@ -51,7 +52,7 @@ class PropertyImageController extends Controller
 
         $image->update($request->validated());
 
-        return response()->json($image);
+        return response()->json(new PropertyImageResource($image));
     }
 
     public function destroy(string $id): JsonResponse

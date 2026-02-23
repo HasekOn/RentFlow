@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInventoryItemRequest;
 use App\Http\Requests\UpdateInventoryItemRequest;
+use App\Http\Resources\InventoryItemResource;
 use App\Models\InventoryItem;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,7 @@ class InventoryItemController extends Controller
             ->orderBy('name')
             ->get();
 
-        return response()->json($items);
+        return response()->json(InventoryItemResource::collection($items));
     }
 
     public function store(StoreInventoryItemRequest $request, string $propertyId): JsonResponse
@@ -38,14 +39,14 @@ class InventoryItemController extends Controller
             'property_id' => $property->id,
         ]);
 
-        return response()->json($item, 201);
+        return response()->json(new InventoryItemResource($item), 201);
     }
 
     public function show(string $id): JsonResponse
     {
-        $item = InventoryItem::with('property')->findOrFail($id);
+        $item = InventoryItem::query()->with('property')->findOrFail($id);
 
-        return response()->json($item);
+        return response()->json(new InventoryItemResource($item));
     }
 
     public function update(UpdateInventoryItemRequest $request, string $id): JsonResponse
@@ -54,7 +55,7 @@ class InventoryItemController extends Controller
 
         $item->update($request->validated());
 
-        return response()->json($item);
+        return response()->json(new InventoryItemResource($item));
     }
 
     public function destroy(string $id): JsonResponse

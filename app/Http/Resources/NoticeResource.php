@@ -7,13 +7,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class NoticeResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'id' => $this->id,
+            'title' => $this->title,
+            'content' => $this->content,
+            'is_active' => $this->is_active,
+            'created_at' => $this->created_at->toDateTimeString(),
+            'created_by' => new UserResource($this->whenLoaded('createdBy')),
+        ];
     }
 }

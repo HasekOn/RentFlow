@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDocumentRequest;
+use App\Http\Resources\DocumentResource;
 use App\Models\Document;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,7 @@ class DocumentController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json($documents);
+        return response()->json(DocumentResource::collection($documents));
     }
 
     public function store(StoreDocumentRequest $request, string $propertyId): JsonResponse
@@ -48,7 +49,7 @@ class DocumentController extends Controller
 
         $document->load('uploadedBy');
 
-        return response()->json($document, 201);
+        return response()->json(new DocumentResource($document), 201);
     }
 
     public function download(string $id)

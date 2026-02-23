@@ -7,13 +7,17 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class PropertyImageResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'id' => $this->id,
+            'image_path' => $this->image_path,
+            'image_url' => asset('storage/' . $this->image_path),
+            'type' => $this->type,
+            'description' => $this->description,
+            'sort_order' => $this->sort_order,
+            'created_at' => $this->created_at->toDateTimeString(),
+            'uploaded_by' => new UserResource($this->whenLoaded('uploadedBy')),
+        ];
     }
 }
