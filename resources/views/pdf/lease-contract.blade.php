@@ -137,6 +137,7 @@
             padding-top: 10px;
         }
     </style>
+    <title>Lease</title>
 </head>
 <body>
 
