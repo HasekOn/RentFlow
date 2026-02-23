@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Leases
     Route::apiResource('leases', LeaseController::class);
+    Route::get('leases/{lease}/generate-pdf', [LeaseController::class, 'generatePdf']);
 
     // Payments
     Route::apiResource('payments', PaymentController::class);
