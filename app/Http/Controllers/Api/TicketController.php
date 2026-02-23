@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
+use App\Notifications\TicketCreatedNotification;
+use App\Notifications\TicketResolvedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -53,6 +55,13 @@ class TicketController extends Controller
         $ticket = Ticket::create($validated);
         $ticket->load(['property', 'tenant']);
 
+        // Notify landlord about new ticket
+        $landlord = $ticket->property->landlord;
+
+        if ($landlord) {
+            $landlord->notify(new TicketCreatedNotification($ticket));
+        }
+
         return response()->json($ticket, 201);
     }
 
@@ -75,6 +84,15 @@ class TicketController extends Controller
         $ticket = Ticket::findOrFail($id);
 
         $this->authorize('update', $ticket);
+
+        // Notify tenant when ticket is resolved
+        if (isset($validated['status']) && $validated['status'] === 'resolved') {
+            $ticket->load('tenant');
+
+            if ($ticket->tenant) {
+                $ticket->tenant->notify(new TicketResolvedNotification($ticket));
+            }
+        }
 
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],

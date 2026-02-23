@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Lease;
 use App\Models\Property;
+use App\Notifications\TenantInvitationNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,6 +57,9 @@ class LeaseController extends Controller
         $lease = Lease::create($validated);
 
         $lease->load(['property', 'tenant']);
+
+        // Send invitation to tenant
+        $lease->tenant->notify(new TenantInvitationNotification($lease));
 
         return response()->json($lease, 201);
     }
