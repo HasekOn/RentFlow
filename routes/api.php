@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\LeaseController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PropertyController;
+use App\Http\Controllers\Api\TicketCommentController;
+use App\Http\Controllers\Api\TicketController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -31,4 +33,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Expenses
     Route::apiResource('expenses', ExpenseController::class);
+
+    // Tickets
+    Route::apiResource('tickets', TicketController::class);
+
+    // Ticket comments
+    Route::get('tickets/{ticket}/comments', [TicketCommentController::class, 'index']);
+    Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store']);
+    Route::delete('tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy']);
 });
