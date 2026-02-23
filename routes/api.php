@@ -1,14 +1,17 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InventoryItemController;
 use App\Http\Controllers\Api\LeaseController;
 use App\Http\Controllers\Api\MeterController;
 use App\Http\Controllers\Api\MeterReadingController;
+use App\Http\Controllers\Api\NoticeController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\PropertyImageController;
+use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\TicketCommentController;
 use App\Http\Controllers\Api\TicketController;
 use Illuminate\Http\Request;
@@ -70,4 +73,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('inventory/{item}', [InventoryItemController::class, 'show']);
     Route::put('inventory/{item}', [InventoryItemController::class, 'update']);
     Route::delete('inventory/{item}', [InventoryItemController::class, 'destroy']);
+
+    // Documents
+    Route::get('properties/{property}/documents', [DocumentController::class, 'index']);
+    Route::post('properties/{property}/documents', [DocumentController::class, 'store']);
+    Route::get('documents/{document}/download', [DocumentController::class, 'download']);
+    Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
+
+    // Ratings
+    Route::get('leases/{lease}/ratings', [RatingController::class, 'index']);
+    Route::post('leases/{lease}/ratings', [RatingController::class, 'store']);
+    Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
+
+    // Notices
+    Route::get('properties/{property}/notices', [NoticeController::class, 'index']);
+    Route::post('properties/{property}/notices', [NoticeController::class, 'store']);
+    Route::put('notices/{notice}', [NoticeController::class, 'update']);
+    Route::delete('notices/{notice}', [NoticeController::class, 'destroy']);
 });
