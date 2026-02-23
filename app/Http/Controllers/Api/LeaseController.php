@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreLeaseRequest;
+use App\Http\Requests\UpdateLeaseRequest;
 use App\Models\Lease;
 use App\Models\Property;
 use App\Notifications\TenantInvitationNotification;
@@ -31,22 +33,12 @@ class LeaseController extends Controller
         return response()->json($leases);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreLeaseRequest $request): JsonResponse
     {
         $this->authorize('create', Lease::class);
 
-        $validated = $request->validate([
-            'property_id' => ['required', 'exists:properties,id'],
-            'tenant_id' => ['required', 'exists:users,id'],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['nullable', 'date', 'after:start_date'],
-            'rent_amount' => ['required', 'numeric', 'min:0'],
-            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
-            'utility_advances' => ['nullable', 'numeric', 'min:0'],
-            'variable_symbol' => ['nullable', 'string', 'max:20', 'unique:leases'],
-        ]);
-
-        $property = Property::query()->findOrFail($validated['property_id']);
+        // Verify the property belongs to the logged-in landlord
+        $property = Property::query()->findOrFail($request->validated('property_id'));
 
         if ($property->landlord_id !== $request->user()->id) {
             return response()->json([
@@ -54,8 +46,7 @@ class LeaseController extends Controller
             ], 403);
         }
 
-        $lease = Lease::create($validated);
-
+        $lease = Lease::query()->create($request->validated());
         $lease->load(['property', 'tenant']);
 
         // Send invitation to tenant
@@ -126,23 +117,13 @@ class LeaseController extends Controller
         return $pdf->download($filename);
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateLeaseRequest $request, string $id): JsonResponse
     {
         $lease = Lease::query()->findOrFail($id);
-
+        
         $this->authorize('update', $lease);
 
-        $validated = $request->validate([
-            'start_date' => ['sometimes', 'date'],
-            'end_date' => ['nullable', 'date', 'after:start_date'],
-            'rent_amount' => ['sometimes', 'numeric', 'min:0'],
-            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
-            'utility_advances' => ['nullable', 'numeric', 'min:0'],
-            'variable_symbol' => ['nullable', 'string', 'max:20', 'unique:leases,variable_symbol,' . $lease->id],
-            'status' => ['sometimes', 'in:active,ended,terminated'],
-        ]);
-
-        $lease->update($validated);
+        $lease->update($request->validated());
 
         return response()->json($lease);
     }

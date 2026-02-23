@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePaymentRequest;
+use App\Http\Requests\UpdatePaymentRequest;
 use App\Models\Lease;
 use App\Models\Payment;
 use App\Services\BankImportService;
@@ -36,27 +38,18 @@ class PaymentController extends Controller
         return response()->json($payments);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StorePaymentRequest $request): JsonResponse
     {
         $this->authorize('create', Payment::class);
 
-        $validated = $request->validate([
-            'lease_id' => ['required', 'exists:leases,id'],
-            'type' => ['required', 'in:rent,utilities,deposit,other'],
-            'amount' => ['required', 'numeric', 'min:0'],
-            'due_date' => ['required', 'date'],
-            'paid_date' => ['nullable', 'date'],
-            'variable_symbol' => ['nullable', 'string', 'max:20'],
-            'status' => ['sometimes', 'in:paid,unpaid,overdue'],
-            'note' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         // Auto-set status based on paid_date
         if (!empty($validated['paid_date']) && !isset($validated['status'])) {
             $validated['status'] = 'paid';
         }
 
-        $payment = Payment::create($validated);
+        $payment = Payment::query()->create($validated);
 
         return response()->json($payment, 201);
     }
@@ -91,23 +84,13 @@ class PaymentController extends Controller
         return response()->json($payment);
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdatePaymentRequest $request, string $id): JsonResponse
     {
         $payment = Payment::query()->findOrFail($id);
-
+        
         $this->authorize('update', $payment);
 
-        $validated = $request->validate([
-            'type' => ['sometimes', 'in:rent,utilities,deposit,other'],
-            'amount' => ['sometimes', 'numeric', 'min:0'],
-            'due_date' => ['sometimes', 'date'],
-            'paid_date' => ['nullable', 'date'],
-            'variable_symbol' => ['nullable', 'string', 'max:20'],
-            'status' => ['sometimes', 'in:paid,unpaid,overdue'],
-            'note' => ['nullable', 'string'],
-        ]);
-
-        $payment->update($validated);
+        $payment->update($request->validated());
 
         return response()->json($payment);
     }
