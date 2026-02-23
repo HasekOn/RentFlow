@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePaymentRequest;
 use App\Http\Requests\UpdatePaymentRequest;
+use App\Http\Resources\PaymentResource;
 use App\Models\Lease;
 use App\Models\Payment;
+use App\Models\User;
 use App\Services\BankImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +19,7 @@ class PaymentController extends Controller
     {
         $this->authorize('viewAny', Payment::class);
 
+        /** @var User $user */
         $user = $request->user();
 
         if ($user->role === 'landlord') {
@@ -24,7 +27,6 @@ class PaymentController extends Controller
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->pluck('id');
-
             $payments = Payment::query()->whereIn('lease_id', $leaseIds)
                 ->with('lease.tenant')
                 ->get();
@@ -35,7 +37,7 @@ class PaymentController extends Controller
             )->with('lease.property')->get();
         }
 
-        return response()->json($payments);
+        return response()->json(PaymentResource::collection($payments));
     }
 
     public function store(StorePaymentRequest $request): JsonResponse
@@ -51,16 +53,16 @@ class PaymentController extends Controller
 
         $payment = Payment::query()->create($validated);
 
-        return response()->json($payment, 201);
+        return response()->json(new PaymentResource($payment), 201);
     }
 
     public function show(string $id): JsonResponse
     {
-        $payment = Payment::with('lease.tenant', 'lease.property')->findOrFail($id);
+        $payment = Payment::query()->with('lease.tenant', 'lease.property')->findOrFail($id);
 
         $this->authorize('view', $payment);
 
-        return response()->json($payment);
+        return response()->json(new PaymentResource($payment));
     }
 
     public function markPaid(string $id): JsonResponse
@@ -81,18 +83,18 @@ class PaymentController extends Controller
             $tenant->recalculateTrustScore();
         }
 
-        return response()->json($payment);
+        return response()->json(new PaymentResource($payment));
     }
 
     public function update(UpdatePaymentRequest $request, string $id): JsonResponse
     {
         $payment = Payment::query()->findOrFail($id);
-        
+
         $this->authorize('update', $payment);
 
         $payment->update($request->validated());
 
-        return response()->json($payment);
+        return response()->json(new PaymentResource($payment));
     }
 
     public function destroy(string $id): JsonResponse

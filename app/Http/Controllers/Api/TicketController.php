@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
+use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Notifications\TicketCreatedNotification;
 use App\Notifications\TicketResolvedNotification;
 use Illuminate\Http\JsonResponse;
@@ -17,27 +19,25 @@ class TicketController extends Controller
     {
         $this->authorize('viewAny', Ticket::class);
 
+        /** @var User $user */
         $user = $request->user();
 
         if ($user->role === 'landlord') {
-            // Landlord sees all tickets for their properties
             $tickets = Ticket::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->with(['property', 'tenant', 'assignedUser'])->get();
         } elseif ($user->role === 'manager') {
-            // Manager sees tickets assigned to them
             $tickets = $user->assignedTickets()
                 ->with(['property', 'tenant'])
                 ->get();
         } else {
-            // Tenant sees only their own tickets
             $tickets = $user->tickets()
                 ->with('property')
                 ->get();
         }
 
-        return response()->json($tickets);
+        return response()->json(TicketResource::collection($tickets));
     }
 
     public function store(StoreTicketRequest $request): JsonResponse
@@ -59,12 +59,12 @@ class TicketController extends Controller
             $landlord->notify(new TicketCreatedNotification($ticket));
         }
 
-        return response()->json($ticket, 201);
+        return response()->json(new TicketResource($ticket), 201);
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
-        $ticket = Ticket::with([
+        $ticket = Ticket::query()->with([
             'property',
             'tenant',
             'assignedUser',
@@ -73,7 +73,7 @@ class TicketController extends Controller
 
         $this->authorize('view', $ticket);
 
-        return response()->json($ticket);
+        return response()->json(new TicketResource($ticket));
     }
 
     public function update(UpdateTicketRequest $request, string $id): JsonResponse
@@ -94,13 +94,13 @@ class TicketController extends Controller
         // Notify tenant when ticket is resolved
         if (isset($validated['status']) && $validated['status'] === 'resolved') {
             $ticket->load('tenant');
-            
+
             if ($ticket->tenant) {
                 $ticket->tenant->notify(new TicketResolvedNotification($ticket));
             }
         }
 
-        return response()->json($ticket);
+        return response()->json(new TicketResource($ticket));
     }
 
     public function destroy(string $id): JsonResponse
