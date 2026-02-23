@@ -12,6 +12,8 @@ class ExpenseController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Expense::class);
+
         $expenses = Expense::whereIn(
             'property_id',
             $request->user()->ownedProperties()->pluck('id')
@@ -22,6 +24,8 @@ class ExpenseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', Expense::class);
+
         $validated = $request->validate([
             'property_id' => ['required', 'exists:properties,id'],
             'type' => ['required', 'in:repair,insurance,tax,maintenance,other'],
@@ -47,6 +51,8 @@ class ExpenseController extends Controller
 
     public function show(string $id): JsonResponse
     {
+        $this->authorize('view', Expense::class);
+
         $expense = Expense::with('property')->findOrFail($id);
 
         return response()->json($expense);
@@ -55,6 +61,8 @@ class ExpenseController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $expense = Expense::findOrFail($id);
+
+        $this->authorize('update', $expense);
 
         $validated = $request->validate([
             'type' => ['sometimes', 'in:repair,insurance,tax,maintenance,other'],
@@ -72,6 +80,9 @@ class ExpenseController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $expense = Expense::findOrFail($id);
+
+        $this->authorize('delete', $expense);
+
         $expense->delete();
 
         return response()->json([
