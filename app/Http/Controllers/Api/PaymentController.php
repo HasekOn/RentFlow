@@ -46,9 +46,9 @@ class PaymentController extends Controller
 
         $validated = $request->validated();
 
-        // Auto-set status based on paid_date
-        if (!empty($validated['paid_date']) && !isset($validated['status'])) {
-            $validated['status'] = 'paid';
+        // Auto-set status
+        if (!isset($validated['status'])) {
+            $validated['status'] = !empty($validated['paid_date']) ? 'paid' : 'unpaid';
         }
 
         $payment = Payment::query()->create($validated);
