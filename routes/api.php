@@ -33,10 +33,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('properties', PropertyController::class);
 
     // Leases
-    Route::apiResource('leases', LeaseController::class);
     Route::get('leases/{lease}/generate-pdf', [LeaseController::class, 'generatePdf']);
-
+    Route::apiResource('leases', LeaseController::class);
+    
     // Payments
+    Route::post('payments/import-csv', [\App\Http\Controllers\Api\PaymentController::class, 'importCsv']);
     Route::apiResource('payments', PaymentController::class);
     Route::put('payments/{id}/mark-paid', [PaymentController::class, 'markPaid']);
 

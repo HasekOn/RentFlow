@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Lease;
 use App\Models\Payment;
+use App\Services\BankImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -82,7 +83,7 @@ class PaymentController extends Controller
 
         // Recalculate tenant's trust score
         $tenant = $payment->lease->tenant;
-        
+
         if ($tenant) {
             $tenant->recalculateTrustScore();
         }
@@ -121,6 +122,35 @@ class PaymentController extends Controller
 
         return response()->json([
             'message' => 'Payment deleted successfully.',
+        ]);
+    }
+
+    /**
+     * Import payments from bank CSV
+     * POST /api/payments/import-csv
+     */
+    public function importCsv(Request $request): JsonResponse
+    {
+        $this->authorize('create', Payment::class);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
+        ]);
+
+        $content = file_get_contents($request->file('file')->getRealPath());
+
+        $service = new BankImportService();
+        $results = $service->import($content, $request->user()->id);
+
+        return response()->json([
+            'message' => 'CSV import completed.',
+            'summary' => [
+                'total_rows' => $results['total_rows'],
+                'matched' => count($results['matched']),
+                'already_paid' => count($results['already_paid']),
+                'unmatched' => count($results['unmatched']),
+            ],
+            'details' => $results,
         ]);
     }
 }
