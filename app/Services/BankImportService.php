@@ -22,7 +22,7 @@ class BankImportService
         ];
 
         // Get all lease IDs for this landlord's properties
-        $landlordLeaseIds = Lease::whereHas('property', function ($query) use ($landlordId) {
+        $landlordLeaseIds = Lease::query()->whereHas('property', function ($query) use ($landlordId) {
             $query->where('landlord_id', $landlordId);
         })->pluck('id', 'variable_symbol')->toArray();
         // Result: ['VS123' => 5, 'VS456' => 8, ...]
@@ -53,17 +53,17 @@ class BankImportService
             $leaseId = $landlordLeaseIds[$vs];
 
             // Find unpaid payment for this lease closest to the date
-            $payment = Payment::where('lease_id', $leaseId)
+            $payment = Payment::query()->where('lease_id', $leaseId)
                 ->where('status', 'unpaid')
                 ->where('variable_symbol', $vs)
-                ->orderBy('due_date', 'asc')
+                ->orderBy('due_date')
                 ->first();
 
             if (!$payment) {
                 // Try without variable_symbol on payment (might not be set)
-                $payment = Payment::where('lease_id', $leaseId)
+                $payment = Payment::query()->where('lease_id', $leaseId)
                     ->where('status', 'unpaid')
-                    ->orderBy('due_date', 'asc')
+                    ->orderBy('due_date')
                     ->first();
             }
 
@@ -84,7 +84,8 @@ class BankImportService
             ]);
 
             // Recalculate trust score
-            $tenant = $payment->lease->tenant;
+            $payment->load('lease.tenant');
+            $tenant = $payment->lease?->tenant;
             if ($tenant) {
                 $tenant->recalculateTrustScore();
             }
@@ -193,8 +194,8 @@ class BankImportService
     private function cleanVariableSymbol(string $vs): string
     {
         $vs = trim($vs);
-        $vs = ltrim($vs, '0');
-        return $vs;
+
+        return ltrim($vs, '0');
     }
 
     /**

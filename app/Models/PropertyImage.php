@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property-read Property|null $property
+ * @property-read User|null $uploadedBy
+ */
 class PropertyImage extends Model
 {
     use HasFactory;

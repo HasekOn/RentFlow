@@ -20,7 +20,7 @@ class LeaseController extends Controller
         $user = $request->user();
 
         if ($user->role === 'landlord') {
-            $leases = Lease::whereIn(
+            $leases = Lease::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->with(['property', 'tenant'])->get();
@@ -46,7 +46,7 @@ class LeaseController extends Controller
             'variable_symbol' => ['nullable', 'string', 'max:20', 'unique:leases'],
         ]);
 
-        $property = Property::findOrFail($validated['property_id']);
+        $property = Property::query()->findOrFail($validated['property_id']);
 
         if ($property->landlord_id !== $request->user()->id) {
             return response()->json([
@@ -80,7 +80,7 @@ class LeaseController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $lease = Lease::findOrFail($id);
+        $lease = Lease::query()->findOrFail($id);
 
         $this->authorize('delete', $lease);
 
@@ -128,7 +128,7 @@ class LeaseController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $lease = Lease::findOrFail($id);
+        $lease = Lease::query()->findOrFail($id);
 
         $this->authorize('update', $lease);
 

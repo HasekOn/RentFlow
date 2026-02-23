@@ -2,11 +2,23 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property-read User|null $landlord
+ * @property-read Collection<Lease> $leases
+ * @property-read Collection<PropertyImage> $images
+ * @property-read Collection<InventoryItem> $inventoryItems
+ * @property-read Collection<Meter> $meters
+ * @property-read Collection<Document> $documents
+ * @property-read Collection<Ticket> $tickets
+ * @property-read Collection<Expense> $expenses
+ * @property-read Collection<Notice> $notices
+ */
 class Property extends Model
 {
     use HasFactory;

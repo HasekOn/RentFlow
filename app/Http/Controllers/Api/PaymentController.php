@@ -18,16 +18,16 @@ class PaymentController extends Controller
         $user = $request->user();
 
         if ($user->role === 'landlord') {
-            $leaseIds = Lease::whereIn(
+            $leaseIds = Lease::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->pluck('id');
 
-            $payments = Payment::whereIn('lease_id', $leaseIds)
+            $payments = Payment::query()->whereIn('lease_id', $leaseIds)
                 ->with('lease.tenant')
                 ->get();
         } else {
-            $payments = Payment::whereIn(
+            $payments = Payment::query()->whereIn(
                 'lease_id',
                 $user->leases()->pluck('id')
             )->with('lease.property')->get();
@@ -72,7 +72,7 @@ class PaymentController extends Controller
 
     public function markPaid(string $id): JsonResponse
     {
-        $payment = Payment::findOrFail($id);
+        $payment = Payment::query()->findOrFail($id);
 
         $this->authorize('update', $payment);
 
@@ -93,7 +93,7 @@ class PaymentController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $payment = Payment::findOrFail($id);
+        $payment = Payment::query()->findOrFail($id);
 
         $this->authorize('update', $payment);
 
@@ -114,7 +114,7 @@ class PaymentController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $payment = Payment::findOrFail($id);
+        $payment = Payment::query()->findOrFail($id);
 
         $this->authorize('delete', $payment);
 

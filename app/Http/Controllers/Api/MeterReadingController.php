@@ -12,7 +12,7 @@ class MeterReadingController extends Controller
 {
     public function index(string $meterId): JsonResponse
     {
-        $meter = Meter::findOrFail($meterId);
+        $meter = Meter::query()->findOrFail($meterId);
 
         $readings = $meter->readings()
             ->with('submittedBy')
@@ -24,7 +24,7 @@ class MeterReadingController extends Controller
 
     public function store(Request $request, string $meterId): JsonResponse
     {
-        $meter = Meter::findOrFail($meterId);
+        $meter = Meter::query()->findOrFail($meterId);
 
         $validated = $request->validate([
             'reading_value' => ['required', 'numeric', 'min:0'],
@@ -54,7 +54,7 @@ class MeterReadingController extends Controller
 
     public function destroy(string $meterId, string $readingId): JsonResponse
     {
-        $reading = MeterReading::where('meter_id', $meterId)
+        $reading = MeterReading::query()->where('meter_id', $meterId)
             ->findOrFail($readingId);
 
         $reading->delete();

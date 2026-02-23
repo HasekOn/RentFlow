@@ -12,19 +12,19 @@ class TicketCommentController extends Controller
 {
     public function index(string $ticketId): JsonResponse
     {
-        $ticket = Ticket::findOrFail($ticketId);
+        $ticket = Ticket::query()->findOrFail($ticketId);
 
         $comments = $ticket->comments()
             ->with('user')
-            ->orderBy('created_at', 'asc')
+            ->orderBy('created_at')
             ->get();
 
         return response()->json($comments);
     }
-    
+
     public function store(Request $request, string $ticketId): JsonResponse
     {
-        $ticket = Ticket::findOrFail($ticketId);
+        $ticket = Ticket::query()->findOrFail($ticketId);
 
         $validated = $request->validate([
             'message' => ['required', 'string'],
@@ -42,7 +42,7 @@ class TicketCommentController extends Controller
 
     public function destroy(Request $request, string $ticketId, string $commentId): JsonResponse
     {
-        $comment = TicketComment::where('ticket_id', $ticketId)
+        $comment = TicketComment::query()->where('ticket_id', $ticketId)
             ->findOrFail($commentId);
 
         // Only the author can delete their comment

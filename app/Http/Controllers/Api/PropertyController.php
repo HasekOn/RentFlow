@@ -18,12 +18,11 @@ class PropertyController extends Controller
         if ($user->role === 'landlord') {
             $properties = $user->ownedProperties()->with('leases.tenant')->get();
         } else {
-            // Tenant/manager — byty přes aktivní smlouvy
             $propertyIds = $user->leases()
                 ->where('status', 'active')
                 ->pluck('property_id');
 
-            $properties = Property::whereIn('id', $propertyIds)->get();
+            $properties = Property::query()->whereIn('id', $propertyIds)->get();
         }
 
         return response()->json($properties);
@@ -68,7 +67,7 @@ class PropertyController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $property = Property::findOrFail($id);
+        $property = Property::query()->findOrFail($id);
 
         $this->authorize('update', $property);
 
@@ -91,10 +90,10 @@ class PropertyController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $property = Property::findOrFail($id);
+        $property = Property::query()->findOrFail($id);
 
         $this->authorize('delete', $property);
-        
+
         $property->delete();
 
         return response()->json([

@@ -13,7 +13,7 @@ class DocumentController extends Controller
 {
     public function index(string $propertyId): JsonResponse
     {
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         $documents = $property->documents()
             ->with('uploadedBy')
@@ -25,7 +25,7 @@ class DocumentController extends Controller
 
     public function store(Request $request, string $propertyId): JsonResponse
     {
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         if ($property->landlord_id !== $request->user()->id) {
             return response()->json([
@@ -59,7 +59,7 @@ class DocumentController extends Controller
 
     public function download(string $id)
     {
-        $document = Document::findOrFail($id);
+        $document = Document::query()->findOrFail($id);
 
         return Storage::disk('public')->download(
             $document->file_path,
@@ -69,7 +69,7 @@ class DocumentController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $document = Document::findOrFail($id);
+        $document = Document::query()->findOrFail($id);
 
         Storage::disk('public')->delete($document->file_path);
         $document->delete();

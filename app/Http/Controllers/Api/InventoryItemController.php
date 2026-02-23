@@ -12,7 +12,7 @@ class InventoryItemController extends Controller
 {
     public function index(string $propertyId): JsonResponse
     {
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         $items = $property->inventoryItems()
             ->orderBy('category')
@@ -24,7 +24,7 @@ class InventoryItemController extends Controller
 
     public function store(Request $request, string $propertyId): JsonResponse
     {
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         if ($property->landlord_id !== $request->user()->id) {
             return response()->json([
@@ -57,7 +57,7 @@ class InventoryItemController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $item = InventoryItem::findOrFail($id);
+        $item = InventoryItem::query()->findOrFail($id);
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -75,7 +75,8 @@ class InventoryItemController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $item = InventoryItem::findOrFail($id);
+        $item = InventoryItem::query()->findOrFail($id);
+        
         $item->delete();
 
         return response()->json([

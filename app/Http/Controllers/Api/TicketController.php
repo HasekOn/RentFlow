@@ -19,7 +19,7 @@ class TicketController extends Controller
 
         if ($user->role === 'landlord') {
             // Landlord sees all tickets for their properties
-            $tickets = Ticket::whereIn(
+            $tickets = Ticket::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->with(['property', 'tenant', 'assignedUser'])->get();
@@ -81,7 +81,7 @@ class TicketController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $ticket = Ticket::findOrFail($id);
+        $ticket = Ticket::query()->findOrFail($id);
 
         $this->authorize('update', $ticket);
 
@@ -115,7 +115,7 @@ class TicketController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $ticket = Ticket::findOrFail($id);
+        $ticket = Ticket::query()->findOrFail($id);
 
         $this->authorize('delete', $ticket);
 

@@ -14,7 +14,7 @@ class ExpenseController extends Controller
     {
         $this->authorize('viewAny', Expense::class);
 
-        $expenses = Expense::whereIn(
+        $expenses = Expense::query()->whereIn(
             'property_id',
             $request->user()->ownedProperties()->pluck('id')
         )->with('property')->get();
@@ -36,7 +36,7 @@ class ExpenseController extends Controller
         ]);
 
         // Verify property belongs to landlord
-        $property = Property::findOrFail($validated['property_id']);
+        $property = Property::query()->findOrFail($validated['property_id']);
 
         if ($property->landlord_id !== $request->user()->id) {
             return response()->json([
@@ -60,7 +60,7 @@ class ExpenseController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $expense = Expense::findOrFail($id);
+        $expense = Expense::query()->findOrFail($id);
 
         $this->authorize('update', $expense);
 
@@ -79,7 +79,7 @@ class ExpenseController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $expense = Expense::findOrFail($id);
+        $expense = Expense::query()->findOrFail($id);
 
         $this->authorize('delete', $expense);
 

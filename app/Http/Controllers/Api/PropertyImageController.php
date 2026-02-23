@@ -13,7 +13,7 @@ class PropertyImageController extends Controller
 {
     public function index(string $propertyId): JsonResponse
     {
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         $images = $property->images()
             ->orderBy('sort_order')
@@ -24,7 +24,7 @@ class PropertyImageController extends Controller
 
     public function store(Request $request, string $propertyId): JsonResponse
     {
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         $validated = $request->validate([
             'image' => ['required', 'image', 'max:5120'], // max 5MB
@@ -53,7 +53,7 @@ class PropertyImageController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $image = PropertyImage::findOrFail($id);
+        $image = PropertyImage::query()->findOrFail($id);
 
         $validated = $request->validate([
             'type' => ['sometimes', 'in:marketing,defect,document'],
@@ -68,7 +68,7 @@ class PropertyImageController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $image = PropertyImage::findOrFail($id);
+        $image = PropertyImage::query()->findOrFail($id);
 
         // Delete file from storage
         Storage::disk('public')->delete($image->image_path);

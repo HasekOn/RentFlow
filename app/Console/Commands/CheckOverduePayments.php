@@ -38,7 +38,7 @@ class CheckOverduePayments extends Command
             $count++;
         }
 
-        $this->info("Checked overdue payments. Processed {$count} overdue payments.");
+        $this->info("Checked overdue payments. Processed $count overdue payments.");
 
         return CommandAlias::SUCCESS;
     }

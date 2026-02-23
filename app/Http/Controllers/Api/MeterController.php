@@ -12,7 +12,7 @@ class MeterController extends Controller
 {
     public function index(string $propertyId): JsonResponse
     {
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         $meters = $property->meters()
             ->with(['readings' => function ($query) {
@@ -25,7 +25,7 @@ class MeterController extends Controller
 
     public function store(Request $request, string $propertyId): JsonResponse
     {
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         if ($property->landlord_id !== $request->user()->id) {
             return response()->json([
@@ -57,7 +57,7 @@ class MeterController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $meter = Meter::findOrFail($id);
+        $meter = Meter::query()->findOrFail($id);
 
         $validated = $request->validate([
             'meter_type' => ['sometimes', 'in:water,electricity,gas,heat'],
@@ -72,7 +72,8 @@ class MeterController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $meter = Meter::findOrFail($id);
+        $meter = Meter::query()->findOrFail($id);
+        
         $meter->delete();
 
         return response()->json([

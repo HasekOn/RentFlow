@@ -12,7 +12,7 @@ class RatingController extends Controller
 {
     public function index(string $leaseId): JsonResponse
     {
-        $lease = Lease::findOrFail($leaseId);
+        $lease = Lease::query()->findOrFail($leaseId);
 
         $ratings = $lease->ratings()
             ->with('ratedBy')
@@ -23,7 +23,7 @@ class RatingController extends Controller
 
     public function store(Request $request, string $leaseId): JsonResponse
     {
-        $lease = Lease::findOrFail($leaseId);
+        $lease = Lease::query()->findOrFail($leaseId);
 
         // Only landlord can rate, and only ended leases
         if ($request->user()->role !== 'landlord') {
@@ -67,7 +67,7 @@ class RatingController extends Controller
 
     public function destroy(Request $request, string $id): JsonResponse
     {
-        $rating = Rating::findOrFail($id);
+        $rating = Rating::query()->findOrFail($id);
 
         if ($rating->rated_by !== $request->user()->id) {
             return response()->json([

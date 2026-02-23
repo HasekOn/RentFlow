@@ -5,6 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property-read Property|null $property
+ * @property-read User|null $uploadedBy
+ */
 class Document extends Model
 {
     protected $fillable = [

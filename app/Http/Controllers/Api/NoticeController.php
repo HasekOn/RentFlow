@@ -14,7 +14,7 @@ class NoticeController extends Controller
     {
         $this->authorize('viewAny', Notice::class);
 
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         $notices = $property->notices()
             ->with('createdBy')
@@ -28,7 +28,7 @@ class NoticeController extends Controller
     {
         $this->authorize('create', Notice::class);
 
-        $property = Property::findOrFail($propertyId);
+        $property = Property::query()->findOrFail($propertyId);
 
         if ($property->landlord_id !== $request->user()->id) {
             return response()->json([
@@ -52,7 +52,7 @@ class NoticeController extends Controller
 
     public function update(Request $request, string $id): JsonResponse
     {
-        $notice = Notice::findOrFail($id);
+        $notice = Notice::query()->findOrFail($id);
 
         $this->authorize('update', $notice);
 
@@ -69,8 +69,8 @@ class NoticeController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $notice = Notice::findOrFail($id);
-        
+        $notice = Notice::query()->findOrFail($id);
+
         $this->authorize('delete', $notice);
 
         $notice->delete();

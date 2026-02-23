@@ -36,7 +36,7 @@ class CheckExpiringLeases extends Command
             $count++;
         }
 
-        $this->info("Checked expiring leases. Notifications sent for {$count} leases.");
+        $this->info("Checked expiring leases. Notifications sent for $count leases.");
 
         return CommandAlias::SUCCESS;
     }

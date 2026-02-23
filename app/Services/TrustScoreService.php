@@ -48,7 +48,7 @@ class TrustScoreService
     {
         $leaseIds = $user->leases()->pluck('id');
 
-        $payments = Payment::whereIn('lease_id', $leaseIds)
+        $payments = Payment::query()->whereIn('lease_id', $leaseIds)
             ->where('type', 'rent')
             ->get();
 
@@ -100,7 +100,7 @@ class TrustScoreService
     {
         $leaseIds = $user->leases()->pluck('id');
 
-        $averageScore = Rating::whereIn('lease_id', $leaseIds)->avg('score');
+        $averageScore = Rating::query()->whereIn('lease_id', $leaseIds)->avg('score');
 
         if ($averageScore === null) {
             return null;
