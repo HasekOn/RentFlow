@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTicketCommentRequest;
+use App\Http\Resources\TicketCommentResource;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,7 @@ class TicketCommentController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        return response()->json($comments);
+        return response()->json(TicketCommentResource::collection($comments));
     }
 
     public function store(StoreTicketCommentRequest $request, string $ticketId): JsonResponse
@@ -35,7 +36,7 @@ class TicketCommentController extends Controller
 
         $comment->load('user');
 
-        return response()->json($comment, 201);
+        return response()->json(new TicketCommentResource($comment), 201);
     }
 
     public function destroy(Request $request, string $ticketId, string $commentId): JsonResponse

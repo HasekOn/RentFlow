@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMeterReadingRequest;
+use App\Http\Resources\MeterReadingResource;
 use App\Models\Meter;
 use App\Models\MeterReading;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +20,7 @@ class MeterReadingController extends Controller
             ->orderBy('reading_date', 'desc')
             ->get();
 
-        return response()->json($readings);
+        return response()->json(MeterReadingResource::collection($readings));
     }
 
     public function store(StoreMeterReadingRequest $request, string $meterId): JsonResponse
@@ -45,7 +46,7 @@ class MeterReadingController extends Controller
 
         $reading->load('submittedBy');
 
-        return response()->json($reading, 201);
+        return response()->json(new MeterReadingResource($reading), 201);
     }
 
     public function destroy(string $meterId, string $readingId): JsonResponse

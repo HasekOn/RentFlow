@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMeterRequest;
 use App\Http\Requests\UpdateMeterRequest;
+use App\Http\Resources\MeterResource;
 use App\Models\Meter;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
@@ -21,7 +22,7 @@ class MeterController extends Controller
             }])
             ->get();
 
-        return response()->json($meters);
+        return response()->json(MeterResource::collection($meters));
     }
 
     public function store(StoreMeterRequest $request, string $propertyId): JsonResponse
@@ -39,16 +40,16 @@ class MeterController extends Controller
             'property_id' => $property->id,
         ]);
 
-        return response()->json($meter, 201);
+        return response()->json(new MeterResource($meter), 201);
     }
 
     public function show(string $id): JsonResponse
     {
-        $meter = Meter::with(['readings' => function ($query) {
+        $meter = Meter::query()->with(['readings' => function ($query) {
             $query->orderBy('reading_date', 'desc');
         }, 'property'])->findOrFail($id);
 
-        return response()->json($meter);
+        return response()->json(new MeterResource($meter));
     }
 
     public function update(UpdateMeterRequest $request, string $id): JsonResponse
@@ -57,7 +58,7 @@ class MeterController extends Controller
 
         $meter->update($request->validated());
 
-        return response()->json($meter);
+        return response()->json(new MeterResource($meter));
     }
 
     public function destroy(string $id): JsonResponse
