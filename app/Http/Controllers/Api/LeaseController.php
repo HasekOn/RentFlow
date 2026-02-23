@@ -105,7 +105,7 @@ class LeaseController extends Controller
             'landlord'
         ));
 
-        $pdf->setPaper('A4', 'portrait');
+        $pdf->setPaper('A4');
 
         $filename = 'contract_lease_' . $lease->id . '.pdf';
         $path = 'contracts/' . $filename;

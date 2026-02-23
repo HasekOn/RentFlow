@@ -2,9 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Lease;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin Lease
+ */
 class LeaseResource extends JsonResource
 {
     public function toArray(Request $request): array

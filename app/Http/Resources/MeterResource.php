@@ -2,9 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Meter;
+use App\Models\MeterReading;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin Meter
+ */
 class MeterResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -15,6 +20,7 @@ class MeterResource extends JsonResource
             'serial_number' => $this->serial_number,
             'location' => $this->location,
             'latest_reading' => $this->whenLoaded('readings', function () {
+                /** @var MeterReading|null $latest */
                 $latest = $this->readings->sortByDesc('reading_date')->first();
                 return $latest ? [
                     'value' => $latest->reading_value,

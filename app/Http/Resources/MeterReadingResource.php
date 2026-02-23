@@ -2,9 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Models\MeterReading;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin MeterReading
+ */
 class MeterReadingResource extends JsonResource
 {
     public function toArray(Request $request): array
