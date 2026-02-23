@@ -6,23 +6,27 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StorePropertyImageRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            //
+            'image' => ['required', 'image', 'max:5120'],
+            'type' => ['sometimes', 'in:marketing,defect,document'],
+            'description' => ['nullable', 'string'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'image.image' => 'File must be an image (jpg, png, gif, webp).',
+            'image.max' => 'Image size cannot exceed 5 MB.',
+            'type.in' => 'Image type must be: marketing, defect, or document.',
         ];
     }
 }

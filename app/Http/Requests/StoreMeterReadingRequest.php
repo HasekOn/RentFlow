@@ -6,23 +6,25 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreMeterReadingRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            //
+            'reading_value' => ['required', 'numeric', 'min:0'],
+            'reading_date' => ['required', 'date'],
+            'photo_proof' => ['nullable', 'string'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'reading_value.min' => 'Reading value cannot be negative.',
+            'reading_date.required' => 'Reading date is required.',
         ];
     }
 }

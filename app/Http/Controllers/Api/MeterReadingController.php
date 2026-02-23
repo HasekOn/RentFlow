@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreMeterReadingRequest;
 use App\Models\Meter;
 use App\Models\MeterReading;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class MeterReadingController extends Controller
 {
@@ -22,31 +22,27 @@ class MeterReadingController extends Controller
         return response()->json($readings);
     }
 
-    public function store(Request $request, string $meterId): JsonResponse
+    public function store(StoreMeterReadingRequest $request, string $meterId): JsonResponse
     {
         $meter = Meter::query()->findOrFail($meterId);
-
-        $validated = $request->validate([
-            'reading_value' => ['required', 'numeric', 'min:0'],
-            'reading_date' => ['required', 'date'],
-            'photo_proof' => ['nullable', 'string'],
-        ]);
 
         // Validate that new reading is not less than the last one
         $lastReading = $meter->readings()
             ->orderBy('reading_date', 'desc')
             ->first();
 
-        if ($lastReading && $validated['reading_value'] < $lastReading->reading_value) {
+        if ($lastReading && $request->validated('reading_value') < $lastReading->reading_value) {
             return response()->json([
                 'message' => 'Reading value cannot be less than the previous reading (' . $lastReading->reading_value . ').',
             ], 422);
         }
 
-        $validated['meter_id'] = $meter->id;
-        $validated['submitted_by'] = $request->user()->id;
+        $reading = MeterReading::query()->create([
+            ...$request->validated(),
+            'meter_id' => $meter->id,
+            'submitted_by' => $request->user()->id,
+        ]);
 
-        $reading = MeterReading::create($validated);
         $reading->load('submittedBy');
 
         return response()->json($reading, 201);
