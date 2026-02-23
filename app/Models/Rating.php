@@ -5,8 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
+ * @property int $id
+ * @property int $lease_id
+ * @property int $rated_by
+ * @property string $category
+ * @property int $score
+ * @property string|null $comment
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Lease|null $lease
  * @property-read User|null $ratedBy
  */

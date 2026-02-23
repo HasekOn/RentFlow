@@ -7,8 +7,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
+ * @property int $id
+ * @property int $property_id
+ * @property int $tenant_id
+ * @property string $title
+ * @property string $description
+ * @property string|null $category
+ * @property string $status
+ * @property string|null $priority
+ * @property int|null $assigned_to
+ * @property Carbon|null $resolved_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Property|null $property
  * @property-read User|null $tenant
  * @property-read User|null $assignedUser

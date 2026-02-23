@@ -7,8 +7,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
+ * @property int $id
+ * @property int $landlord_id
+ * @property string $address
+ * @property string|null $city
+ * @property string|null $zip_code
+ * @property float|null $size
+ * @property string|null $disposition
+ * @property int|null $floor
+ * @property string $status
+ * @property float|null $purchase_price
+ * @property string|null $description
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read User|null $landlord
  * @property-read Collection<Lease> $leases
  * @property-read Collection<PropertyImage> $images

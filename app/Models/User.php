@@ -11,10 +11,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
 
-
 /**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string $role
+ * @property float $trust_score
+ * @property string|null $phone
+ * @property Carbon|null $email_verified_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Collection<Property> $ownedProperties
  * @property-read Collection<Lease> $leases
  * @property-read Collection<Ticket> $tickets

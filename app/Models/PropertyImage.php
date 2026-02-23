@@ -5,8 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
+ * @property int $id
+ * @property int $property_id
+ * @property string $image_path
+ * @property string $type
+ * @property int $uploaded_by
+ * @property string|null $description
+ * @property int $sort_order
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Property|null $property
  * @property-read User|null $uploadedBy
  */
