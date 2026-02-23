@@ -85,10 +85,10 @@ class BankImportService
 
             // Recalculate trust score
             $payment->load('lease.tenant');
+            
             $tenant = $payment->lease?->tenant;
-            if ($tenant) {
-                $tenant->recalculateTrustScore();
-            }
+
+            $tenant?->recalculateTrustScore();
 
             $results['matched'][] = [
                 'payment_id' => $payment->id,
