@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePropertyRequest;
+use App\Http\Requests\UpdatePropertyRequest;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,25 +30,14 @@ class PropertyController extends Controller
         return response()->json($properties);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StorePropertyRequest $request): JsonResponse
     {
         $this->authorize('create', Property::class);
 
-        $validated = $request->validate([
-            'address' => ['required', 'string'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'zip_code' => ['nullable', 'string', 'max:10'],
-            'size' => ['required', 'numeric', 'min:1'],
-            'disposition' => ['required', 'string', 'max:50'],
-            'floor' => ['nullable', 'integer'],
-            'status' => ['sometimes', 'in:available,occupied,renovation'],
-            'purchase_price' => ['nullable', 'numeric', 'min:0'],
-            'description' => ['nullable', 'string'],
+        $property = Property::query()->create([
+            ...$request->validated(),
+            'landlord_id' => $request->user()->id,
         ]);
-
-        $validated['landlord_id'] = $request->user()->id;
-
-        $property = Property::create($validated);
 
         return response()->json($property, 201);
     }
@@ -65,25 +56,12 @@ class PropertyController extends Controller
         return response()->json($property);
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdatePropertyRequest $request, string $id): JsonResponse
     {
         $property = Property::query()->findOrFail($id);
-
         $this->authorize('update', $property);
 
-        $validated = $request->validate([
-            'address' => ['sometimes', 'string'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'zip_code' => ['nullable', 'string', 'max:10'],
-            'size' => ['sometimes', 'numeric', 'min:1'],
-            'disposition' => ['sometimes', 'string', 'max:50'],
-            'floor' => ['nullable', 'integer'],
-            'status' => ['sometimes', 'in:available,occupied,renovation'],
-            'purchase_price' => ['nullable', 'numeric', 'min:0'],
-            'description' => ['nullable', 'string'],
-        ]);
-
-        $property->update($validated);
+        $property->update($request->validated());
 
         return response()->json($property);
     }
