@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\Lease;
 use App\Models\Payment;
+use App\Models\Rating;
 use App\Models\Ticket;
+use App\Models\User;
+use App\Services\TrustScoreService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -128,6 +131,43 @@ class DashboardController extends Controller
             ['label' => 'Occupied', 'value' => $occupied],
             ['label' => 'Available', 'value' => $available],
             ['label' => 'Renovation', 'value' => $renovation],
+        ]);
+    }
+    
+    public function trustScore(Request $request, string $id): JsonResponse
+    {
+        $tenant = User::where('role', 'tenant')->findOrFail($id);
+
+        $service = new TrustScoreService();
+        $score = $service->calculate($tenant);
+
+        // Get breakdown
+        $leaseIds = $tenant->leases()->pluck('id');
+
+        $totalPayments = Payment::whereIn('lease_id', $leaseIds)
+            ->where('type', 'rent')
+            ->count();
+
+        $onTimePayments = Payment::whereIn('lease_id', $leaseIds)
+            ->where('type', 'rent')
+            ->where('status', 'paid')
+            ->whereColumn('paid_date', '<=', 'due_date')
+            ->count();
+
+        $averageRating = Rating::whereIn('lease_id', $leaseIds)->avg('score');
+
+        return response()->json([
+            'tenant_id' => $tenant->id,
+            'tenant_name' => $tenant->name,
+            'trust_score' => $score,
+            'breakdown' => [
+                'total_payments' => $totalPayments,
+                'on_time_payments' => $onTimePayments,
+                'payment_ratio' => $totalPayments > 0
+                    ? round($onTimePayments / $totalPayments * 100, 1) . '%'
+                    : 'N/A',
+                'average_rating' => $averageRating ? round($averageRating, 1) . '/5' : 'No ratings yet',
+            ],
         ]);
     }
 }

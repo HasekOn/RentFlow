@@ -96,4 +96,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('dashboard/finance-chart', [DashboardController::class, 'financeChart']);
     Route::get('dashboard/occupancy-chart', [DashboardController::class, 'occupancyChart']);
+    Route::get('tenants/{tenant}/trust-score', [DashboardController::class, 'trustScore']);
 });

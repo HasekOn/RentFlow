@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\TrustScoreService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -38,20 +39,6 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'trust_score' => 'decimal:2',
-        ];
-    }
-
     public function ownedProperties(): HasMany
     {
         return $this->hasMany(Property::class, 'landlord_id');
@@ -76,4 +63,29 @@ class User extends Authenticatable
     {
         return $this->hasMany(Rating::class, 'rated_by');
     }
+
+    /**
+     * Recalculate trust score using TrustScoreService
+     */
+    public function recalculateTrustScore(): float
+    {
+        $service = new TrustScoreService();
+        
+        return $service->calculate($this);
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'trust_score' => 'decimal:2',
+        ];
+    }
+
 }

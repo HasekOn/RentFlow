@@ -80,6 +80,13 @@ class PaymentController extends Controller
             'status' => 'paid',
         ]);
 
+        // Recalculate tenant's trust score
+        $tenant = $payment->lease->tenant;
+        
+        if ($tenant) {
+            $tenant->recalculateTrustScore();
+        }
+
         return response()->json($payment);
     }
 
@@ -109,7 +116,7 @@ class PaymentController extends Controller
         $payment = Payment::findOrFail($id);
 
         $this->authorize('delete', $payment);
-        
+
         $payment->delete();
 
         return response()->json([
