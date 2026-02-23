@@ -133,7 +133,7 @@ class DashboardController extends Controller
             ['label' => 'Renovation', 'value' => $renovation],
         ]);
     }
-    
+
     public function trustScore(Request $request, string $id): JsonResponse
     {
         $tenant = User::where('role', 'tenant')->findOrFail($id);
@@ -169,5 +169,45 @@ class DashboardController extends Controller
                 'average_rating' => $averageRating ? round($averageRating, 1) . '/5' : 'No ratings yet',
             ],
         ]);
+    }
+
+    /**
+     * Mark notification as read
+     * PUT /api/notifications/{id}/read
+     */
+    public function markNotificationRead(Request $request, string $id): JsonResponse
+    {
+        $notification = $request->user()
+            ->notifications()
+            ->findOrFail($id);
+
+        $notification->markAsRead();
+
+        return response()->json([
+            'message' => 'Notification marked as read.',
+        ]);
+    }
+
+    /**
+     * Get notifications for the logged-in user
+     * GET /api/notifications
+     */
+    public function notifications(Request $request): JsonResponse
+    {
+        $notifications = $request->user()
+            ->notifications()
+            ->take(20)
+            ->get()
+            ->map(function ($notification) {
+                return [
+                    'id' => $notification->id,
+                    'type' => $notification->data['type'] ?? 'unknown',
+                    'data' => $notification->data,
+                    'read' => $notification->read_at !== null,
+                    'created_at' => $notification->created_at->toDateTimeString(),
+                ];
+            });
+
+        return response()->json($notifications);
     }
 }

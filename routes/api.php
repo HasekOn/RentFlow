@@ -35,7 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Leases
     Route::get('leases/{lease}/generate-pdf', [LeaseController::class, 'generatePdf']);
     Route::apiResource('leases', LeaseController::class);
-    
+
     // Payments
     Route::post('payments/import-csv', [\App\Http\Controllers\Api\PaymentController::class, 'importCsv']);
     Route::apiResource('payments', PaymentController::class);
@@ -99,4 +99,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard/finance-chart', [DashboardController::class, 'financeChart']);
     Route::get('dashboard/occupancy-chart', [DashboardController::class, 'occupancyChart']);
     Route::get('tenants/{tenant}/trust-score', [DashboardController::class, 'trustScore']);
+    Route::get('notifications', [DashboardController::class, 'notifications']);
+    Route::put('notifications/{notification}/read', [DashboardController::class, 'markNotificationRead']);
 });
