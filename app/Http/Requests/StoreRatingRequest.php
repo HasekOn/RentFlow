@@ -6,23 +6,26 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRatingRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            //
+            'category' => ['required', 'in:apartment_condition,communication,rules,overall'],
+            'score' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'category.in' => 'Category must be: apartment_condition, communication, rules, or overall.',
+            'score.min' => 'Score must be between 1 and 5.',
+            'score.max' => 'Score must be between 1 and 5.',
         ];
     }
 }

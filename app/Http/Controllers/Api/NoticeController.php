@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreNoticeRequest;
+use App\Http\Requests\UpdateNoticeRequest;
 use App\Models\Notice;
 use App\Models\Property;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class NoticeController extends Controller
 {
@@ -24,7 +25,7 @@ class NoticeController extends Controller
         return response()->json($notices);
     }
 
-    public function store(Request $request, string $propertyId): JsonResponse
+    public function store(StoreNoticeRequest $request, string $propertyId): JsonResponse
     {
         $this->authorize('create', Notice::class);
 
@@ -36,33 +37,24 @@ class NoticeController extends Controller
             ], 403);
         }
 
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'content' => ['required', 'string'],
+        $notice = Notice::query()->create([
+            ...$request->validated(),
+            'property_id' => $property->id,
+            'created_by' => $request->user()->id,
         ]);
 
-        $validated['property_id'] = $property->id;
-        $validated['created_by'] = $request->user()->id;
-
-        $notice = Notice::create($validated);
         $notice->load('createdBy');
 
         return response()->json($notice, 201);
     }
 
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateNoticeRequest $request, string $id): JsonResponse
     {
         $notice = Notice::query()->findOrFail($id);
 
         $this->authorize('update', $notice);
 
-        $validated = $request->validate([
-            'title' => ['sometimes', 'string', 'max:255'],
-            'content' => ['sometimes', 'string'],
-            'is_active' => ['sometimes', 'boolean'],
-        ]);
-
-        $notice->update($validated);
+        $notice->update($request->validated());
 
         return response()->json($notice);
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreRatingRequest;
 use App\Models\Lease;
 use App\Models\Rating;
 use Illuminate\Http\JsonResponse;
@@ -21,33 +22,28 @@ class RatingController extends Controller
         return response()->json($ratings);
     }
 
-    public function store(Request $request, string $leaseId): JsonResponse
+    public function store(StoreRatingRequest $request, string $leaseId): JsonResponse
     {
         $lease = Lease::query()->findOrFail($leaseId);
 
-        // Only landlord can rate, and only ended leases
+        // Only landlord can rate
         if ($request->user()->role !== 'landlord') {
             return response()->json([
                 'message' => 'Only landlords can rate tenants.',
             ], 403);
         }
 
+        // Only ended leases
         if ($lease->status === 'active') {
             return response()->json([
                 'message' => 'Cannot rate an active lease. End the lease first.',
             ], 422);
         }
 
-        $validated = $request->validate([
-            'category' => ['required', 'in:apartment_condition,communication,rules,overall'],
-            'score' => ['required', 'integer', 'min:1', 'max:5'],
-            'comment' => ['nullable', 'string'],
-        ]);
-
         // Prevent duplicate rating for same category
         $exists = $lease->ratings()
             ->where('rated_by', $request->user()->id)
-            ->where('category', $validated['category'])
+            ->where('category', $request->validated('category'))
             ->exists();
 
         if ($exists) {
@@ -56,10 +52,12 @@ class RatingController extends Controller
             ], 422);
         }
 
-        $validated['lease_id'] = $lease->id;
-        $validated['rated_by'] = $request->user()->id;
+        $rating = Rating::query()->create([
+            ...$request->validated(),
+            'lease_id' => $lease->id,
+            'rated_by' => $request->user()->id,
+        ]);
 
-        $rating = Rating::create($validated);
         $rating->load('ratedBy');
 
         return response()->json($rating, 201);
