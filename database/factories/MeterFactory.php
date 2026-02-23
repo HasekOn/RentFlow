@@ -2,22 +2,18 @@
 
 namespace Database\Factories;
 
+use App\Models\Property;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Meter>
- */
 class MeterFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            //
+            'property_id' => Property::factory(),
+            'meter_type' => fake()->randomElement(['water', 'electricity', 'gas', 'heat']),
+            'serial_number' => strtoupper(fake()->bothify('??-######')),
+            'location' => fake()->randomElement(['Kitchen', 'Bathroom', 'Hallway', 'Utility room']),
         ];
     }
 }

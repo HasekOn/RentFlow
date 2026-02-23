@@ -2,22 +2,20 @@
 
 namespace Database\Factories;
 
+use App\Models\Meter;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\MeterReading>
- */
 class MeterReadingFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            //
+            'meter_id' => Meter::factory(),
+            'reading_value' => fake()->randomFloat(3, 100, 9999),
+            'reading_date' => fake()->dateTimeBetween('-1 year', 'now'),
+            'submitted_by' => User::factory()->tenant(),
+            'photo_proof' => null,
         ];
     }
 }
