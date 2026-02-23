@@ -11,6 +11,8 @@ class PropertyController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Property::class);
+
         $user = $request->user();
 
         if ($user->role === 'landlord') {
@@ -29,6 +31,8 @@ class PropertyController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', Property::class);
+
         $validated = $request->validate([
             'address' => ['required', 'string'],
             'city' => ['nullable', 'string', 'max:100'],
@@ -57,12 +61,16 @@ class PropertyController extends Controller
             'images',
         ])->findOrFail($id);
 
+        $this->authorize('view', $property);
+
         return response()->json($property);
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
         $property = Property::findOrFail($id);
+
+        $this->authorize('update', $property);
 
         $validated = $request->validate([
             'address' => ['sometimes', 'string'],
@@ -84,6 +92,9 @@ class PropertyController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $property = Property::findOrFail($id);
+
+        $this->authorize('delete', $property);
+        
         $property->delete();
 
         return response()->json([

@@ -12,6 +12,8 @@ class LeaseController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Lease::class);
+
         $user = $request->user();
 
         if ($user->role === 'landlord') {
@@ -28,6 +30,8 @@ class LeaseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', Lease::class);
+
         $validated = $request->validate([
             'property_id' => ['required', 'exists:properties,id'],
             'tenant_id' => ['required', 'exists:users,id'],
@@ -63,12 +67,16 @@ class LeaseController extends Controller
             'ratings',
         ])->findOrFail($id);
 
+        $this->authorize('view', $lease);
+
         return response()->json($lease);
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
         $lease = Lease::findOrFail($id);
+
+        $this->authorize('update', $lease);
 
         $validated = $request->validate([
             'start_date' => ['sometimes', 'date'],
@@ -88,6 +96,9 @@ class LeaseController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $lease = Lease::findOrFail($id);
+        
+        $this->authorize('delete', $lease);
+
         $lease->delete();
 
         return response()->json([
