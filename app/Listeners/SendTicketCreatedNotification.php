@@ -3,24 +3,18 @@
 namespace App\Listeners;
 
 use App\Events\TicketCreated;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
+use App\Notifications\TicketCreatedNotification;
 
 class SendTicketCreatedNotification
 {
-    /**
-     * Create the event listener.
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    /**
-     * Handle the event.
-     */
     public function handle(TicketCreated $event): void
     {
-        //
+        $ticket = $event->ticket;
+        
+        $ticket->load('property.landlord');
+
+        $landlord = $ticket->property?->landlord;
+
+        $landlord?->notify(new TicketCreatedNotification($ticket));
     }
 }

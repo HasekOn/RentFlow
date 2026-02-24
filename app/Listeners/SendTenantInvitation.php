@@ -3,24 +3,18 @@
 namespace App\Listeners;
 
 use App\Events\LeaseCreated;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
+use App\Notifications\TenantInvitationNotification;
 
 class SendTenantInvitation
 {
-    /**
-     * Create the event listener.
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    /**
-     * Handle the event.
-     */
     public function handle(LeaseCreated $event): void
     {
-        //
+        $lease = $event->lease;
+        
+        $lease->load('tenant');
+
+        if ($lease->tenant) {
+            $lease->tenant->notify(new TenantInvitationNotification($lease));
+        }
     }
 }
