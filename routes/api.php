@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InventoryItemController;
 use App\Http\Controllers\Api\LeaseController;
 use App\Http\Controllers\Api\MeterController;
@@ -18,6 +19,9 @@ use App\Http\Controllers\Api\TicketController;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+// ─── Health check ─────────────────────────────────
+Route::get('/health', HealthController::class);
 
 // Public routes
 Route::middleware('throttle:10,1')->group(function () {

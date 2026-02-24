@@ -121,9 +121,9 @@ class DashboardTest extends TestCase
         $expenses = $response->json('finance.monthly_expenses');
         $cashflow = $response->json('finance.cashflow');
 
-        $this->assertEquals(15000, (float)$income);
-        $this->assertEquals(5000, (float)$expenses);
-        $this->assertEquals(10000, (float)$cashflow);
+        $this->assertEquals(15000, (float) $income);
+        $this->assertEquals(5000, (float) $expenses);
+        $this->assertEquals(10000, (float) $cashflow);
     }
 
     public function test_tenant_cannot_access_dashboard(): void
@@ -184,7 +184,7 @@ class DashboardTest extends TestCase
             ]);
         }
 
-        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/tenants/' . $this->tenant->id . '/trust-score'));
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/tenants/'.$this->tenant->id.'/trust-score'));
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -211,7 +211,7 @@ class DashboardTest extends TestCase
 
     public function test_tenant_cannot_access_trust_score(): void
     {
-        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/tenants/' . $this->tenant->id . '/trust-score'));
+        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/tenants/'.$this->tenant->id.'/trust-score'));
 
         $response->assertStatus(403);
     }
