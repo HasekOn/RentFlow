@@ -12,7 +12,7 @@ class AuthTest extends TestCase
 
     public function test_user_can_register(): void
     {
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson($this->apiUrl('/register'), [
             'name' => 'Test User',
             'email' => 'test@rentflow.cz',
             'password' => 'password123',
@@ -34,7 +34,7 @@ class AuthTest extends TestCase
 
     public function test_register_requires_valid_data(): void
     {
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson($this->apiUrl('/register'), [
             'name' => '',
             'email' => 'not-an-email',
             'password' => 'short',
@@ -51,7 +51,7 @@ class AuthTest extends TestCase
     {
         User::factory()->create(['email' => 'taken@rentflow.cz']);
 
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson($this->apiUrl('/register'), [
             'name' => 'Another User',
             'email' => 'taken@rentflow.cz',
             'password' => 'password123',
@@ -64,7 +64,7 @@ class AuthTest extends TestCase
 
     public function test_default_role_is_tenant(): void
     {
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson($this->apiUrl('/register'), [
             'name' => 'Default Role',
             'email' => 'default@rentflow.cz',
             'password' => 'password123',
@@ -82,7 +82,7 @@ class AuthTest extends TestCase
             'password' => bcrypt('password123'),
         ]);
 
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson($this->apiUrl('/login'), [
             'email' => 'login@rentflow.cz',
             'password' => 'password123',
         ]);
@@ -101,7 +101,7 @@ class AuthTest extends TestCase
             'password' => bcrypt('password123'),
         ]);
 
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson($this->apiUrl('/login'), [
             'email' => 'wrong@rentflow.cz',
             'password' => 'wrongpassword',
         ]);
@@ -112,7 +112,7 @@ class AuthTest extends TestCase
 
     public function test_login_fails_with_nonexistent_email(): void
     {
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson($this->apiUrl('/login'), [
             'email' => 'nobody@rentflow.cz',
             'password' => 'password123',
         ]);
@@ -125,7 +125,7 @@ class AuthTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->postJson('/api/logout');
+            ->postJson($this->apiUrl('/logout'));
 
         $response->assertStatus(200)
             ->assertJsonPath('message', 'Logged out successfully.');
@@ -133,7 +133,7 @@ class AuthTest extends TestCase
 
     public function test_logout_requires_authentication(): void
     {
-        $response = $this->postJson('/api/logout');
+        $response = $this->postJson(($this->apiUrl('/logout')));
 
         $response->assertStatus(401);
     }
@@ -143,7 +143,7 @@ class AuthTest extends TestCase
         $user = User::factory()->landlord()->create();
 
         $response = $this->actingAs($user)
-            ->getJson('/api/user');
+            ->getJson(($this->apiUrl('/user')));
 
         $response->assertStatus(200)
             ->assertJsonMissing(['password']);
@@ -157,7 +157,7 @@ class AuthTest extends TestCase
 
     public function test_unauthenticated_user_cannot_get_profile(): void
     {
-        $response = $this->getJson('/api/user');
+        $response = $this->getJson(($this->apiUrl('/user')));
 
         $response->assertStatus(401);
     }

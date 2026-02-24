@@ -23,7 +23,7 @@ class PaymentTest extends TestCase
     {
         Payment::factory()->count(3)->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/payments');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/payments'));
 
         $response->assertStatus(200)
             ->assertJsonCount(3, 'data');
@@ -34,7 +34,7 @@ class PaymentTest extends TestCase
         Payment::factory()->count(2)->create(['lease_id' => $this->lease->id]);
         Payment::factory()->count(3)->create();
 
-        $response = $this->actingAs($this->tenant)->getJson('/api/payments');
+        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/payments'));
 
         $response->assertStatus(200)
             ->assertJsonCount(2, 'data');
@@ -42,7 +42,7 @@ class PaymentTest extends TestCase
 
     public function test_landlord_can_create_payment(): void
     {
-        $response = $this->actingAs($this->landlord)->postJson('/api/payments', [
+        $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/payments'), [
             'lease_id' => $this->lease->id,
             'type' => 'rent',
             'amount' => 15000,
@@ -57,7 +57,7 @@ class PaymentTest extends TestCase
 
     public function test_tenant_cannot_create_payment(): void
     {
-        $response = $this->actingAs($this->tenant)->postJson('/api/payments', [
+        $response = $this->actingAs($this->tenant)->postJson($this->apiUrl('/payments'), [
             'lease_id' => $this->lease->id,
             'type' => 'rent',
             'amount' => 15000,
@@ -69,7 +69,7 @@ class PaymentTest extends TestCase
 
     public function test_auto_sets_paid_status_when_paid_date_provided(): void
     {
-        $response = $this->actingAs($this->landlord)->postJson('/api/payments', [
+        $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/payments'), [
             'lease_id' => $this->lease->id,
             'type' => 'rent',
             'amount' => 15000,
@@ -83,7 +83,7 @@ class PaymentTest extends TestCase
 
     public function test_store_validates_type_enum(): void
     {
-        $response = $this->actingAs($this->landlord)->postJson('/api/payments', [
+        $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/payments'), [
             'lease_id' => $this->lease->id,
             'type' => 'invalid',
             'amount' => 15000,
@@ -98,7 +98,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/payments/' . $payment->id);
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/payments/' . $payment->id));
 
         $response->assertStatus(200)
             ->assertJsonPath('id', $payment->id);
@@ -108,7 +108,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->tenant)->getJson('/api/payments/' . $payment->id);
+        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/payments/' . $payment->id));
 
         $response->assertStatus(200);
     }
@@ -118,7 +118,7 @@ class PaymentTest extends TestCase
         $otherTenant = User::factory()->tenant()->create();
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($otherTenant)->getJson('/api/payments/' . $payment->id);
+        $response = $this->actingAs($otherTenant)->getJson($this->apiUrl('/payments/' . $payment->id));
 
         $response->assertStatus(403);
     }
@@ -127,7 +127,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->landlord)->putJson('/api/payments/' . $payment->id, [
+        $response = $this->actingAs($this->landlord)->putJson($this->apiUrl('/payments/' . $payment->id), [
             'note' => 'Updated note',
             'status' => 'paid',
             'paid_date' => '2026-03-10',
@@ -142,7 +142,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->tenant)->putJson('/api/payments/' . $payment->id, [
+        $response = $this->actingAs($this->tenant)->putJson($this->apiUrl('/payments/' . $payment->id), [
             'status' => 'paid',
         ]);
 
@@ -153,7 +153,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->unpaid()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->landlord)->putJson('/api/payments/' . $payment->id . '/mark-paid');
+        $response = $this->actingAs($this->landlord)->putJson($this->apiUrl('/payments/' . $payment->id . '/mark-paid'));
 
         $response->assertStatus(200)
             ->assertJsonPath('status', 'paid');
@@ -170,7 +170,7 @@ class PaymentTest extends TestCase
 
         $oldScore = $this->tenant->trust_score;
 
-        $this->actingAs($this->landlord)->putJson('/api/payments/' . $payment->id . '/mark-paid');
+        $this->actingAs($this->landlord)->putJson($this->apiUrl('/payments/' . $payment->id . '/mark-paid'));
 
         $this->tenant->refresh();
         $this->assertNotEquals($oldScore, $this->tenant->trust_score);
@@ -180,7 +180,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->landlord)->deleteJson('/api/payments/' . $payment->id);
+        $response = $this->actingAs($this->landlord)->deleteJson($this->apiUrl('/payments/' . $payment->id));
 
         $response->assertStatus(200);
         $this->assertSoftDeleted('payments', ['id' => $payment->id]);
@@ -199,7 +199,7 @@ class PaymentTest extends TestCase
         $csvContent = "Datum;Částka;Variabilní symbol\n15.03.2026;15000,00;12345";
         $file = UploadedFile::fake()->createWithContent('bank_export.csv', $csvContent);
 
-        $response = $this->actingAs($this->landlord)->postJson('/api/payments/import-csv', [
+        $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/payments/import-csv'), [
             'file' => $file,
         ]);
 
@@ -213,7 +213,7 @@ class PaymentTest extends TestCase
         $csvContent = "Datum;Částka;Variabilní symbol\n15.03.2026;15000,00;99999";
         $file = UploadedFile::fake()->createWithContent('bank_export.csv', $csvContent);
 
-        $response = $this->actingAs($this->landlord)->postJson('/api/payments/import-csv', [
+        $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/payments/import-csv'), [
             'file' => $file,
         ]);
 
@@ -227,7 +227,7 @@ class PaymentTest extends TestCase
         $csvContent = "Datum;Částka;Variabilní symbol\n15.03.2026;15000;12345";
         $file = UploadedFile::fake()->createWithContent('bank_export.csv', $csvContent);
 
-        $response = $this->actingAs($this->tenant)->postJson('/api/payments/import-csv', [
+        $response = $this->actingAs($this->tenant)->postJson($this->apiUrl('/payments/import-csv'), [
             'file' => $file,
         ]);
 

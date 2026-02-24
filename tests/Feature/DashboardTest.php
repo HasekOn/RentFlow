@@ -22,7 +22,7 @@ class DashboardTest extends TestCase
 
     public function test_landlord_can_get_dashboard_stats(): void
     {
-        $response = $this->actingAs($this->landlord)->getJson('/api/dashboard/stats');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/stats'));
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -44,7 +44,7 @@ class DashboardTest extends TestCase
             'status' => 'renovation',
         ]);
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/dashboard/stats');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/stats'));
 
         $response->assertStatus(200)
             ->assertJsonPath('properties.total', 3)
@@ -55,7 +55,7 @@ class DashboardTest extends TestCase
 
     public function test_stats_counts_expiring_leases(): void
     {
-        $response = $this->actingAs($this->landlord)->getJson('/api/dashboard/stats');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/stats'));
 
         // Lease ends in 15 days — should be counted as expiring
         $response->assertJsonPath('leases.expiring_soon', 1);
@@ -76,7 +76,7 @@ class DashboardTest extends TestCase
             'due_date' => now()->subDays(3),
         ]);
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/dashboard/stats');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/stats'));
 
         // 2 unpaid + past due, 1 paid = 2 overdue
         $response->assertJsonPath('finance.overdue_payments', 2);
@@ -93,7 +93,7 @@ class DashboardTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/dashboard/stats');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/stats'));
 
         $response->assertJsonPath('tickets.open', 2);
     }
@@ -112,7 +112,7 @@ class DashboardTest extends TestCase
             'expense_date' => now(),
         ]);
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/dashboard/stats');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/stats'));
 
         $income = $response->json('finance.monthly_income');
         $expenses = $response->json('finance.monthly_expenses');
@@ -125,14 +125,14 @@ class DashboardTest extends TestCase
 
     public function test_tenant_cannot_access_dashboard(): void
     {
-        $response = $this->actingAs($this->tenant)->getJson('/api/dashboard/stats');
+        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/dashboard/stats'));
 
         $response->assertStatus(403);
     }
 
     public function test_landlord_can_get_finance_chart(): void
     {
-        $response = $this->actingAs($this->landlord)->getJson('/api/dashboard/finance-chart');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/finance-chart'));
 
         $response->assertStatus(200)
             ->assertJsonCount(12);
@@ -147,7 +147,7 @@ class DashboardTest extends TestCase
 
     public function test_tenant_cannot_access_finance_chart(): void
     {
-        $response = $this->actingAs($this->tenant)->getJson('/api/dashboard/finance-chart');
+        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/dashboard/finance-chart'));
 
         $response->assertStatus(403);
     }
@@ -159,7 +159,7 @@ class DashboardTest extends TestCase
             'status' => 'available',
         ]);
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/dashboard/occupancy-chart');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/occupancy-chart'));
 
         $response->assertStatus(200)
             ->assertJsonCount(3);
@@ -175,7 +175,7 @@ class DashboardTest extends TestCase
             'due_date' => now()->subMonths(3),
         ]);
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/tenants/' . $this->tenant->id . '/trust-score');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/tenants/' . $this->tenant->id . '/trust-score'));
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -195,14 +195,14 @@ class DashboardTest extends TestCase
 
     public function test_trust_score_returns_404_for_nonexistent_tenant(): void
     {
-        $response = $this->actingAs($this->landlord)->getJson('/api/tenants/99999/trust-score');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/tenants/99999/trust-score'));
 
         $response->assertStatus(404);
     }
 
     public function test_tenant_cannot_access_trust_score(): void
     {
-        $response = $this->actingAs($this->tenant)->getJson('/api/tenants/' . $this->tenant->id . '/trust-score');
+        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/tenants/' . $this->tenant->id . '/trust-score'));
 
         $response->assertStatus(403);
     }

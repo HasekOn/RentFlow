@@ -27,7 +27,7 @@ class TicketTest extends TestCase
         ]);
         Ticket::factory()->create();
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/tickets');
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/tickets'));
 
         $response->assertStatus(200)
             ->assertJsonCount(2, 'data');
@@ -41,7 +41,7 @@ class TicketTest extends TestCase
         ]);
         Ticket::factory()->create();
 
-        $response = $this->actingAs($this->tenant)->getJson('/api/tickets');
+        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/tickets'));
 
         $response->assertStatus(200)
             ->assertJsonCount(2, 'data');
@@ -59,7 +59,7 @@ class TicketTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        $response = $this->actingAs($this->manager)->getJson('/api/tickets');
+        $response = $this->actingAs($this->manager)->getJson($this->apiUrl('/tickets'));
 
         $response->assertStatus(200)
             ->assertJsonCount(1, 'data');
@@ -67,7 +67,7 @@ class TicketTest extends TestCase
 
     public function test_tenant_can_create_ticket(): void
     {
-        $response = $this->actingAs($this->tenant)->postJson('/api/tickets', [
+        $response = $this->actingAs($this->tenant)->postJson($this->apiUrl('/tickets'), [
             'property_id' => $this->property->id,
             'title' => 'Broken faucet',
             'description' => 'The kitchen faucet is leaking badly.',
@@ -88,7 +88,7 @@ class TicketTest extends TestCase
 
     public function test_landlord_can_create_ticket(): void
     {
-        $response = $this->actingAs($this->landlord)->postJson('/api/tickets', [
+        $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/tickets'), [
             'property_id' => $this->property->id,
             'title' => 'Schedule inspection',
             'description' => 'Annual property inspection needed.',
@@ -99,7 +99,7 @@ class TicketTest extends TestCase
 
     public function test_manager_cannot_create_ticket(): void
     {
-        $response = $this->actingAs($this->manager)->postJson('/api/tickets', [
+        $response = $this->actingAs($this->manager)->postJson($this->apiUrl('/tickets'), [
             'property_id' => $this->property->id,
             'title' => 'Test ticket',
             'description' => 'Manager should not be able to create.',
@@ -110,7 +110,7 @@ class TicketTest extends TestCase
 
     public function test_store_validates_description_min_length(): void
     {
-        $response = $this->actingAs($this->tenant)->postJson('/api/tickets', [
+        $response = $this->actingAs($this->tenant)->postJson($this->apiUrl('/tickets'), [
             'property_id' => $this->property->id,
             'title' => 'Short desc',
             'description' => 'Too short',
@@ -131,7 +131,7 @@ class TicketTest extends TestCase
             'user_id' => $this->tenant->id,
         ]);
 
-        $response = $this->actingAs($this->landlord)->getJson('/api/tickets/' . $ticket->id);
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/tickets/' . $ticket->id));
 
         $response->assertStatus(200)
             ->assertJsonPath('id', $ticket->id)
@@ -146,7 +146,7 @@ class TicketTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        $response = $this->actingAs($otherTenant)->getJson('/api/tickets/' . $ticket->id);
+        $response = $this->actingAs($otherTenant)->getJson($this->apiUrl('/tickets/' . $ticket->id));
 
         $response->assertStatus(403);
     }
@@ -158,7 +158,7 @@ class TicketTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        $response = $this->actingAs($this->landlord)->putJson('/api/tickets/' . $ticket->id, [
+        $response = $this->actingAs($this->landlord)->putJson($this->apiUrl('/tickets/' . $ticket->id), [
             'status' => 'in_progress',
             'assigned_to' => $this->manager->id,
         ]);
@@ -175,7 +175,7 @@ class TicketTest extends TestCase
             'assigned_to' => $this->manager->id,
         ]);
 
-        $response = $this->actingAs($this->manager)->putJson('/api/tickets/' . $ticket->id, [
+        $response = $this->actingAs($this->manager)->putJson($this->apiUrl('/tickets/' . $ticket->id), [
             'status' => 'resolved',
         ]);
 
@@ -190,7 +190,7 @@ class TicketTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        $this->actingAs($this->landlord)->putJson('/api/tickets/' . $ticket->id, [
+        $this->actingAs($this->landlord)->putJson($this->apiUrl('/tickets/' . $ticket->id), [
             'status' => 'resolved',
         ]);
 
@@ -205,7 +205,7 @@ class TicketTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        $response = $this->actingAs($this->tenant)->putJson('/api/tickets/' . $ticket->id, [
+        $response = $this->actingAs($this->tenant)->putJson($this->apiUrl('/tickets/' . $ticket->id), [
             'status' => 'resolved',
         ]);
 
@@ -220,7 +220,7 @@ class TicketTest extends TestCase
             'assigned_to' => null,
         ]);
 
-        $response = $this->actingAs($this->manager)->putJson('/api/tickets/' . $ticket->id, [
+        $response = $this->actingAs($this->manager)->putJson($this->apiUrl('/tickets/' . $ticket->id), [
             'status' => 'resolved',
         ]);
 
@@ -234,7 +234,7 @@ class TicketTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        $response = $this->actingAs($this->landlord)->deleteJson('/api/tickets/' . $ticket->id);
+        $response = $this->actingAs($this->landlord)->deleteJson($this->apiUrl('/tickets/' . $ticket->id));
 
         $response->assertStatus(200);
         $this->assertSoftDeleted('tickets', ['id' => $ticket->id]);
@@ -248,7 +248,7 @@ class TicketTest extends TestCase
             'assigned_to' => $this->manager->id,
         ]);
 
-        $response = $this->actingAs($this->manager)->deleteJson('/api/tickets/' . $ticket->id);
+        $response = $this->actingAs($this->manager)->deleteJson($this->apiUrl('/tickets/' . $ticket->id));
 
         $response->assertStatus(403);
     }
@@ -264,7 +264,7 @@ class TicketTest extends TestCase
             'user_id' => $this->tenant->id,
         ]);
 
-        $response = $this->actingAs($this->tenant)->getJson('/api/tickets/' . $ticket->id . '/comments');
+        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/tickets/' . $ticket->id . '/comments'));
 
         $response->assertStatus(200)
             ->assertJsonCount(3);
@@ -277,7 +277,7 @@ class TicketTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        $response = $this->actingAs($this->tenant)->postJson('/api/tickets/' . $ticket->id . '/comments', [
+        $response = $this->actingAs($this->tenant)->postJson($this->apiUrl('/tickets/' . $ticket->id . '/comments'), [
             'message' => 'This is urgent, please help!',
         ]);
 
@@ -297,7 +297,7 @@ class TicketTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->tenant)
-            ->deleteJson('/api/tickets/' . $ticket->id . '/comments/' . $comment->id);
+            ->deleteJson($this->apiUrl('/tickets/' . $ticket->id . '/comments/' . $comment->id));
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('ticket_comments', ['id' => $comment->id]);
@@ -315,7 +315,7 @@ class TicketTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->tenant)
-            ->deleteJson('/api/tickets/' . $ticket->id . '/comments/' . $comment->id);
+            ->deleteJson($this->apiUrl('/tickets/' . $ticket->id . '/comments/' . $comment->id));
 
         $response->assertStatus(403);
     }
