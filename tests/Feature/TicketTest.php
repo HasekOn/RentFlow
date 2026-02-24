@@ -237,7 +237,7 @@ class TicketTest extends TestCase
         $response = $this->actingAs($this->landlord)->deleteJson('/api/tickets/' . $ticket->id);
 
         $response->assertStatus(200);
-        $this->assertDatabaseMissing('tickets', ['id' => $ticket->id]);
+        $this->assertSoftDeleted('tickets', ['id' => $ticket->id]);
     }
 
     public function test_manager_cannot_delete_ticket(): void

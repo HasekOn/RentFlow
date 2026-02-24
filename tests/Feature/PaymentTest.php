@@ -183,7 +183,7 @@ class PaymentTest extends TestCase
         $response = $this->actingAs($this->landlord)->deleteJson('/api/payments/' . $payment->id);
 
         $response->assertStatus(200);
-        $this->assertDatabaseMissing('payments', ['id' => $payment->id]);
+        $this->assertSoftDeleted('payments', ['id' => $payment->id]);
     }
 
     public function test_landlord_can_import_csv(): void

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -15,11 +16,15 @@ use Illuminate\Support\Carbon;
  * @property int $uploaded_by
  * @property Carbon $created_at
  * @property Carbon $updated_at
+ * @property Carbon|null $deleted_at
  * @property-read Property|null $property
  * @property-read User|null $uploadedBy
  */
 class Document extends Model
 {
+
+    use SoftDeletes;
+
     protected $fillable = [
         'property_id',
         'document_type',

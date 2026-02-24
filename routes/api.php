@@ -31,6 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Properties
     Route::apiResource('properties', PropertyController::class);
+    Route::put('properties/{property}/restore', [PropertyController::class, 'restore']);
 
     // Leases
     Route::apiResource('leases', LeaseController::class);

@@ -202,7 +202,7 @@ class PropertyTest extends TestCase
         $response = $this->actingAs($landlord)->deleteJson('/api/properties/' . $property->id);
 
         $response->assertStatus(200);
-        $this->assertDatabaseMissing('properties', ['id' => $property->id]);
+        $this->assertSoftDeleted('properties', ['id' => $property->id]);
     }
 
     public function test_landlord_cannot_delete_others_property(): void

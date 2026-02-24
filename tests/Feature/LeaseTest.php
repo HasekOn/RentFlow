@@ -209,7 +209,7 @@ class LeaseTest extends TestCase
         $response = $this->actingAs($this->landlord)->deleteJson('/api/leases/' . $lease->id);
 
         $response->assertStatus(200);
-        $this->assertDatabaseMissing('leases', ['id' => $lease->id]);
+        $this->assertSoftDeleted('leases', ['id' => $lease->id]);
     }
 
     public function test_other_landlord_cannot_delete_lease(): void

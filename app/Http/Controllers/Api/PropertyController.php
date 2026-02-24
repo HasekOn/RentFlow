@@ -80,4 +80,15 @@ class PropertyController extends Controller
             'message' => 'Property deleted successfully.',
         ]);
     }
+
+    public function restore(Request $request, string $id): JsonResponse
+    {
+        $property = Property::withTrashed()->findOrFail($id);
+        
+        $this->authorize('update', $property);
+
+        $property->restore();
+
+        return response()->json(new PropertyResource($property));
+    }
 }
