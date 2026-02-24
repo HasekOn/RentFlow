@@ -10,6 +10,7 @@ use App\Models\Lease;
 use App\Models\Property;
 use App\Models\User;
 use App\Notifications\TenantInvitationNotification;
+use App\Traits\Filterable;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Storage;
 
 class LeaseController extends Controller
 {
+    use Filterable;
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Lease::class);
@@ -25,15 +28,22 @@ class LeaseController extends Controller
         $user = $request->user();
 
         if ($user->role === 'landlord') {
-            $leases = Lease::query()->whereIn(
+            $query = Lease::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
-            )->with(['property', 'tenant'])->paginate(15);
+            )->with(['property', 'tenant']);
         } else {
-            $leases = $user->leases()->with('property')->paginate(15);
+            $query = $user->leases()->with('property')->getQuery();
         }
 
-        return LeaseResource::collection($leases);
+        $this->applyFilters(
+            $query,
+            $request,
+            filterableFields: ['status', 'property_id'],
+            sortableFields: ['start_date', 'end_date', 'rent_amount', 'status', 'created_at'],
+        );
+
+        return LeaseResource::collection($query->paginate(15));
     }
 
     public function store(StoreLeaseRequest $request): JsonResponse
@@ -129,5 +139,10 @@ class LeaseController extends Controller
         $lease->update($request->validated());
 
         return response()->json(new LeaseResource($lease));
+    }
+
+    protected function getDateField(): string
+    {
+        return 'start_date';
     }
 }

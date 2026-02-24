@@ -10,11 +10,14 @@ use App\Models\Lease;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\BankImportService;
+use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
+    use Filterable;
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Payment::class);
@@ -27,17 +30,23 @@ class PaymentController extends Controller
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->pluck('id');
-            $payments = Payment::query()->whereIn('lease_id', $leaseIds)
-                ->with('lease.tenant')
-                ->paginate(20);
+            $query = Payment::query()->whereIn('lease_id', $leaseIds)
+                ->with('lease.tenant');
         } else {
-            $payments = Payment::query()->whereIn(
+            $query = Payment::query()->whereIn(
                 'lease_id',
                 $user->leases()->pluck('id')
-            )->with('lease.property')->paginate(20);
+            )->with('lease.property');
         }
 
-        return PaymentResource::collection($payments);
+        $this->applyFilters(
+            $query,
+            $request,
+            filterableFields: ['status', 'type', 'lease_id'],
+            sortableFields: ['due_date', 'paid_date', 'amount', 'status', 'created_at'],
+        );
+
+        return PaymentResource::collection($query->paginate(20));
     }
 
     public function store(StorePaymentRequest $request): JsonResponse
@@ -137,5 +146,10 @@ class PaymentController extends Controller
             ],
             'details' => $results,
         ]);
+    }
+
+    protected function getDateField(): string
+    {
+        return 'due_date';
     }
 }

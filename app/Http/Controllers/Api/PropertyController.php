@@ -8,11 +8,14 @@ use App\Http\Requests\UpdatePropertyRequest;
 use App\Http\Resources\PropertyResource;
 use App\Models\Property;
 use App\Models\User;
+use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PropertyController extends Controller
 {
+    use Filterable;
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Property::class);
@@ -21,14 +24,22 @@ class PropertyController extends Controller
         $user = $request->user();
 
         if ($user->role === 'landlord') {
-            $properties = $user->ownedProperties()->with('leases.tenant')->paginate(15);
+            $query = $user->ownedProperties()->with('leases.tenant')->getQuery();
         } else {
-            $properties = Property::query()->whereIn('id',
+            $query = Property::query()->whereIn('id',
                 $user->leases()->where('status', 'active')->pluck('property_id')
-            )->paginate(15);
+            );
         }
 
-        return PropertyResource::collection($properties);
+        $this->applyFilters(
+            $query,
+            $request,
+            filterableFields: ['status', 'city', 'disposition'],
+            sortableFields: ['address', 'city', 'size', 'status', 'purchase_price', 'created_at'],
+            searchableFields: ['address', 'city', 'description'],
+        );
+
+        return PropertyResource::collection($query->paginate(15));
     }
 
     public function store(StorePropertyRequest $request): JsonResponse
@@ -84,11 +95,16 @@ class PropertyController extends Controller
     public function restore(Request $request, string $id): JsonResponse
     {
         $property = Property::withTrashed()->findOrFail($id);
-        
+
         $this->authorize('update', $property);
 
         $property->restore();
 
         return response()->json(new PropertyResource($property));
+    }
+
+    protected function getDateField(): string
+    {
+        return 'created_at';
     }
 }

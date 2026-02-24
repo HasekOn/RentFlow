@@ -234,6 +234,53 @@ class PaymentTest extends TestCase
         $response->assertStatus(403);
     }
 
+    public function test_can_filter_payments_by_status(): void
+    {
+        Payment::factory()->paid()->count(2)->create(['lease_id' => $this->lease->id]);
+        Payment::factory()->unpaid()->count(3)->create(['lease_id' => $this->lease->id]);
+
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/payments?status=unpaid'));
+
+        $response->assertStatus(200)
+            ->assertJsonCount(3, 'data');
+    }
+
+
+    public function test_can_filter_payments_by_date_range(): void
+    {
+        Payment::factory()->create([
+            'lease_id' => $this->lease->id,
+            'due_date' => '2026-01-15',
+        ]);
+        Payment::factory()->create([
+            'lease_id' => $this->lease->id,
+            'due_date' => '2026-03-15',
+        ]);
+        Payment::factory()->create([
+            'lease_id' => $this->lease->id,
+            'due_date' => '2026-06-15',
+        ]);
+
+        $response = $this->actingAs($this->landlord)
+            ->getJson($this->apiUrl('/payments?date_from=2026-02-01&date_to=2026-04-30'));
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_can_sort_payments_by_amount(): void
+    {
+        Payment::factory()->create(['lease_id' => $this->lease->id, 'amount' => 15000]);
+        Payment::factory()->create(['lease_id' => $this->lease->id, 'amount' => 8000]);
+        Payment::factory()->create(['lease_id' => $this->lease->id, 'amount' => 22000]);
+
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/payments?sort=amount'));
+
+        $response->assertStatus(200);
+        $amounts = collect($response->json('data'))->pluck('amount')->map(fn($a) => (float)$a)->toArray();
+        $this->assertEquals([8000.0, 15000.0, 22000.0], $amounts);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

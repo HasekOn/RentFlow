@@ -257,4 +257,94 @@ class PropertyTest extends TestCase
             ->assertJsonCount(5, 'data')
             ->assertJsonPath('meta.current_page', 2);
     }
+    
+    public function test_can_filter_properties_by_status(): void
+    {
+        $landlord = User::factory()->landlord()->create();
+        Property::factory()->count(3)->create(['landlord_id' => $landlord->id, 'status' => 'occupied']);
+        Property::factory()->count(2)->create(['landlord_id' => $landlord->id, 'status' => 'available']);
+
+        $response = $this->actingAs($landlord)->getJson($this->apiUrl('/properties?status=occupied'));
+
+        $response->assertStatus(200)
+            ->assertJsonCount(3, 'data');
+    }
+
+    public function test_can_filter_properties_by_city(): void
+    {
+        $landlord = User::factory()->landlord()->create();
+        Property::factory()->count(2)->create(['landlord_id' => $landlord->id, 'city' => 'Praha']);
+        Property::factory()->create(['landlord_id' => $landlord->id, 'city' => 'Brno']);
+
+        $response = $this->actingAs($landlord)->getJson($this->apiUrl('/properties?city=Praha'));
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data');
+    }
+
+    public function test_can_search_properties(): void
+    {
+        $landlord = User::factory()->landlord()->create();
+        Property::factory()->create(['landlord_id' => $landlord->id, 'address' => 'Václavské náměstí 12']);
+        Property::factory()->create(['landlord_id' => $landlord->id, 'address' => 'Brněnská 45']);
+
+        $response = $this->actingAs($landlord)->getJson($this->apiUrl('/properties?search=Václavské'));
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_can_sort_properties_ascending(): void
+    {
+        $landlord = User::factory()->landlord()->create();
+        Property::factory()->create(['landlord_id' => $landlord->id, 'size' => 80]);
+        Property::factory()->create(['landlord_id' => $landlord->id, 'size' => 40]);
+        Property::factory()->create(['landlord_id' => $landlord->id, 'size' => 120]);
+
+        $response = $this->actingAs($landlord)->getJson($this->apiUrl('/properties?sort=size'));
+
+        $response->assertStatus(200);
+        $sizes = collect($response->json('data'))->pluck('size')->toArray();
+        $this->assertEquals([40, 80, 120], $sizes);
+    }
+
+    public function test_can_sort_properties_descending(): void
+    {
+        $landlord = User::factory()->landlord()->create();
+        Property::factory()->create(['landlord_id' => $landlord->id, 'size' => 80]);
+        Property::factory()->create(['landlord_id' => $landlord->id, 'size' => 40]);
+        Property::factory()->create(['landlord_id' => $landlord->id, 'size' => 120]);
+
+        $response = $this->actingAs($landlord)->getJson($this->apiUrl('/properties?sort=-size'));
+
+        $response->assertStatus(200);
+        $sizes = collect($response->json('data'))->pluck('size')->toArray();
+        $this->assertEquals([120, 80, 40], $sizes);
+    }
+
+    public function test_ignores_invalid_sort_field(): void
+    {
+        $landlord = User::factory()->landlord()->create();
+        Property::factory()->count(2)->create(['landlord_id' => $landlord->id]);
+
+        $response = $this->actingAs($landlord)->getJson($this->apiUrl('/properties?sort=password'));
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data');
+    }
+
+    public function test_can_combine_filter_and_sort(): void
+    {
+        $landlord = User::factory()->landlord()->create();
+        Property::factory()->create(['landlord_id' => $landlord->id, 'status' => 'occupied', 'size' => 80]);
+        Property::factory()->create(['landlord_id' => $landlord->id, 'status' => 'occupied', 'size' => 40]);
+        Property::factory()->create(['landlord_id' => $landlord->id, 'status' => 'available', 'size' => 120]);
+
+        $response = $this->actingAs($landlord)->getJson($this->apiUrl('/properties?status=occupied&sort=size'));
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data');
+        $sizes = collect($response->json('data'))->pluck('size')->toArray();
+        $this->assertEquals([40, 80], $sizes);
+    }
 }

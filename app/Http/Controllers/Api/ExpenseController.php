@@ -8,21 +8,32 @@ use App\Http\Requests\UpdateExpenseRequest;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
 use App\Models\Property;
+use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
 {
+    use Filterable;
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Expense::class);
 
-        $expenses = Expense::query()->whereIn(
+        $query = Expense::query()->whereIn(
             'property_id',
             $request->user()->ownedProperties()->pluck('id')
-        )->with('property')->paginate(20);
+        )->with('property');
 
-        return ExpenseResource::collection($expenses);
+        $this->applyFilters(
+            $query,
+            $request,
+            filterableFields: ['type', 'property_id'],
+            sortableFields: ['expense_date', 'amount', 'type', 'created_at'],
+            searchableFields: ['description'],
+        );
+
+        return ExpenseResource::collection($query->paginate(20));
     }
 
     public function store(StoreExpenseRequest $request): JsonResponse
@@ -74,5 +85,10 @@ class ExpenseController extends Controller
         return response()->json([
             'message' => 'Expense deleted successfully.',
         ]);
+    }
+
+    protected function getDateField(): string
+    {
+        return 'expense_date';
     }
 }

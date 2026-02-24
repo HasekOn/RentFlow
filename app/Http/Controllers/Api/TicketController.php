@@ -10,11 +10,14 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\TicketCreatedNotification;
 use App\Notifications\TicketResolvedNotification;
+use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TicketController extends Controller
 {
+    use Filterable;
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Ticket::class);
@@ -23,21 +26,29 @@ class TicketController extends Controller
         $user = $request->user();
 
         if ($user->role === 'landlord') {
-            $tickets = Ticket::query()->whereIn(
+            $query = Ticket::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
-            )->with(['property', 'tenant', 'assignedUser'])->paginate(15);
+            )->with(['property', 'tenant', 'assignedUser']);
         } elseif ($user->role === 'manager') {
-            $tickets = $user->assignedTickets()
+            $query = $user->assignedTickets()
                 ->with(['property', 'tenant'])
-                ->paginate(15);
+                ->getQuery();
         } else {
-            $tickets = $user->tickets()
+            $query = $user->tickets()
                 ->with('property')
-                ->paginate(15);
+                ->getQuery();
         }
 
-        return TicketResource::collection($tickets);
+        $this->applyFilters(
+            $query,
+            $request,
+            filterableFields: ['status', 'priority', 'category', 'property_id'],
+            sortableFields: ['created_at', 'priority', 'status', 'resolved_at'],
+            searchableFields: ['title', 'description'],
+        );
+
+        return TicketResource::collection($query->paginate(15));
     }
 
     public function store(StoreTicketRequest $request): JsonResponse
@@ -114,5 +125,10 @@ class TicketController extends Controller
         return response()->json([
             'message' => 'Ticket deleted successfully.',
         ]);
+    }
+
+    protected function getDateField(): string
+    {
+        return 'created_at';
     }
 }
