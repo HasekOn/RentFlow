@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Payment::class);
 
@@ -29,15 +29,15 @@ class PaymentController extends Controller
             )->pluck('id');
             $payments = Payment::query()->whereIn('lease_id', $leaseIds)
                 ->with('lease.tenant')
-                ->get();
+                ->paginate(20);
         } else {
             $payments = Payment::query()->whereIn(
                 'lease_id',
                 $user->leases()->pluck('id')
-            )->with('lease.property')->get();
+            )->with('lease.property')->paginate(20);
         }
 
-        return response()->json(PaymentResource::collection($payments));
+        return PaymentResource::collection($payments);
     }
 
     public function store(StorePaymentRequest $request): JsonResponse

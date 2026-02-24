@@ -13,16 +13,16 @@ use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Expense::class);
 
         $expenses = Expense::query()->whereIn(
             'property_id',
             $request->user()->ownedProperties()->pluck('id')
-        )->with('property')->get();
+        )->with('property')->paginate(20);
 
-        return response()->json(ExpenseResource::collection($expenses));
+        return ExpenseResource::collection($expenses);
     }
 
     public function store(StoreExpenseRequest $request): JsonResponse

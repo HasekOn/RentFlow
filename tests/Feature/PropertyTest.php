@@ -12,18 +12,16 @@ class PropertyTest extends TestCase
 {
     use RefreshDatabase;
 
-    // ─── Index ────────────────────────────────────
-
     public function test_landlord_can_list_own_properties(): void
     {
         $landlord = User::factory()->landlord()->create();
         Property::factory()->count(3)->create(['landlord_id' => $landlord->id]);
-        Property::factory()->count(2)->create(); // Other landlord's properties
+        Property::factory()->count(2)->create();
 
         $response = $this->actingAs($landlord)->getJson('/api/properties');
 
         $response->assertStatus(200)
-            ->assertJsonCount(3);
+            ->assertJsonCount(3, 'data');
     }
 
     public function test_tenant_sees_only_properties_with_active_lease(): void
@@ -35,12 +33,12 @@ class PropertyTest extends TestCase
             'tenant_id' => $tenant->id,
             'status' => 'active',
         ]);
-        Property::factory()->count(2)->create(); // Properties without lease
+        Property::factory()->count(2)->create();
 
         $response = $this->actingAs($tenant)->getJson('/api/properties');
 
         $response->assertStatus(200)
-            ->assertJsonCount(1);
+            ->assertJsonCount(1, 'data');
     }
 
     public function test_unauthenticated_cannot_list_properties(): void
@@ -49,8 +47,6 @@ class PropertyTest extends TestCase
 
         $response->assertStatus(401);
     }
-
-    // ─── Store ────────────────────────────────────
 
     public function test_landlord_can_create_property(): void
     {
@@ -111,8 +107,6 @@ class PropertyTest extends TestCase
             ->assertJsonValidationErrors('status');
     }
 
-    // ─── Show ─────────────────────────────────────
-
     public function test_landlord_can_view_own_property(): void
     {
         $landlord = User::factory()->landlord()->create();
@@ -160,8 +154,6 @@ class PropertyTest extends TestCase
             ->assertJsonPath('error', 'not_found');
     }
 
-    // ─── Update ───────────────────────────────────
-
     public function test_landlord_can_update_own_property(): void
     {
         $landlord = User::factory()->landlord()->create();
@@ -202,8 +194,6 @@ class PropertyTest extends TestCase
         $response->assertStatus(403);
     }
 
-    // ─── Delete ───────────────────────────────────
-
     public function test_landlord_can_delete_own_property(): void
     {
         $landlord = User::factory()->landlord()->create();
@@ -235,5 +225,36 @@ class PropertyTest extends TestCase
         $response = $this->actingAs($tenant)->deleteJson('/api/properties/' . $property->id);
 
         $response->assertStatus(403);
+    }
+
+    public function test_properties_are_paginated(): void
+    {
+        $landlord = User::factory()->landlord()->create();
+        Property::factory()->count(20)->create(['landlord_id' => $landlord->id]);
+
+        $response = $this->actingAs($landlord)->getJson('/api/properties');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(15, 'data')
+            ->assertJsonStructure([
+                'data',
+                'links' => ['first', 'last', 'prev', 'next'],
+                'meta' => ['current_page', 'last_page', 'per_page', 'total'],
+            ])
+            ->assertJsonPath('meta.total', 20)
+            ->assertJsonPath('meta.per_page', 15)
+            ->assertJsonPath('meta.current_page', 1);
+    }
+
+    public function test_can_request_specific_page(): void
+    {
+        $landlord = User::factory()->landlord()->create();
+        Property::factory()->count(20)->create(['landlord_id' => $landlord->id]);
+
+        $response = $this->actingAs($landlord)->getJson('/api/properties?page=2');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(5, 'data')
+            ->assertJsonPath('meta.current_page', 2);
     }
 }

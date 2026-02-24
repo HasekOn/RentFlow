@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 
 class PropertyController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Property::class);
 
@@ -21,14 +21,14 @@ class PropertyController extends Controller
         $user = $request->user();
 
         if ($user->role === 'landlord') {
-            $properties = $user->ownedProperties()->with('leases.tenant')->get();
+            $properties = $user->ownedProperties()->with('leases.tenant')->paginate(15);
         } else {
             $properties = Property::query()->whereIn('id',
                 $user->leases()->where('status', 'active')->pluck('property_id')
-            )->get();
+            )->paginate(15);
         }
 
-        return response()->json(PropertyResource::collection($properties));
+        return PropertyResource::collection($properties);
     }
 
     public function store(StorePropertyRequest $request): JsonResponse
@@ -60,7 +60,7 @@ class PropertyController extends Controller
     public function update(UpdatePropertyRequest $request, string $id): JsonResponse
     {
         $property = Property::query()->findOrFail($id);
-        
+
         $this->authorize('update', $property);
 
         $property->update($request->validated());

@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 
 class LeaseController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Lease::class);
 
@@ -28,12 +28,12 @@ class LeaseController extends Controller
             $leases = Lease::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
-            )->with(['property', 'tenant'])->get();
+            )->with(['property', 'tenant'])->paginate(15);
         } else {
-            $leases = $user->leases()->with('property')->get();
+            $leases = $user->leases()->with('property')->paginate(15);
         }
 
-        return response()->json(LeaseResource::collection($leases));
+        return LeaseResource::collection($leases);
     }
 
     public function store(StoreLeaseRequest $request): JsonResponse

@@ -25,12 +25,12 @@ class TicketTest extends TestCase
             'property_id' => $this->property->id,
             'tenant_id' => $this->tenant->id,
         ]);
-        Ticket::factory()->create(); // Other property
+        Ticket::factory()->create();
 
         $response = $this->actingAs($this->landlord)->getJson('/api/tickets');
 
         $response->assertStatus(200)
-            ->assertJsonCount(2);
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_tenant_sees_only_own_tickets(): void
@@ -39,12 +39,12 @@ class TicketTest extends TestCase
             'property_id' => $this->property->id,
             'tenant_id' => $this->tenant->id,
         ]);
-        Ticket::factory()->create(); // Other tenant's ticket
+        Ticket::factory()->create();
 
         $response = $this->actingAs($this->tenant)->getJson('/api/tickets');
 
         $response->assertStatus(200)
-            ->assertJsonCount(2);
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_manager_sees_only_assigned_tickets(): void
@@ -57,12 +57,12 @@ class TicketTest extends TestCase
         Ticket::factory()->create([
             'property_id' => $this->property->id,
             'tenant_id' => $this->tenant->id,
-        ]); // Not assigned to this manager
+        ]);
 
         $response = $this->actingAs($this->manager)->getJson('/api/tickets');
 
         $response->assertStatus(200)
-            ->assertJsonCount(1);
+            ->assertJsonCount(1, 'data');
     }
 
     public function test_tenant_can_create_ticket(): void

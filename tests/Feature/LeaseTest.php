@@ -26,7 +26,7 @@ class LeaseTest extends TestCase
         $response = $this->actingAs($this->landlord)->getJson('/api/leases');
 
         $response->assertStatus(200)
-            ->assertJsonCount(2);
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_tenant_sees_only_own_leases(): void
@@ -36,12 +36,12 @@ class LeaseTest extends TestCase
             'property_id' => $this->property->id,
             'tenant_id' => $tenant->id,
         ]);
-        Lease::factory()->create(); // Other tenant's lease
+        Lease::factory()->create();
 
         $response = $this->actingAs($tenant)->getJson('/api/leases');
 
         $response->assertStatus(200)
-            ->assertJsonCount(1);
+            ->assertJsonCount(1, 'data');
     }
 
     public function test_landlord_can_create_lease(): void

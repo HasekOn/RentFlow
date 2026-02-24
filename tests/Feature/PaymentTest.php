@@ -26,18 +26,18 @@ class PaymentTest extends TestCase
         $response = $this->actingAs($this->landlord)->getJson('/api/payments');
 
         $response->assertStatus(200)
-            ->assertJsonCount(3);
+            ->assertJsonCount(3, 'data');
     }
 
     public function test_tenant_sees_only_own_payments(): void
     {
         Payment::factory()->count(2)->create(['lease_id' => $this->lease->id]);
-        Payment::factory()->count(3)->create(); // Other tenant's payments
+        Payment::factory()->count(3)->create();
 
         $response = $this->actingAs($this->tenant)->getJson('/api/payments');
 
         $response->assertStatus(200)
-            ->assertJsonCount(2);
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_landlord_can_create_payment(): void

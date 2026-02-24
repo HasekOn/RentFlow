@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 
 class TicketController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Ticket::class);
 
@@ -26,18 +26,18 @@ class TicketController extends Controller
             $tickets = Ticket::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
-            )->with(['property', 'tenant', 'assignedUser'])->get();
+            )->with(['property', 'tenant', 'assignedUser'])->paginate(15);
         } elseif ($user->role === 'manager') {
             $tickets = $user->assignedTickets()
                 ->with(['property', 'tenant'])
-                ->get();
+                ->paginate(15);
         } else {
             $tickets = $user->tickets()
                 ->with('property')
-                ->get();
+                ->paginate(15);
         }
 
-        return response()->json(TicketResource::collection($tickets));
+        return TicketResource::collection($tickets);
     }
 
     public function store(StoreTicketRequest $request): JsonResponse
