@@ -15,8 +15,11 @@ class PaymentTest extends TestCase
     use RefreshDatabase;
 
     private User $landlord;
+
     private User $tenant;
+
     private Property $property;
+
     private Lease $lease;
 
     public function test_landlord_can_list_payments(): void
@@ -98,7 +101,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/payments/' . $payment->id));
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/payments/'.$payment->id));
 
         $response->assertStatus(200)
             ->assertJsonPath('id', $payment->id);
@@ -108,7 +111,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/payments/' . $payment->id));
+        $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/payments/'.$payment->id));
 
         $response->assertStatus(200);
     }
@@ -118,7 +121,7 @@ class PaymentTest extends TestCase
         $otherTenant = User::factory()->tenant()->create();
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($otherTenant)->getJson($this->apiUrl('/payments/' . $payment->id));
+        $response = $this->actingAs($otherTenant)->getJson($this->apiUrl('/payments/'.$payment->id));
 
         $response->assertStatus(403);
     }
@@ -127,7 +130,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->landlord)->putJson($this->apiUrl('/payments/' . $payment->id), [
+        $response = $this->actingAs($this->landlord)->putJson($this->apiUrl('/payments/'.$payment->id), [
             'note' => 'Updated note',
             'status' => 'paid',
             'paid_date' => '2026-03-10',
@@ -142,7 +145,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->tenant)->putJson($this->apiUrl('/payments/' . $payment->id), [
+        $response = $this->actingAs($this->tenant)->putJson($this->apiUrl('/payments/'.$payment->id), [
             'status' => 'paid',
         ]);
 
@@ -153,7 +156,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->unpaid()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->landlord)->putJson($this->apiUrl('/payments/' . $payment->id . '/mark-paid'));
+        $response = $this->actingAs($this->landlord)->putJson($this->apiUrl('/payments/'.$payment->id.'/mark-paid'));
 
         $response->assertStatus(200)
             ->assertJsonPath('status', 'paid');
@@ -170,7 +173,7 @@ class PaymentTest extends TestCase
 
         $oldScore = $this->tenant->trust_score;
 
-        $this->actingAs($this->landlord)->putJson($this->apiUrl('/payments/' . $payment->id . '/mark-paid'));
+        $this->actingAs($this->landlord)->putJson($this->apiUrl('/payments/'.$payment->id.'/mark-paid'));
 
         $this->tenant->refresh();
         $this->assertNotEquals($oldScore, $this->tenant->trust_score);
@@ -180,7 +183,7 @@ class PaymentTest extends TestCase
     {
         $payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
 
-        $response = $this->actingAs($this->landlord)->deleteJson($this->apiUrl('/payments/' . $payment->id));
+        $response = $this->actingAs($this->landlord)->deleteJson($this->apiUrl('/payments/'.$payment->id));
 
         $response->assertStatus(200);
         $this->assertSoftDeleted('payments', ['id' => $payment->id]);
@@ -245,7 +248,6 @@ class PaymentTest extends TestCase
             ->assertJsonCount(3, 'data');
     }
 
-
     public function test_can_filter_payments_by_date_range(): void
     {
         Payment::factory()->create([
@@ -277,7 +279,7 @@ class PaymentTest extends TestCase
         $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/payments?sort=amount'));
 
         $response->assertStatus(200);
-        $amounts = collect($response->json('data'))->pluck('amount')->map(fn($a) => (float)$a)->toArray();
+        $amounts = collect($response->json('data'))->pluck('amount')->map(fn ($a) => (float) $a)->toArray();
         $this->assertEquals([8000.0, 15000.0, 22000.0], $amounts);
     }
 

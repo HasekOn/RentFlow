@@ -13,6 +13,7 @@ class LeaseTest extends TestCase
     use RefreshDatabase;
 
     private User $landlord;
+
     private Property $property;
 
     public function test_landlord_can_list_leases(): void
@@ -138,7 +139,7 @@ class LeaseTest extends TestCase
             'property_id' => $this->property->id,
         ]);
 
-        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/leases/' . $lease->id));
+        $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/leases/'.$lease->id));
 
         $response->assertStatus(200)
             ->assertJsonPath('id', $lease->id);
@@ -152,7 +153,7 @@ class LeaseTest extends TestCase
             'tenant_id' => $tenant->id,
         ]);
 
-        $response = $this->actingAs($tenant)->getJson($this->apiUrl('/leases/' . $lease->id));
+        $response = $this->actingAs($tenant)->getJson($this->apiUrl('/leases/'.$lease->id));
 
         $response->assertStatus(200);
     }
@@ -164,7 +165,7 @@ class LeaseTest extends TestCase
             'property_id' => $this->property->id,
         ]);
 
-        $response = $this->actingAs($tenant)->getJson($this->apiUrl('/leases/' . $lease->id));
+        $response = $this->actingAs($tenant)->getJson($this->apiUrl('/leases/'.$lease->id));
 
         $response->assertStatus(403);
     }
@@ -175,7 +176,7 @@ class LeaseTest extends TestCase
             'property_id' => $this->property->id,
         ]);
 
-        $response = $this->actingAs($this->landlord)->putJson($this->apiUrl('/leases/' . $lease->id), [
+        $response = $this->actingAs($this->landlord)->putJson($this->apiUrl('/leases/'.$lease->id), [
             'rent_amount' => 18000,
             'status' => 'ended',
         ]);
@@ -193,7 +194,7 @@ class LeaseTest extends TestCase
             'tenant_id' => $tenant->id,
         ]);
 
-        $response = $this->actingAs($tenant)->putJson($this->apiUrl('/leases/' . $lease->id), [
+        $response = $this->actingAs($tenant)->putJson($this->apiUrl('/leases/'.$lease->id), [
             'rent_amount' => 1,
         ]);
 
@@ -206,7 +207,7 @@ class LeaseTest extends TestCase
             'property_id' => $this->property->id,
         ]);
 
-        $response = $this->actingAs($this->landlord)->deleteJson($this->apiUrl('/leases/' . $lease->id));
+        $response = $this->actingAs($this->landlord)->deleteJson($this->apiUrl('/leases/'.$lease->id));
 
         $response->assertStatus(200);
         $this->assertSoftDeleted('leases', ['id' => $lease->id]);
@@ -219,7 +220,7 @@ class LeaseTest extends TestCase
             'property_id' => $this->property->id,
         ]);
 
-        $response = $this->actingAs($otherLandlord)->deleteJson($this->apiUrl('/leases/' . $lease->id));
+        $response = $this->actingAs($otherLandlord)->deleteJson($this->apiUrl('/leases/'.$lease->id));
 
         $response->assertStatus(403);
     }

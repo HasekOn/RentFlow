@@ -114,9 +114,9 @@ class DashboardController extends Controller
             $months->push([
                 'month' => $date->format('Y-m'),
                 'label' => $date->format('M Y'),
-                'income' => round((float)$income, 2),
-                'expenses' => round((float)$expenses, 2),
-                'cashflow' => round((float)$income - (float)$expenses, 2),
+                'income' => round((float) $income, 2),
+                'expenses' => round((float) $expenses, 2),
+                'cashflow' => round((float) $income - (float) $expenses, 2),
             ]);
         }
 
@@ -150,7 +150,7 @@ class DashboardController extends Controller
     {
         $tenant = User::query()->where('role', 'tenant')->findOrFail($id);
 
-        $service = new TrustScoreService();
+        $service = new TrustScoreService;
         $score = $service->calculate($tenant);
 
         $leaseIds = $tenant->leases()->pluck('id');
@@ -175,9 +175,9 @@ class DashboardController extends Controller
                 'total_payments' => $totalPayments,
                 'on_time_payments' => $onTimePayments,
                 'payment_ratio' => $totalPayments > 0
-                    ? round($onTimePayments / $totalPayments * 100, 1) . '%'
+                    ? round($onTimePayments / $totalPayments * 100, 1).'%'
                     : 'N/A',
-                'average_rating' => $averageRating ? round((float)$averageRating, 1) . '/5' : 'No ratings yet',
+                'average_rating' => $averageRating ? round((float) $averageRating, 1).'/5' : 'No ratings yet',
             ],
         ]);
     }

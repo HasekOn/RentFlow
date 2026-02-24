@@ -117,8 +117,8 @@ class LeaseController extends Controller
 
         $pdf->setPaper('A4');
 
-        $filename = 'contract_lease_' . $lease->id . '.pdf';
-        $path = 'contracts/' . $filename;
+        $filename = 'contract_lease_'.$lease->id.'.pdf';
+        $path = 'contracts/'.$filename;
 
         Storage::disk('public')->put(
             $path,

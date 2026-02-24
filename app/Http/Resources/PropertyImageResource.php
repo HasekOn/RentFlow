@@ -16,7 +16,7 @@ class PropertyImageResource extends JsonResource
         return [
             'id' => $this->id,
             'image_path' => $this->image_path,
-            'image_url' => asset('storage/' . $this->image_path),
+            'image_url' => asset('storage/'.$this->image_path),
             'type' => $this->type,
             'description' => $this->description,
             'sort_order' => $this->sort_order,

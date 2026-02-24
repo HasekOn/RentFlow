@@ -13,9 +13,7 @@ class TicketCreatedNotification extends Notification
 
     public function __construct(
         private readonly Ticket $ticket
-    )
-    {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -25,14 +23,14 @@ class TicketCreatedNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('New ticket: ' . $this->ticket->title)
-            ->greeting('Hello ' . $notifiable->name . ',')
+            ->subject('New ticket: '.$this->ticket->title)
+            ->greeting('Hello '.$notifiable->name.',')
             ->line('A new issue has been reported.')
-            ->line('Property: ' . $this->ticket->property->address)
-            ->line('Title: ' . $this->ticket->title)
-            ->line('Category: ' . $this->ticket->category)
-            ->line('Priority: ' . $this->ticket->priority)
-            ->line('Reported by: ' . $this->ticket->tenant->name)
+            ->line('Property: '.$this->ticket->property->address)
+            ->line('Title: '.$this->ticket->title)
+            ->line('Category: '.$this->ticket->category)
+            ->line('Priority: '.$this->ticket->priority)
+            ->line('Reported by: '.$this->ticket->tenant->name)
             ->action('View ticket in RentFlow', config('app.url'))
             ->line('Please review and assign this ticket.');
     }

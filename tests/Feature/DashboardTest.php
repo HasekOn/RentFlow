@@ -16,8 +16,11 @@ class DashboardTest extends TestCase
     use RefreshDatabase;
 
     private User $landlord;
+
     private User $tenant;
+
     private Property $property;
+
     private Lease $lease;
 
     public function test_landlord_can_get_dashboard_stats(): void
@@ -170,10 +173,16 @@ class DashboardTest extends TestCase
 
     public function test_landlord_can_get_tenant_trust_score(): void
     {
-        Payment::factory()->paid()->count(3)->create([
-            'lease_id' => $this->lease->id,
-            'due_date' => now()->subMonths(3),
-        ]);
+        $dueDate = now()->subMonths(3);
+        for ($i = 0; $i < 3; $i++) {
+            Payment::factory()->create([
+                'lease_id' => $this->lease->id,
+                'type' => 'rent',
+                'due_date' => $dueDate->copy()->addMonths($i),
+                'paid_date' => $dueDate->copy()->addMonths($i),
+                'status' => 'paid',
+            ]);
+        }
 
         $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/tenants/' . $this->tenant->id . '/trust-score'));
 

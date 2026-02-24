@@ -112,7 +112,7 @@ class PropertyTest extends TestCase
         $landlord = User::factory()->landlord()->create();
         $property = Property::factory()->create(['landlord_id' => $landlord->id]);
 
-        $response = $this->actingAs($landlord)->getJson($this->apiUrl('/properties/' . $property->id));
+        $response = $this->actingAs($landlord)->getJson($this->apiUrl('/properties/'.$property->id));
 
         $response->assertStatus(200)
             ->assertJsonPath('id', $property->id)
@@ -129,7 +129,7 @@ class PropertyTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->actingAs($tenant)->getJson($this->apiUrl('/properties/' . $property->id));
+        $response = $this->actingAs($tenant)->getJson($this->apiUrl('/properties/'.$property->id));
 
         $response->assertStatus(200);
     }
@@ -139,7 +139,7 @@ class PropertyTest extends TestCase
         $tenant = User::factory()->tenant()->create();
         $property = Property::factory()->create();
 
-        $response = $this->actingAs($tenant)->getJson($this->apiUrl('/properties/' . $property->id));
+        $response = $this->actingAs($tenant)->getJson($this->apiUrl('/properties/'.$property->id));
 
         $response->assertStatus(403);
     }
@@ -159,7 +159,7 @@ class PropertyTest extends TestCase
         $landlord = User::factory()->landlord()->create();
         $property = Property::factory()->create(['landlord_id' => $landlord->id]);
 
-        $response = $this->actingAs($landlord)->putJson($this->apiUrl('/properties/' . $property->id), [
+        $response = $this->actingAs($landlord)->putJson($this->apiUrl('/properties/'.$property->id), [
             'address' => 'Updated Address 456',
             'status' => 'renovation',
         ]);
@@ -175,7 +175,7 @@ class PropertyTest extends TestCase
         $otherLandlord = User::factory()->landlord()->create();
         $property = Property::factory()->create(['landlord_id' => $otherLandlord->id]);
 
-        $response = $this->actingAs($landlord)->putJson($this->apiUrl('/properties/' . $property->id), [
+        $response = $this->actingAs($landlord)->putJson($this->apiUrl('/properties/'.$property->id), [
             'address' => 'Hacked Address',
         ]);
 
@@ -187,7 +187,7 @@ class PropertyTest extends TestCase
         $tenant = User::factory()->tenant()->create();
         $property = Property::factory()->create();
 
-        $response = $this->actingAs($tenant)->putJson($this->apiUrl('/properties/' . $property->id), [
+        $response = $this->actingAs($tenant)->putJson($this->apiUrl('/properties/'.$property->id), [
             'address' => 'Tenant Hack',
         ]);
 
@@ -199,7 +199,7 @@ class PropertyTest extends TestCase
         $landlord = User::factory()->landlord()->create();
         $property = Property::factory()->create(['landlord_id' => $landlord->id]);
 
-        $response = $this->actingAs($landlord)->deleteJson($this->apiUrl('/properties/' . $property->id));
+        $response = $this->actingAs($landlord)->deleteJson($this->apiUrl('/properties/'.$property->id));
 
         $response->assertStatus(200);
         $this->assertSoftDeleted('properties', ['id' => $property->id]);
@@ -211,7 +211,7 @@ class PropertyTest extends TestCase
         $otherLandlord = User::factory()->landlord()->create();
         $property = Property::factory()->create(['landlord_id' => $otherLandlord->id]);
 
-        $response = $this->actingAs($landlord)->deleteJson($this->apiUrl('/properties/' . $property->id));
+        $response = $this->actingAs($landlord)->deleteJson($this->apiUrl('/properties/'.$property->id));
 
         $response->assertStatus(403);
         $this->assertDatabaseHas('properties', ['id' => $property->id]);
@@ -222,7 +222,7 @@ class PropertyTest extends TestCase
         $tenant = User::factory()->tenant()->create();
         $property = Property::factory()->create();
 
-        $response = $this->actingAs($tenant)->deleteJson($this->apiUrl('/properties/' . $property->id));
+        $response = $this->actingAs($tenant)->deleteJson($this->apiUrl('/properties/'.$property->id));
 
         $response->assertStatus(403);
     }
@@ -257,7 +257,7 @@ class PropertyTest extends TestCase
             ->assertJsonCount(5, 'data')
             ->assertJsonPath('meta.current_page', 2);
     }
-    
+
     public function test_can_filter_properties_by_status(): void
     {
         $landlord = User::factory()->landlord()->create();

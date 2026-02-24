@@ -10,6 +10,7 @@ use Symfony\Component\Console\Command\Command as CommandAlias;
 class CheckOverduePayments extends Command
 {
     protected $signature = 'rentflow:check-overdue-payments';
+
     protected $description = 'Notify tenants about overdue payments and update their trust scores';
 
     public function handle(): int

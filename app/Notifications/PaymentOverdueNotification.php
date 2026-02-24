@@ -13,9 +13,7 @@ class PaymentOverdueNotification extends Notification
 
     public function __construct(
         private readonly Payment $payment
-    )
-    {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -28,13 +26,13 @@ class PaymentOverdueNotification extends Notification
         $property = $this->payment->lease->property;
 
         return (new MailMessage)
-            ->subject('Payment overdue — ' . $property->address)
-            ->greeting('Hello ' . $notifiable->name . ',')
+            ->subject('Payment overdue — '.$property->address)
+            ->greeting('Hello '.$notifiable->name.',')
             ->line('You have an overdue payment.')
-            ->line('Property: ' . $property->address)
-            ->line('Amount: ' . number_format($this->payment->amount, 2) . ' CZK')
-            ->line('Due date: ' . $this->payment->due_date->format('d.m.Y'))
-            ->line('Days overdue: ' . $daysOverdue)
+            ->line('Property: '.$property->address)
+            ->line('Amount: '.number_format($this->payment->amount, 2).' CZK')
+            ->line('Due date: '.$this->payment->due_date->format('d.m.Y'))
+            ->line('Days overdue: '.$daysOverdue)
             ->action('View in RentFlow', config('app.url'))
             ->line('Please make the payment as soon as possible.');
     }

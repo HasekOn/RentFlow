@@ -33,6 +33,7 @@ class PaymentFactory extends Factory
             if ($paidDate->isFuture()) {
                 $paidDate = now();
             }
+
             return [
                 'paid_date' => $paidDate,
                 'status' => 'paid',
@@ -42,7 +43,7 @@ class PaymentFactory extends Factory
 
     public function unpaid(): static
     {
-        return $this->state(fn() => [
+        return $this->state(fn () => [
             'paid_date' => null,
             'status' => 'unpaid',
         ]);
@@ -50,7 +51,7 @@ class PaymentFactory extends Factory
 
     public function overdue(): static
     {
-        return $this->state(fn() => [
+        return $this->state(fn () => [
             'due_date' => fake()->dateTimeBetween('-3 months', '-1 month'),
             'paid_date' => null,
             'status' => 'overdue',
@@ -67,6 +68,7 @@ class PaymentFactory extends Factory
             if ($paidDate->isFuture()) {
                 $paidDate = now();
             }
+
             return [
                 'paid_date' => $paidDate,
                 'status' => 'paid',

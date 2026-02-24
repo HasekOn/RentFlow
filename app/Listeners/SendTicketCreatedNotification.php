@@ -10,7 +10,7 @@ class SendTicketCreatedNotification
     public function handle(TicketCreated $event): void
     {
         $ticket = $event->ticket;
-        
+
         $ticket->load('property.landlord');
 
         $landlord = $ticket->property?->landlord;

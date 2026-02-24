@@ -24,7 +24,7 @@ class PaymentPolicy
     {
         $lease = $payment->lease;
 
-        if (!$lease || !$lease->property) {
+        if (! $lease || ! $lease->property) {
             return false;
         }
 

@@ -38,7 +38,7 @@ class TicketFactory extends Factory
 
     public function resolved(): static
     {
-        return $this->state(fn() => [
+        return $this->state(fn () => [
             'status' => 'resolved',
             'resolved_at' => fake()->dateTimeBetween('-1 month', 'now'),
         ]);
@@ -46,7 +46,7 @@ class TicketFactory extends Factory
 
     public function open(): static
     {
-        return $this->state(fn() => [
+        return $this->state(fn () => [
             'status' => 'new',
             'resolved_at' => null,
         ]);

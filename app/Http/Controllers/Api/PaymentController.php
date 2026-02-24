@@ -57,8 +57,8 @@ class PaymentController extends Controller
         $validated = $request->validated();
 
         // Auto-set status
-        if (!isset($validated['status'])) {
-            $validated['status'] = !empty($validated['paid_date']) ? 'paid' : 'unpaid';
+        if (! isset($validated['status'])) {
+            $validated['status'] = ! empty($validated['paid_date']) ? 'paid' : 'unpaid';
         }
 
         $payment = Payment::query()->create($validated);
@@ -130,7 +130,7 @@ class PaymentController extends Controller
 
         $content = file_get_contents($request->file('file')->getRealPath());
 
-        $service = new BankImportService();
+        $service = new BankImportService;
         $results = $service->import($content, $request->user()->id);
 
         return response()->json([

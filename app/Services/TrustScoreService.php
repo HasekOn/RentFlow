@@ -62,6 +62,7 @@ class TrustScoreService
         foreach ($payments as $payment) {
             if ($payment->status === 'unpaid' || $payment->paid_date === null) {
                 $totalPoints -= 10;
+
                 continue;
             }
 

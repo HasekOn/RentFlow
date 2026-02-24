@@ -19,7 +19,7 @@ class UpdateLeaseRequest extends FormRequest
             'rent_amount' => ['sometimes', 'numeric', 'min:0'],
             'deposit_amount' => ['nullable', 'numeric', 'min:0'],
             'utility_advances' => ['nullable', 'numeric', 'min:0'],
-            'variable_symbol' => ['nullable', 'string', 'max:20', 'unique:leases,variable_symbol,' . $this->route('lease')],
+            'variable_symbol' => ['nullable', 'string', 'max:20', 'unique:leases,variable_symbol,'.$this->route('lease')],
             'status' => ['sometimes', 'in:active,ended,terminated'],
         ];
     }

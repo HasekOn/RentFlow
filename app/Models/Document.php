@@ -22,7 +22,6 @@ use Illuminate\Support\Carbon;
  */
 class Document extends Model
 {
-
     use SoftDeletes;
 
     protected $fillable = [

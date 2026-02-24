@@ -11,6 +11,6 @@ abstract class TestCase extends BaseTestCase
      */
     protected function apiUrl(string $path): string
     {
-        return '/api/v1' . $path;
+        return '/api/v1'.$path;
     }
 }

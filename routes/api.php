@@ -29,7 +29,7 @@ Route::middleware('throttle:10,1')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', fn(Request $request) => new UserResource($request->user()));
+    Route::get('/user', fn (Request $request) => new UserResource($request->user()));
 
     // Properties
     Route::apiResource('properties', PropertyController::class);

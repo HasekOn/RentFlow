@@ -10,6 +10,7 @@ use Symfony\Component\Console\Command\Command as CommandAlias;
 class CheckExpiringLeases extends Command
 {
     protected $signature = 'rentflow:check-expiring-leases';
+
     protected $description = 'Notify tenants and landlords about leases expiring within 30 days';
 
     public function handle(): int

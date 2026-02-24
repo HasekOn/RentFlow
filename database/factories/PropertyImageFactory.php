@@ -12,7 +12,7 @@ class PropertyImageFactory extends Factory
     {
         return [
             'property_id' => Property::factory(),
-            'image_path' => 'properties/placeholder_' . fake()->numberBetween(1, 10) . '.jpg',
+            'image_path' => 'properties/placeholder_'.fake()->numberBetween(1, 10).'.jpg',
             'type' => 'marketing',
             'uploaded_by' => User::factory()->landlord(),
             'description' => fake()->sentence(4),

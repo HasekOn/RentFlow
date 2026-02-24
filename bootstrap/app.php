@@ -17,9 +17,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__ . '/../routes/web.php',
-        api: __DIR__ . '/../routes/api.php',
-        commands: __DIR__ . '/../routes/console.php',
+        web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
         health: '/up',
         apiPrefix: 'api/v1',
     )
@@ -32,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->api(prepend: [
-            ThrottleRequests::class . ':60,1',
+            ThrottleRequests::class.':60,1',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -66,8 +66,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (ModelNotFoundException $e, Request $request) {
             if ($request->is('api/*')) {
                 $model = class_basename($e->getModel());
+
                 return response()->json([
-                    'message' => $model . ' not found.',
+                    'message' => $model.' not found.',
                     'error' => 'not_found',
                 ], 404);
             }

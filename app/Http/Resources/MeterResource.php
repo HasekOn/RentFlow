@@ -22,6 +22,7 @@ class MeterResource extends JsonResource
             'latest_reading' => $this->whenLoaded('readings', function () {
                 /** @var MeterReading|null $latest */
                 $latest = $this->readings->sortByDesc('reading_date')->first();
+
                 return $latest ? [
                     'value' => $latest->reading_value,
                     'date' => $latest->reading_date->format('Y-m-d'),

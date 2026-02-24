@@ -38,15 +38,17 @@ class BankImportService
                     'row' => $row,
                     'reason' => 'Missing variable symbol',
                 ];
+
                 continue;
             }
 
             // Find lease by variable symbol
-            if (!isset($landlordLeaseIds[$vs])) {
+            if (! isset($landlordLeaseIds[$vs])) {
                 $results['unmatched'][] = [
                     'row' => $row,
-                    'reason' => 'Variable symbol not found: ' . $vs,
+                    'reason' => 'Variable symbol not found: '.$vs,
                 ];
+
                 continue;
             }
 
@@ -59,7 +61,7 @@ class BankImportService
                 ->orderBy('due_date')
                 ->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 // Try without variable_symbol on payment (might not be set)
                 $payment = Payment::query()->where('lease_id', $leaseId)
                     ->where('status', 'unpaid')
@@ -67,11 +69,12 @@ class BankImportService
                     ->first();
             }
 
-            if (!$payment) {
+            if (! $payment) {
                 $results['already_paid'][] = [
                     'row' => $row,
-                    'reason' => 'No unpaid payment found for VS: ' . $vs,
+                    'reason' => 'No unpaid payment found for VS: '.$vs,
                 ];
+
                 continue;
             }
 
@@ -85,7 +88,7 @@ class BankImportService
 
             // Recalculate trust score
             $payment->load('lease.tenant');
-            
+
             $tenant = $payment->lease?->tenant;
 
             $tenant?->recalculateTrustScore();
@@ -121,7 +124,7 @@ class BankImportService
 
         // Parse header
         $header = str_getcsv(array_shift($lines), $delimiter);
-        $header = array_map(fn($h) => $this->normalizeHeader(trim($h)), $header);
+        $header = array_map(fn ($h) => $this->normalizeHeader(trim($h)), $header);
 
         // Parse data rows
         foreach ($lines as $line) {
@@ -206,7 +209,8 @@ class BankImportService
         $amount = trim($amount);
         $amount = str_replace(' ', '', $amount);    // Remove spaces (thousand separator)
         $amount = str_replace(',', '.', $amount);    // Czech decimal comma to dot
-        return (float)$amount;
+
+        return (float) $amount;
     }
 
     /**
@@ -222,7 +226,7 @@ class BankImportService
 
         // Try dd.mm.yyyy (Czech format)
         if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $date, $m)) {
-            return $m[3] . '-' . str_pad($m[2], 2, '0', STR_PAD_LEFT) . '-' . str_pad($m[1], 2, '0', STR_PAD_LEFT);
+            return $m[3].'-'.str_pad($m[2], 2, '0', STR_PAD_LEFT).'-'.str_pad($m[1], 2, '0', STR_PAD_LEFT);
         }
 
         // Try yyyy-mm-dd (ISO format)
@@ -232,7 +236,7 @@ class BankImportService
 
         // Try dd/mm/yyyy
         if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $date, $m)) {
-            return $m[3] . '-' . str_pad($m[2], 2, '0', STR_PAD_LEFT) . '-' . str_pad($m[1], 2, '0', STR_PAD_LEFT);
+            return $m[3].'-'.str_pad($m[2], 2, '0', STR_PAD_LEFT).'-'.str_pad($m[1], 2, '0', STR_PAD_LEFT);
         }
 
         return null;

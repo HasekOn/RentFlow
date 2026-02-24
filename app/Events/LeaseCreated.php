@@ -12,7 +12,5 @@ class LeaseCreated
 
     public function __construct(
         public readonly Lease $lease,
-    )
-    {
-    }
+    ) {}
 }

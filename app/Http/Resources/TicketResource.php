@@ -22,7 +22,7 @@ class TicketResource extends JsonResource
             'priority' => $this->priority,
             'resolved_at' => $this->resolved_at?->toDateTimeString(),
             'resolution_time' => $this->resolved_at
-                ? $this->created_at->diffInHours($this->resolved_at) . 'h'
+                ? $this->created_at->diffInHours($this->resolved_at).'h'
                 : null,
             'created_at' => $this->created_at->toDateTimeString(),
             'property' => new PropertyResource($this->whenLoaded('property')),

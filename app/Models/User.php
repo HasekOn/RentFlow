@@ -90,7 +90,7 @@ class User extends Authenticatable
      */
     public function recalculateTrustScore(): float
     {
-        $service = new TrustScoreService();
+        $service = new TrustScoreService;
 
         return $service->calculate($this);
     }
@@ -108,5 +108,4 @@ class User extends Authenticatable
             'trust_score' => 'decimal:2',
         ];
     }
-
 }

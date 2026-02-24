@@ -27,16 +27,16 @@ class PropertyFactory extends Factory
 
     public function available(): static
     {
-        return $this->state(fn() => ['status' => 'available']);
+        return $this->state(fn () => ['status' => 'available']);
     }
 
     public function occupied(): static
     {
-        return $this->state(fn() => ['status' => 'occupied']);
+        return $this->state(fn () => ['status' => 'occupied']);
     }
 
     public function renovation(): static
     {
-        return $this->state(fn() => ['status' => 'renovation']);
+        return $this->state(fn () => ['status' => 'renovation']);
     }
 }

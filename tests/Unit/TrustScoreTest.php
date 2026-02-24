@@ -16,8 +16,11 @@ class TrustScoreTest extends TestCase
     use RefreshDatabase;
 
     private TrustScoreService $service;
+
     private User $landlord;
+
     private User $tenant;
+
     private Lease $lease;
 
     public function test_new_tenant_without_payments_gets_default_score(): void
@@ -220,7 +223,7 @@ class TrustScoreTest extends TestCase
         $this->service->calculate($this->tenant);
 
         $this->tenant->refresh();
-        $this->assertEquals(100.0, (float)$this->tenant->trust_score);
+        $this->assertEquals(100.0, (float) $this->tenant->trust_score);
     }
 
     public function test_score_is_clamped_between_0_and_100(): void
@@ -243,7 +246,7 @@ class TrustScoreTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new TrustScoreService();
+        $this->service = new TrustScoreService;
         $this->landlord = User::factory()->landlord()->create();
         $this->tenant = User::factory()->tenant()->create();
         $property = Property::factory()->create(['landlord_id' => $this->landlord->id]);

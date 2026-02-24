@@ -62,7 +62,7 @@ class DatabaseSeeder extends Seeder
             $activeLeases->push($lease);
         }
 
-        $this->command->info('Active leases created: ' . $activeLeases->count());
+        $this->command->info('Active leases created: '.$activeLeases->count());
 
         $endedLease = Lease::factory()->ended()->create([
             'property_id' => $properties[0]->id,
@@ -112,7 +112,7 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        $this->command->info('Payments created: 6 months × ' . $activeLeases->count() . ' leases');
+        $this->command->info('Payments created: 6 months × '.$activeLeases->count().' leases');
 
         foreach ($properties as $property) {
             Expense::factory()->count(rand(2, 5))->create([
@@ -242,7 +242,7 @@ class DatabaseSeeder extends Seeder
             [
                 ['Landlord', 'landlord@rentflow.cz'],
                 ['Manager', 'manager@rentflow.cz'],
-                ...($tenants->map(fn($t) => ['Tenant', $t->email])->toArray()),
+                ...($tenants->map(fn ($t) => ['Tenant', $t->email])->toArray()),
             ]
         );
     }

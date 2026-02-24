@@ -35,7 +35,7 @@ class DocumentController extends Controller
         }
 
         $path = $request->file('file')->store(
-            'documents/' . $property->id,
+            'documents/'.$property->id,
             'public'
         );
 

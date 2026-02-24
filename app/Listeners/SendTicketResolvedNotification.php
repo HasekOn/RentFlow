@@ -10,7 +10,7 @@ class SendTicketResolvedNotification
     public function handle(TicketResolved $event): void
     {
         $ticket = $event->ticket;
-        
+
         $ticket->load('tenant');
 
         if ($ticket->tenant) {

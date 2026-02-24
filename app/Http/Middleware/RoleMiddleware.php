@@ -18,9 +18,9 @@ class RoleMiddleware
         /** @var User|null $user */
         $user = $request->user();
 
-        if (!$user || !in_array($user->role, $roles)) {
+        if (! $user || ! in_array($user->role, $roles)) {
             return response()->json([
-                'message' => 'Access denied. Required role: ' . implode(' or ', $roles) . '.',
+                'message' => 'Access denied. Required role: '.implode(' or ', $roles).'.',
             ], 403);
         }
 

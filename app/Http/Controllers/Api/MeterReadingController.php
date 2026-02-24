@@ -34,7 +34,7 @@ class MeterReadingController extends Controller
 
         if ($lastReading && $request->validated('reading_value') < $lastReading->reading_value) {
             return response()->json([
-                'message' => 'Reading value cannot be less than the previous reading (' . $lastReading->reading_value . ').',
+                'message' => 'Reading value cannot be less than the previous reading ('.$lastReading->reading_value.').',
             ], 422);
         }
 

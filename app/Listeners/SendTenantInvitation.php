@@ -10,7 +10,7 @@ class SendTenantInvitation
     public function handle(LeaseCreated $event): void
     {
         $lease = $event->lease;
-        
+
         $lease->load('tenant');
 
         if ($lease->tenant) {

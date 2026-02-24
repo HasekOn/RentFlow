@@ -10,11 +10,10 @@ trait Filterable
     protected function applyFilters(
         Builder $query,
         Request $request,
-        array   $filterableFields = [],
-        array   $sortableFields = [],
-        array   $searchableFields = [],
-    ): Builder
-    {
+        array $filterableFields = [],
+        array $sortableFields = [],
+        array $searchableFields = [],
+    ): Builder {
         foreach ($filterableFields as $field) {
             if ($request->filled($field)) {
                 $query->where($field, $request->input($field));
@@ -31,11 +30,11 @@ trait Filterable
             $query->where($dateField, '<=', $request->input('date_to'));
         }
 
-        if ($request->filled('search') && !empty($searchableFields)) {
+        if ($request->filled('search') && ! empty($searchableFields)) {
             $search = $request->input('search');
             $query->where(function (Builder $q) use ($search, $searchableFields) {
                 foreach ($searchableFields as $field) {
-                    $q->orWhere($field, 'LIKE', '%' . $search . '%');
+                    $q->orWhere($field, 'LIKE', '%'.$search.'%');
                 }
             });
         }

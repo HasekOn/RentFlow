@@ -26,7 +26,7 @@ class UserFactory extends Factory
 
     public function landlord(): static
     {
-        return $this->state(fn() => [
+        return $this->state(fn () => [
             'role' => 'landlord',
             'trust_score' => 0,
         ]);
@@ -34,7 +34,7 @@ class UserFactory extends Factory
 
     public function manager(): static
     {
-        return $this->state(fn() => [
+        return $this->state(fn () => [
             'role' => 'manager',
             'trust_score' => 0,
         ]);
@@ -42,7 +42,7 @@ class UserFactory extends Factory
 
     public function tenant(): static
     {
-        return $this->state(fn() => [
+        return $this->state(fn () => [
             'role' => 'tenant',
         ]);
     }

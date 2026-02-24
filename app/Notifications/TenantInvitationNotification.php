@@ -13,9 +13,7 @@ class TenantInvitationNotification extends Notification
 
     public function __construct(
         private readonly Lease $lease
-    )
-    {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -28,13 +26,13 @@ class TenantInvitationNotification extends Notification
 
         return (new MailMessage)
             ->subject('Welcome to RentFlow — Your new lease')
-            ->greeting('Hello ' . $notifiable->name . ',')
+            ->greeting('Hello '.$notifiable->name.',')
             ->line('You have been added as a tenant in RentFlow.')
-            ->line('Property: ' . $property->address)
-            ->line('Disposition: ' . $property->disposition)
-            ->line('Monthly rent: ' . number_format($this->lease->rent_amount, 2) . ' CZK')
-            ->line('Lease starts: ' . $this->lease->start_date->format('d.m.Y'))
-            ->line('Lease ends: ' . ($this->lease->end_date ? $this->lease->end_date->format('d.m.Y') : 'Indefinite'))
+            ->line('Property: '.$property->address)
+            ->line('Disposition: '.$property->disposition)
+            ->line('Monthly rent: '.number_format($this->lease->rent_amount, 2).' CZK')
+            ->line('Lease starts: '.$this->lease->start_date->format('d.m.Y'))
+            ->line('Lease ends: '.($this->lease->end_date ? $this->lease->end_date->format('d.m.Y') : 'Indefinite'))
             ->action('Log in to RentFlow', config('app.url'))
             ->line('You can now view your apartment details, submit meter readings, and report issues.');
     }

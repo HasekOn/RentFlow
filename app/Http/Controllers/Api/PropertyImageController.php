@@ -30,7 +30,7 @@ class PropertyImageController extends Controller
 
         // Store file in storage/app/public/properties/{id}/
         $path = $request->file('image')->store(
-            'properties/' . $property->id,
+            'properties/'.$property->id,
             'public'
         );
 

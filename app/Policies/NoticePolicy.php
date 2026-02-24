@@ -24,7 +24,7 @@ class NoticePolicy
     {
         $property = $notice->property;
 
-        if (!$property) {
+        if (! $property) {
             return false;
         }
 

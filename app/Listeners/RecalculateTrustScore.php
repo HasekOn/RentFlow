@@ -9,7 +9,7 @@ class RecalculateTrustScore
     public function handle(PaymentMarkedPaid $event): void
     {
         $payment = $event->payment;
-        
+
         $payment->load('lease.tenant');
 
         $tenant = $payment->lease?->tenant;
