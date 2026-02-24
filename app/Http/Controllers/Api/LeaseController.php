@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\LeaseCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreLeaseRequest;
 use App\Http\Requests\UpdateLeaseRequest;
@@ -9,7 +10,6 @@ use App\Http\Resources\LeaseResource;
 use App\Models\Lease;
 use App\Models\Property;
 use App\Models\User;
-use App\Notifications\TenantInvitationNotification;
 use App\Traits\Filterable;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -63,7 +63,7 @@ class LeaseController extends Controller
         $lease->load(['property', 'tenant']);
 
         // Send invitation to tenant
-        $lease->tenant->notify(new TenantInvitationNotification($lease));
+        LeaseCreated::dispatch($lease);
 
         return response()->json(new LeaseResource($lease), 201);
     }

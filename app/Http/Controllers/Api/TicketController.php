@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\TicketCreated;
+use App\Events\TicketResolved;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
 use App\Models\User;
-use App\Notifications\TicketCreatedNotification;
-use App\Notifications\TicketResolvedNotification;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -64,11 +64,7 @@ class TicketController extends Controller
         $ticket->load(['property', 'tenant']);
 
         // Notify landlord about new ticket
-        $landlord = $ticket->property->landlord;
-
-        if ($landlord) {
-            $landlord->notify(new TicketCreatedNotification($ticket));
-        }
+        TicketCreated::dispatch($ticket);
 
         return response()->json(new TicketResource($ticket), 201);
     }
@@ -104,11 +100,7 @@ class TicketController extends Controller
 
         // Notify tenant when ticket is resolved
         if (isset($validated['status']) && $validated['status'] === 'resolved') {
-            $ticket->load('tenant');
-
-            if ($ticket->tenant) {
-                $ticket->tenant->notify(new TicketResolvedNotification($ticket));
-            }
+            TicketResolved::dispatch($ticket);
         }
 
         return response()->json(new TicketResource($ticket));
