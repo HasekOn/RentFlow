@@ -161,4 +161,22 @@ class AuthTest extends TestCase
 
         $response->assertStatus(401);
     }
+
+    public function test_login_is_rate_limited(): void
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $this->postJson($this->apiUrl('/login'), [
+                'email' => 'fake@test.cz',
+                'password' => 'wrong',
+            ]);
+        }
+
+        $response = $this->postJson($this->apiUrl('/login'), [
+            'email' => 'fake@test.cz',
+            'password' => 'wrong',
+        ]);
+
+        $response->assertStatus(429)
+            ->assertJsonPath('error', 'too_many_requests');
+    }
 }
