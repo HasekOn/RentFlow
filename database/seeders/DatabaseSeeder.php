@@ -62,7 +62,7 @@ class DatabaseSeeder extends Seeder
             $activeLeases->push($lease);
         }
 
-        $this->command->info('Active leases created: '.$activeLeases->count());
+        $this->command->info('Active leases created: ' . $activeLeases->count());
 
         $endedLease = Lease::factory()->ended()->create([
             'property_id' => $properties[0]->id,
@@ -85,7 +85,6 @@ class DatabaseSeeder extends Seeder
                 $dueDate = now()->subMonths($i)->startOfMonth()->addDays(14);
 
                 if ($i === 0) {
-                    // Current month — unpaid
                     Payment::factory()->unpaid()->create([
                         'lease_id' => $lease->id,
                         'amount' => $lease->rent_amount,
@@ -93,7 +92,6 @@ class DatabaseSeeder extends Seeder
                         'variable_symbol' => $lease->variable_symbol,
                     ]);
                 } elseif ($i === 1 && fake()->boolean(30)) {
-                    // Last month — 30% chance late payment
                     Payment::factory()->latePayment()->create([
                         'lease_id' => $lease->id,
                         'amount' => $lease->rent_amount,
@@ -101,7 +99,6 @@ class DatabaseSeeder extends Seeder
                         'variable_symbol' => $lease->variable_symbol,
                     ]);
                 } else {
-                    // Older months — paid on time
                     Payment::factory()->paid()->create([
                         'lease_id' => $lease->id,
                         'amount' => $lease->rent_amount,
@@ -112,7 +109,7 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        $this->command->info('Payments created: 6 months × '.$activeLeases->count().' leases');
+        $this->command->info('Payments created: 6 months × ' . $activeLeases->count() . ' leases');
 
         foreach ($properties as $property) {
             Expense::factory()->count(rand(2, 5))->create([
@@ -132,7 +129,6 @@ class DatabaseSeeder extends Seeder
                     'assigned_to' => $manager->id,
                 ])
                 ->each(function ($ticket) use ($lease, $manager) {
-                    // Add comments thread
                     TicketComment::factory()->create([
                         'ticket_id' => $ticket->id,
                         'user_id' => $lease->tenant_id,
@@ -165,7 +161,6 @@ class DatabaseSeeder extends Seeder
         foreach ($properties as $property) {
             $meters = collect();
 
-            // Each property gets water + electricity meters
             $meters->push(Meter::factory()->create([
                 'property_id' => $property->id,
                 'meter_type' => 'water',
@@ -175,7 +170,6 @@ class DatabaseSeeder extends Seeder
                 'meter_type' => 'electricity',
             ]));
 
-            // Gas meter for bigger apartments
             if (in_array($property->disposition, ['2+1', '3+1', '3+kk'])) {
                 $meters->push(Meter::factory()->create([
                     'property_id' => $property->id,
@@ -183,7 +177,6 @@ class DatabaseSeeder extends Seeder
                 ]));
             }
 
-            // Generate 6 months of readings per meter (ascending values)
             foreach ($meters as $meter) {
                 $baseValue = fake()->randomFloat(3, 100, 500);
                 $tenant = $activeLeases->firstWhere('property_id', $property->id)?->tenant_id;
@@ -210,14 +203,27 @@ class DatabaseSeeder extends Seeder
 
         $this->command->info('Inventory items created');
 
+        // ─── Property Images (3 real photos per property) ────
+        $imagePaths = [
+            ['path' => 'properties/livingroom.png', 'type' => 'marketing', 'description' => 'Living room'],
+            ['path' => 'properties/kitchen.png', 'type' => 'marketing', 'description' => 'Kitchen'],
+            ['path' => 'properties/bathroom.png', 'type' => 'marketing', 'description' => 'Bathroom'],
+        ];
+
         foreach ($properties as $property) {
-            PropertyImage::factory()->count(rand(2, 4))->create([
-                'property_id' => $property->id,
-                'uploaded_by' => $landlord->id,
-            ]);
+            foreach ($imagePaths as $index => $image) {
+                PropertyImage::factory()->create([
+                    'property_id' => $property->id,
+                    'uploaded_by' => $landlord->id,
+                    'image_path' => $image['path'],
+                    'type' => $image['type'],
+                    'description' => $image['description'],
+                    'sort_order' => $index + 1,
+                ]);
+            }
         }
 
-        $this->command->info('Property images created');
+        $this->command->info('Property images created: 3 per property');
 
         foreach ($occupiedProperties->take(2) as $property) {
             Notice::factory()->create([
@@ -242,7 +248,7 @@ class DatabaseSeeder extends Seeder
             [
                 ['Landlord', 'landlord@rentflow.cz'],
                 ['Manager', 'manager@rentflow.cz'],
-                ...($tenants->map(fn ($t) => ['Tenant', $t->email])->toArray()),
+                ...($tenants->map(fn($t) => ['Tenant', $t->email])->toArray()),
             ]
         );
     }

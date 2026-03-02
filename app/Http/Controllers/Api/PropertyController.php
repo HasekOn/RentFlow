@@ -24,11 +24,11 @@ class PropertyController extends Controller
         $user = $request->user();
 
         if ($user->role === 'landlord') {
-            $query = $user->ownedProperties()->with('leases.tenant')->getQuery();
+            $query = $user->ownedProperties()->with(['leases.tenant', 'images'])->getQuery();
         } else {
             $query = Property::query()->whereIn('id',
                 $user->leases()->where('status', 'active')->pluck('property_id')
-            );
+            )->with('images');
         }
 
         $this->applyFilters(

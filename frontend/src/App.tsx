@@ -6,6 +6,7 @@ import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import PropertiesPage from './pages/properties/PropertiesPage'
+import PropertyDetailPage from './pages/properties/PropertyDetailPage'
 
 export default function App() {
     return (
@@ -24,6 +25,7 @@ export default function App() {
                     }>
                         <Route path="/" element={<DashboardPage/>}/>
                         <Route path="/properties" element={<PropertiesPage/>}/>
+                        <Route path="/properties/:id" element={<PropertyDetailPage/>}/>
                     </Route>
 
                     {/* Fallback */}
