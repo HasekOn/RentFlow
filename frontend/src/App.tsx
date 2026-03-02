@@ -1,12 +1,35 @@
-function App() {
+import {BrowserRouter, Navigate, Route, Routes} from 'react-router-dom'
+import {AuthProvider} from './contexts/AuthContext'
+import ProtectedRoute from './components/layout/ProtectedRoute'
+import AppLayout from './components/layout/AppLayout'
+import LoginPage from './pages/auth/LoginPage'
+import RegisterPage from './pages/auth/RegisterPage'
+import DashboardPage from './pages/dashboard/DashboardPage'
+import PropertiesPage from './pages/properties/PropertiesPage'
+
+export default function App() {
     return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-            <div className="text-center">
-                <h1 className="text-4xl font-bold text-gray-900">RentFlow</h1>
-                <p className="mt-2 text-gray-600">Frontend is ready!</p>
-            </div>
-        </div>
+        <BrowserRouter>
+            <AuthProvider>
+                <Routes>
+                    {/* Public */}
+                    <Route path="/login" element={<LoginPage/>}/>
+                    <Route path="/register" element={<RegisterPage/>}/>
+
+                    {/* Protected */}
+                    <Route element={
+                        <ProtectedRoute>
+                            <AppLayout/>
+                        </ProtectedRoute>
+                    }>
+                        <Route path="/" element={<DashboardPage/>}/>
+                        <Route path="/properties" element={<PropertiesPage/>}/>
+                    </Route>
+
+                    {/* Fallback */}
+                    <Route path="*" element={<Navigate to="/" replace/>}/>
+                </Routes>
+            </AuthProvider>
+        </BrowserRouter>
     )
 }
-
-export default App
