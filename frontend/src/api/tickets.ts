@@ -5,6 +5,7 @@ interface TicketFilters {
     status?: string
     priority?: string
     category?: string
+    property_id?: number
     search?: string
     sort?: string
     page?: number
