@@ -9,6 +9,8 @@ import PropertiesPage from './pages/properties/PropertiesPage'
 import PropertyDetailPage from './pages/properties/PropertyDetailPage'
 import TicketsPage from './pages/tickets/TicketsPage'
 import TicketDetailPage from './pages/tickets/TicketDetailPage'
+import LeasesPage from './pages/leases/LeasesPage'
+import LeaseDetailPage from './pages/leases/LeaseDetailPage'
 
 export default function App() {
     return (
@@ -30,8 +32,10 @@ export default function App() {
                         <Route path="/properties/:id" element={<PropertyDetailPage/>}/>
                         <Route path="/tickets" element={<TicketsPage/>}/>
                         <Route path="/tickets/:id" element={<TicketDetailPage/>}/>
+                        <Route path="/leases" element={<LeasesPage/>}/>
+                        <Route path="/leases/:id" element={<LeaseDetailPage/>}/>
                     </Route>
-                    
+
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="/" replace/>}/>
                 </Routes>

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\TicketCommentController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -33,7 +34,7 @@ Route::middleware('throttle:10,1')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', fn (Request $request) => new UserResource($request->user()));
+    Route::get('/user', fn(Request $request) => new UserResource($request->user()));
 
     // Properties
     Route::apiResource('properties', PropertyController::class);
@@ -79,6 +80,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // Notifications
     Route::get('notifications', [DashboardController::class, 'notifications']);
     Route::put('notifications/{notification}/read', [DashboardController::class, 'markNotificationRead']);
+
+    Route::get('/users', function (Request $request) {
+        $query = User::query();
+        
+        if ($request->filled('role')) {
+            $query->where('role', $request->input('role'));
+        }
+        return response()->json($query->get(['id', 'name', 'email', 'role']));
+    });
 
     // Landlord-only routes
     Route::middleware('role:landlord')->group(function () {
