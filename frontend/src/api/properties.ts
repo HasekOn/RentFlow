@@ -39,4 +39,7 @@ export const propertiesApi = {
 
     restore: (id: number) =>
         api.put('/properties/' + id + '/restore'),
+
+    getList: () =>
+        api.get<PaginatedResponse<Property>>('/properties', {params: {per_page: 100}}),
 }
