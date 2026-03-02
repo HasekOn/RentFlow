@@ -11,6 +11,7 @@ import TicketsPage from './pages/tickets/TicketsPage'
 import TicketDetailPage from './pages/tickets/TicketDetailPage'
 import LeasesPage from './pages/leases/LeasesPage'
 import LeaseDetailPage from './pages/leases/LeaseDetailPage'
+import PaymentsPage from './pages/payments/PaymentsPage'
 
 export default function App() {
     return (
@@ -34,6 +35,7 @@ export default function App() {
                         <Route path="/tickets/:id" element={<TicketDetailPage/>}/>
                         <Route path="/leases" element={<LeasesPage/>}/>
                         <Route path="/leases/:id" element={<LeaseDetailPage/>}/>
+                        <Route path="/payments" element={<PaymentsPage/>}/>
                     </Route>
 
                     {/* Fallback */}
