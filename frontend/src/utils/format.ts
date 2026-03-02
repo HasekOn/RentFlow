@@ -7,12 +7,22 @@ export function formatCurrency(amount: number | string): string {
     }).format(num) + ' Kč'
 }
 
-export function formatDate(date: string): string {
+export function formatDate(date: string | null | undefined): string {
+    if (!date) {
+        return '—'
+    }
+
+    const parsed = new Date(date)
+
+    if (isNaN(parsed.getTime())) {
+        return '—'
+    }
+
     return new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
-    }).format(new Date(date))
+    }).format(parsed)
 }
 
 export function formatPercent(value: number, total: number): string {

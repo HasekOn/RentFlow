@@ -12,6 +12,8 @@ import TicketDetailPage from './pages/tickets/TicketDetailPage'
 import LeasesPage from './pages/leases/LeasesPage'
 import LeaseDetailPage from './pages/leases/LeaseDetailPage'
 import PaymentsPage from './pages/payments/PaymentsPage'
+import PeoplePage from './pages/people/PeoplePage'
+import PersonDetailPage from './pages/people/PersonDetailPage'
 
 export default function App() {
     return (
@@ -36,6 +38,8 @@ export default function App() {
                         <Route path="/leases" element={<LeasesPage/>}/>
                         <Route path="/leases/:id" element={<LeaseDetailPage/>}/>
                         <Route path="/payments" element={<PaymentsPage/>}/>
+                        <Route path="/people" element={<PeoplePage/>}/>
+                        <Route path="/people/:id" element={<PersonDetailPage/>}/>
                     </Route>
 
                     {/* Fallback */}

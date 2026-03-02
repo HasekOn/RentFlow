@@ -4,6 +4,7 @@ import type {Lease, PaginatedResponse} from '../types'
 interface LeaseFilters {
     status?: string
     property_id?: number
+    tenant_id?: number
     search?: string
     sort?: string
     page?: number
@@ -39,4 +40,7 @@ export const leasesApi = {
 
     downloadPdf: (id: number) =>
         api.get('/leases/' + id + '/generate-pdf', {responseType: 'blob'}),
+
+    getByTenant: (tenantId: number) =>
+        api.get<PaginatedResponse<Lease>>('/leases', {params: {tenant_id: tenantId}}),
 }

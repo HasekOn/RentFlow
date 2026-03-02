@@ -83,11 +83,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/users', function (Request $request) {
         $query = User::query();
-        
+
         if ($request->filled('role')) {
             $query->where('role', $request->input('role'));
         }
-        return response()->json($query->get(['id', 'name', 'email', 'role']));
+
+        return response()->json($query->get(['id', 'name', 'email', 'role', 'phone', 'trust_score', 'created_at']));
     });
 
     // Landlord-only routes
