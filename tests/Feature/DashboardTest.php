@@ -209,11 +209,13 @@ class DashboardTest extends TestCase
         $response->assertStatus(404);
     }
 
-    public function test_tenant_cannot_access_trust_score(): void
+    public function test_tenant_can_access_own_trust_score(): void
     {
         $response = $this->actingAs($this->tenant)->getJson($this->apiUrl('/tenants/'.$this->tenant->id.'/trust-score'));
 
-        $response->assertStatus(403);
+        $response->assertStatus(200);
+
+        $response->assertJsonStructure(['trust_score', 'breakdown']);
     }
 
     protected function setUp(): void
