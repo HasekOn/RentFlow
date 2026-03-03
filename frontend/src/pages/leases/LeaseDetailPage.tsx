@@ -9,6 +9,7 @@ import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
+import RateTenantModal from './RateTenantModal'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -32,6 +33,7 @@ export default function LeaseDetailPage() {
     const [isDownloading, setIsDownloading] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
+    const [showRatingModal, setShowRatingModal] = useState(false)
 
     const loadLease = async () => {
         try {
@@ -314,6 +316,15 @@ export default function LeaseDetailPage() {
                                         </Button>
                                     </>
                                 )}
+                                {(lease.status === 'ended' || lease.status === 'terminated') && (
+                                    <Button
+                                        variant="primary"
+                                        className="w-full"
+                                        onClick={() => setShowRatingModal(true)}
+                                    >
+                                        ⭐ Rate Tenant
+                                    </Button>
+                                )}
                                 <Button variant="danger" className="w-full" onClick={handleDelete}>
                                     Delete Lease
                                 </Button>
@@ -335,6 +346,16 @@ export default function LeaseDetailPage() {
                     }}
                 />
             )}
+            <RateTenantModal
+                isOpen={showRatingModal}
+                onClose={() => setShowRatingModal(false)}
+                leaseId={lease.id}
+                existingCategories={(lease.ratings || []).map((r) => r.category)}
+                onSuccess={() => {
+                    setShowRatingModal(false)
+                    void loadLease()
+                }}
+            />
         </div>
     )
 }

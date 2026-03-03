@@ -1,5 +1,5 @@
 import api from './axios'
-import type {PaginatedResponse, Property} from '../types'
+import type {PaginatedResponse, Property, PropertyImage} from '../types'
 
 interface PropertyFilters {
     status?: string
@@ -42,4 +42,16 @@ export const propertiesApi = {
 
     getList: () =>
         api.get<PaginatedResponse<Property>>('/properties', {params: {per_page: 100}}),
+
+    // Images
+    getImages: (propertyId: number) =>
+        api.get<PropertyImage[]>('/properties/' + propertyId + '/images'),
+
+    uploadImage: (propertyId: number, formData: FormData) =>
+        api.post('/properties/' + propertyId + '/images', formData, {
+            headers: {'Content-Type': 'multipart/form-data'},
+        }),
+
+    deleteImage: (imageId: number) =>
+        api.delete('/property-images/' + imageId),
 }
