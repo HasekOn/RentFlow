@@ -9,6 +9,7 @@ import Spinner from '../../components/ui/Spinner'
 import Pagination from '../../components/ui/Pagination'
 import EmptyState from '../../components/ui/EmptyState'
 import CreateTicketModal from './CreateTicketModal'
+import {leasesApi} from '../../api/leases'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -51,7 +52,7 @@ function daysSinceCreated(date: string): number {
 }
 
 export default function TicketsPage() {
-    const {isLandlord, isTenant} = useAuth()
+    const {isLandlord, isTenant, isManager} = useAuth()
     const navigate = useNavigate()
     const [tickets, setTickets] = useState<Ticket[]>([])
     const [meta, setMeta] = useState<PaginatedResponse<Ticket>['meta'] | null>(null)
@@ -61,6 +62,15 @@ export default function TicketsPage() {
     const [statusFilter, setStatusFilter] = useState('')
     const [priorityFilter, setPriorityFilter] = useState('')
     const [page, setPage] = useState(1)
+    const [hasActiveLease, setHasActiveLease] = useState(false)
+
+    useEffect(() => {
+        if (isTenant) {
+            leasesApi.getAll({status: 'active'}).then((res) => {
+                setHasActiveLease((res.data.data || []).length > 0)
+            }).catch(() => setHasActiveLease(false))
+        }
+    }, [isTenant])
 
     const loadTickets = useCallback(async () => {
         setIsLoading(true)
@@ -94,7 +104,12 @@ export default function TicketsPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl sm:text-4xl font-bold text-black">Helpdesk</h1>
-                {(isLandlord || isTenant) && (
+                {(isLandlord || isManager) && (
+                    <Button onClick={() => setShowCreateModal(true)}>
+                        + Add Ticket
+                    </Button>
+                )}
+                {isTenant && hasActiveLease && (
                     <Button onClick={() => setShowCreateModal(true)}>
                         + Add Ticket
                     </Button>

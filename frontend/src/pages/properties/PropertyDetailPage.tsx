@@ -202,8 +202,7 @@ export default function PropertyDetailPage() {
                     className={`px-6 py-2.5 rounded-full text-sm font-semibold transition ${
                         activeTab === 'management' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                     }`}
-                >Management
-                </button>
+                >{isLandlord ? 'Management' : 'Details'}</button>
             </div>
 
             {/* ══════════ OVERVIEW TAB ══════════ */}
@@ -363,61 +362,63 @@ export default function PropertyDetailPage() {
                             )}
                         </div>
 
-                        {/* Expenses */}
-                        <div className="bg-white rounded-2xl p-6 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-lg font-bold text-black">Expenses</h2>
-                                {isLandlord && (
-                                    <Button size="sm" onClick={() => setShowExpenseModal(true)}>+ Add</Button>
+                        {/* Expenses — landlord only */}
+                        {isLandlord && (
+                            <div className="bg-white rounded-2xl p-6 shadow-sm">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-lg font-bold text-black">Expenses</h2>
+                                    {isLandlord && (
+                                        <Button size="sm" onClick={() => setShowExpenseModal(true)}>+ Add</Button>
+                                    )}
+                                </div>
+                                {expenses.length === 0 ? (
+                                    <p className="text-sm text-gray-400 text-center py-4">No expenses recorded</p>
+                                ) : (
+                                    <>
+                                        {/* Desktop table */}
+                                        <div className="hidden sm:block">
+                                            <table className="w-full">
+                                                <thead>
+                                                <tr className="border-b border-gray-100">
+                                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Date</th>
+                                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Type</th>
+                                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Description</th>
+                                                    <th className="text-right py-2 text-xs font-semibold text-gray-400 uppercase">Amount</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {expenses.slice(0, 10).map((expense) => (
+                                                    <tr key={expense.id} className="border-b border-gray-50">
+                                                        <td className="py-3 text-sm text-gray-600">{formatDate(expense.expense_date)}</td>
+                                                        <td className="py-3 text-sm text-gray-600 capitalize">{expense.type}</td>
+                                                        <td className="py-3 text-sm text-gray-600">{expense.description || '—'}</td>
+                                                        <td className="py-3 text-sm font-semibold text-right text-black">{formatCurrency(expense.amount)}</td>
+                                                    </tr>
+                                                ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {/* Mobile cards */}
+                                        <div className="sm:hidden space-y-2">
+                                            {expenses.slice(0, 10).map((expense) => (
+                                                <div key={expense.id} className="p-3 border border-gray-100 rounded-xl">
+                                                    <div className="flex items-center justify-between">
+                                                        <span
+                                                            className="text-sm font-semibold text-black capitalize">{expense.type}</span>
+                                                        <span
+                                                            className="text-sm font-bold text-black">{formatCurrency(expense.amount)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                                        <span>{formatDate(expense.expense_date)}</span>
+                                                        {expense.description && <span>· {expense.description}</span>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
                                 )}
                             </div>
-                            {expenses.length === 0 ? (
-                                <p className="text-sm text-gray-400 text-center py-4">No expenses recorded</p>
-                            ) : (
-                                <>
-                                    {/* Desktop table */}
-                                    <div className="hidden sm:block">
-                                        <table className="w-full">
-                                            <thead>
-                                            <tr className="border-b border-gray-100">
-                                                <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Date</th>
-                                                <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Type</th>
-                                                <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Description</th>
-                                                <th className="text-right py-2 text-xs font-semibold text-gray-400 uppercase">Amount</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            {expenses.slice(0, 10).map((expense) => (
-                                                <tr key={expense.id} className="border-b border-gray-50">
-                                                    <td className="py-3 text-sm text-gray-600">{formatDate(expense.expense_date)}</td>
-                                                    <td className="py-3 text-sm text-gray-600 capitalize">{expense.type}</td>
-                                                    <td className="py-3 text-sm text-gray-600">{expense.description || '—'}</td>
-                                                    <td className="py-3 text-sm font-semibold text-right text-black">{formatCurrency(expense.amount)}</td>
-                                                </tr>
-                                            ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    {/* Mobile cards */}
-                                    <div className="sm:hidden space-y-2">
-                                        {expenses.slice(0, 10).map((expense) => (
-                                            <div key={expense.id} className="p-3 border border-gray-100 rounded-xl">
-                                                <div className="flex items-center justify-between">
-                                                    <span
-                                                        className="text-sm font-semibold text-black capitalize">{expense.type}</span>
-                                                    <span
-                                                        className="text-sm font-bold text-black">{formatCurrency(expense.amount)}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                                                    <span>{formatDate(expense.expense_date)}</span>
-                                                    {expense.description && <span>· {expense.description}</span>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                        )}
 
                         {/* Inventory */}
                         <div className="bg-white rounded-2xl p-6 shadow-sm">

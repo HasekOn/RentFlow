@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react'
 import {useNavigate, useParams} from 'react-router-dom'
+import {useAuth} from '../../contexts/AuthContext'
 import {usersApi} from '../../api/users'
 import {leasesApi} from '../../api/leases'
 import {ratingsApi} from '../../api/ratings'
@@ -13,32 +14,44 @@ import Button from '../../components/ui/Button'
 export default function PersonDetailPage() {
     const {id} = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const [tenant, setTenant] = useState<User | null>(null)
+    const {user: authUser, isLandlord} = useAuth()
+    const [person, setPerson] = useState<User | null>(null)
     const [trustScore, setTrustScore] = useState<TrustScoreData | null>(null)
     const [leases, setLeases] = useState<Lease[]>([])
     const [ratings, setRatings] = useState<Rating[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
+    const personId = Number(id)
+    const isOwnProfile = authUser?.id === personId
+
     useEffect(() => {
         const load = async () => {
             try {
-                const tenantId = Number(id)
+                // Resolve person data
+                let foundPerson: User | null
 
-                const [tenantsRes, trustRes, leasesRes] = await Promise.all([
-                    usersApi.getTenants(),
-                    usersApi.getTrustScore(tenantId).catch(() => null),
-                    leasesApi.getByTenant(tenantId),
-                ])
+                if (isOwnProfile && authUser) {
+                    // Viewing own profile — use auth user directly
+                    foundPerson = authUser
+                } else {
+                    // Landlord viewing someone else — lookup from users list
+                    const usersRes = await usersApi.getTenants()
+                    foundPerson = usersRes.data.find((t: User) => t.id === personId) || null
+                }
 
-                const found = tenantsRes.data.find((t: User) => t.id === tenantId)
-                
-                if (!found) {
-                    navigate('/people')
-
+                if (!foundPerson) {
+                    navigate(isLandlord ? '/people' : '/')
                     return
                 }
 
-                setTenant(found)
+                setPerson(foundPerson)
+
+                // Load trust score + leases in parallel
+                const [trustRes, leasesRes] = await Promise.all([
+                    usersApi.getTrustScore(personId).catch(() => null),
+                    leasesApi.getByTenant(personId),
+                ])
+
                 if (trustRes) setTrustScore(trustRes.data)
                 setLeases(leasesRes.data.data || [])
 
@@ -55,17 +68,17 @@ export default function PersonDetailPage() {
                 }
                 setRatings(allRatings)
             } catch (error) {
-                console.error('Failed to load tenant:', error)
-                navigate('/people')
+                console.error('Failed to load person:', error)
+                navigate(isLandlord ? '/people' : '/')
             } finally {
                 setIsLoading(false)
             }
         }
         void load()
-    }, [id, navigate])
+    }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
     if (isLoading) return <Spinner/>
-    if (!tenant) return null
+    if (!person) return null
 
     const categoryLabel = (cat: string) => {
         switch (cat) {
@@ -82,17 +95,20 @@ export default function PersonDetailPage() {
         }
     }
 
+    const pageTitle = isOwnProfile ? 'My Profile' : 'Tenant Detail'
+    const backPath = isOwnProfile ? '/' : '/people'
+
     return (
         <div>
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
                 <button
-                    onClick={() => navigate('/people')}
+                    onClick={() => navigate(backPath)}
                     className="text-gray-400 hover:text-black transition text-lg"
                 >
                     ←
                 </button>
-                <h1 className="text-4xl font-bold text-black">Tenant Detail</h1>
+                <h1 className="text-2xl sm:text-4xl font-bold text-black">{pageTitle}</h1>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -103,13 +119,13 @@ export default function PersonDetailPage() {
                         <div className="flex items-center gap-5">
                             <div
                                 className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-600">
-                                {tenant.name.charAt(0).toUpperCase()}
+                                {person.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-black">{tenant.name}</h2>
-                                <p className="text-sm text-gray-500">{tenant.email}</p>
+                                <h2 className="text-xl font-bold text-black">{person.name}</h2>
+                                <p className="text-sm text-gray-500">{person.email}</p>
                                 <div className="mt-2">
-                                    <TrustScoreBadge score={tenant.trust_score}/>
+                                    <TrustScoreBadge score={person.trust_score}/>
                                 </div>
                             </div>
                         </div>
@@ -121,23 +137,23 @@ export default function PersonDetailPage() {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <div>
                                 <p className="text-xs text-gray-400">Name</p>
-                                <p className="text-sm text-gray-700 font-semibold">{tenant.name}</p>
+                                <p className="text-sm text-gray-700 font-semibold">{person.name}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Email Address</p>
-                                <p className="text-sm text-gray-700 font-semibold">{tenant.email}</p>
+                                <p className="text-sm text-gray-700 font-semibold">{person.email}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Phone</p>
-                                <p className="text-sm text-gray-700 font-semibold">{tenant.phone || '—'}</p>
+                                <p className="text-sm text-gray-700 font-semibold">{person.phone || '—'}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Role</p>
-                                <p className="text-sm text-gray-700 font-semibold capitalize">{tenant.role}</p>
+                                <p className="text-sm text-gray-700 font-semibold capitalize">{person.role}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Member Since</p>
-                                <p className="text-sm text-gray-700 font-semibold">{formatDate(tenant.created_at)}</p>
+                                <p className="text-sm text-gray-700 font-semibold">{formatDate(person.created_at)}</p>
                             </div>
                         </div>
                     </div>
@@ -173,13 +189,10 @@ export default function PersonDetailPage() {
                                                         <p className="text-sm font-semibold text-black truncate">
                                                             {lease.property?.address || 'Property'}
                                                         </p>
-                                                        <p className="text-xs text-gray-500">
-                                                            {lease.property?.city}
-                                                        </p>
+                                                        <p className="text-xs text-gray-500">{lease.property?.city}</p>
                                                     </div>
                                                     <Badge
-                                                        variant={lease.status === 'active' ? 'green' : lease.status === 'terminated' ? 'red' : 'gray'}
-                                                    >
+                                                        variant={lease.status === 'active' ? 'green' : lease.status === 'terminated' ? 'red' : 'gray'}>
                                                         {lease.status}
                                                     </Badge>
                                                 </div>
@@ -188,8 +201,8 @@ export default function PersonDetailPage() {
                                                         {formatDate(lease.start_date)} → {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
                                                     </p>
                                                     <span className="text-sm font-semibold text-black">
-                                                        {formatCurrency(lease.rent_amount)}
-                                                    </span>
+                            {formatCurrency(lease.rent_amount)}
+                          </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -206,8 +219,6 @@ export default function PersonDetailPage() {
                     {trustScore && (
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-4">Trust Score</h2>
-
-                            {/* Score visual */}
                             <div className="text-center mb-4">
                                 <div
                                     className="inline-flex items-center justify-center w-20 h-20 rounded-full border-4 border-green-200">
@@ -215,8 +226,6 @@ export default function PersonDetailPage() {
                                         className="text-2xl font-bold text-black">{Math.round(trustScore.trust_score)}</span>
                                 </div>
                             </div>
-
-                            {/* Breakdown */}
                             <div className="space-y-3">
                                 <div className="flex justify-between">
                                     <span className="text-sm text-gray-500">Total Payments</span>
@@ -236,8 +245,6 @@ export default function PersonDetailPage() {
                                     <span className="text-sm font-semibold">{trustScore.breakdown.average_rating}</span>
                                 </div>
                             </div>
-
-                            {/* Progress bar */}
                             <div className="mt-4">
                                 <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                                     <div
@@ -264,17 +271,14 @@ export default function PersonDetailPage() {
                                 {ratings.map((rating) => (
                                     <div key={rating.id} className="p-4 border border-gray-100 rounded-xl">
                                         <div className="flex items-center justify-between">
-                                            <p className="text-sm font-semibold text-black">
-                                                {categoryLabel(rating.category)}
-                                            </p>
+                                            <p className="text-sm font-semibold text-black">{categoryLabel(rating.category)}</p>
                                             <div className="flex items-center gap-1">
                                                 <span className="text-sm font-bold text-black">{rating.score}</span>
                                                 <span className="text-yellow-500">★</span>
                                             </div>
                                         </div>
-                                        {rating.comment && (
-                                            <p className="text-xs text-gray-500 mt-2">{rating.comment}</p>
-                                        )}
+                                        {rating.comment &&
+                                            <p className="text-xs text-gray-500 mt-2">{rating.comment}</p>}
                                         {rating.rated_by && (
                                             <p className="text-xs text-gray-400 mt-1">
                                                 by {rating.rated_by.name} · {formatDate(rating.created_at)}
@@ -290,18 +294,15 @@ export default function PersonDetailPage() {
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <h2 className="text-lg font-bold text-black mb-3">Quick Actions</h2>
                         <div className="space-y-2">
-                            <Button
-                                variant="secondary"
-                                className="w-full"
-                                onClick={() => navigate('/leases')}
-                            >
+                            {isOwnProfile && (
+                                <Button variant="secondary" className="w-full" onClick={() => navigate('/settings')}>
+                                    Edit Profile
+                                </Button>
+                            )}
+                            <Button variant="secondary" className="w-full" onClick={() => navigate('/leases')}>
                                 View Leases
                             </Button>
-                            <Button
-                                variant="secondary"
-                                className="w-full"
-                                onClick={() => navigate('/payments')}
-                            >
+                            <Button variant="secondary" className="w-full" onClick={() => navigate('/payments')}>
                                 View Payments
                             </Button>
                         </div>

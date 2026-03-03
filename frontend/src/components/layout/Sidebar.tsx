@@ -1,14 +1,14 @@
-import {NavLink, useLocation} from 'react-router-dom'
+import {NavLink, useLocation, useNavigate} from 'react-router-dom'
 import {useAuth} from '../../contexts/AuthContext'
 
-const menuItems = [
-    {label: 'Overview', path: '/', icon: '📊'},
-    {label: 'Portfolio', path: '/properties', icon: '🏠'},
-    {label: 'Leases', path: '/leases', icon: '📋'},
-    {label: 'Payments', path: '/payments', icon: '💰'},
-    {label: 'Helpdesk', path: '/tickets', icon: '🎫'},
-    {label: 'People', path: '/people', icon: '👥'},
-    {label: 'Documents', path: '/documents', icon: '📄'},
+const allMenuItems = [
+    {label: 'Overview', path: '/', icon: '📊', roles: ['landlord', 'tenant', 'manager']},
+    {label: 'Portfolio', path: '/properties', icon: '🏠', roles: ['landlord', 'tenant', 'manager']},
+    {label: 'Leases', path: '/leases', icon: '📋', roles: ['landlord', 'tenant', 'manager']},
+    {label: 'Payments', path: '/payments', icon: '💰', roles: ['landlord', 'tenant', 'manager']},
+    {label: 'Helpdesk', path: '/tickets', icon: '🎫', roles: ['landlord', 'tenant', 'manager']},
+    {label: 'People', path: '/people', icon: '👥', roles: ['landlord']},
+    {label: 'Documents', path: '/documents', icon: '📄', roles: ['landlord', 'tenant', 'manager']},
 ]
 
 const supportItems = [
@@ -22,10 +22,15 @@ interface Props {
 
 export default function Sidebar({isOpen, onClose}: Props) {
     const {user, logout} = useAuth()
-    useLocation();
+    const navigate = useNavigate()
+    useLocation()
+
     const handleNavClick = () => {
         onClose()
     }
+
+    const userRole = user?.role || 'tenant'
+    const menuItems = allMenuItems.filter((item) => item.roles.includes(userRole))
 
     return (
         <>
@@ -99,17 +104,25 @@ export default function Sidebar({isOpen, onClose}: Props) {
                     </div>
                 </nav>
 
-                {/* User */}
+                {/* User — clickable to Settings */}
                 {user && (
                     <div className="px-4 py-4 border-t border-gray-100">
                         <div className="flex items-center gap-3">
                             <div
-                                className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
-                                {user.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-black truncate">{user.name}</p>
-                                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                onClick={() => {
+                                    navigate('/people/' + user.id);
+                                    handleNavClick()
+                                }}
+                                className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition"
+                            >
+                                <div
+                                    className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                                    {user.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-black truncate">{user.name}</p>
+                                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                </div>
                             </div>
                             <button
                                 onClick={() => {

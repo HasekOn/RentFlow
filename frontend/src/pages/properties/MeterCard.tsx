@@ -5,6 +5,7 @@ import type {Meter} from '../../types'
 import {formatDate} from '../../utils/format'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import {useAuth} from '../../contexts/AuthContext'
 
 const meterIcons: Record<string, string> = {
     water: '💧',
@@ -31,6 +32,7 @@ export default function MeterCard({meter, onUpdate}: Props) {
     const [readingDate, setReadingDate] = useState(new Date().toISOString().split('T')[0])
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState('')
+    const {isLandlord, isManager} = useAuth()
 
     const handleSubmit = async (e: React.FormEvent) => {
         setError('')
@@ -115,7 +117,7 @@ export default function MeterCard({meter, onUpdate}: Props) {
                         </Button>
                     </div>
                 </form>
-            ) : (
+            ) : (isLandlord || isManager) ? (
                 <Button
                     variant="primary"
                     size="sm"
@@ -124,7 +126,7 @@ export default function MeterCard({meter, onUpdate}: Props) {
                 >
                     Log Reading
                 </Button>
-            )}
+            ) : null}
         </div>
     )
 }

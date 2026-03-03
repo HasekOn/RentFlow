@@ -10,6 +10,7 @@ export default function RegisterPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [passwordConfirmation, setPasswordConfirmation] = useState('')
+    const [role, setRole] = useState('landlord')
     const [error, setError] = useState('')
     const [errors, setErrors] = useState<Record<string, string[]>>({})
     const [isLoading, setIsLoading] = useState(false)
@@ -23,7 +24,7 @@ export default function RegisterPage() {
         setIsLoading(true)
 
         try {
-            await register(name, email, password, passwordConfirmation)
+            await register(name, email, password, passwordConfirmation, role)
             navigate('/')
         } catch (err) {
             const axiosError = err as AxiosError<ApiError>
@@ -47,7 +48,7 @@ export default function RegisterPage() {
                     <p className="mt-2 text-gray-500">Create your account</p>
                 </div>
 
-                <div className="bg-white rounded-2xl p-8 shadow-sm">
+                <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm">
                     {error && !Object.keys(errors).length && (
                         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
                             {error}
@@ -55,6 +56,39 @@ export default function RegisterPage() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-5">
+                        {/* Role Selector */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">I want to</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setRole('landlord')}
+                                    className={`p-3 rounded-xl border-2 text-center transition ${
+                                        role === 'landlord'
+                                            ? 'border-black bg-gray-50'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <span className="text-lg">🏠</span>
+                                    <p className="text-sm font-semibold mt-1">Manage properties</p>
+                                    <p className="text-xs text-gray-500">I'm a landlord</p>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setRole('tenant')}
+                                    className={`p-3 rounded-xl border-2 text-center transition ${
+                                        role === 'tenant'
+                                            ? 'border-black bg-gray-50'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <span className="text-lg">🔑</span>
+                                    <p className="text-sm font-semibold mt-1">Rent a place</p>
+                                    <p className="text-xs text-gray-500">I'm a tenant</p>
+                                </button>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
                             <input

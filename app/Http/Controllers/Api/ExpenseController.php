@@ -20,10 +20,19 @@ class ExpenseController extends Controller
     {
         $this->authorize('viewAny', Expense::class);
 
-        $query = Expense::query()->whereIn(
-            'property_id',
-            $request->user()->ownedProperties()->pluck('id')
-        )->with('property');
+        $user = $request->user();
+
+        if ($user->role === 'landlord') {
+            $propertyIds = $user->ownedProperties()->pluck('id');
+        } else {
+            $propertyIds = $user->leases()
+                ->where('status', 'active')
+                ->pluck('property_id');
+        }
+
+        $query = Expense::query()
+            ->whereIn('property_id', $propertyIds)
+            ->with('property');
 
         $this->applyFilters(
             $query,

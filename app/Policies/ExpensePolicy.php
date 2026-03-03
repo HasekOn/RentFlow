@@ -9,44 +9,46 @@ class ExpensePolicy
 {
     /**
      * Can user see list of expenses?
-     * Only landlords — tenants and managers don't see finances
+     * All authenticated users — filtered in controller by ownership/lease
      */
     public function viewAny(User $user): bool
     {
-        return $user->role === 'landlord';
+        return true;
     }
 
     /**
      * Can user see this expense?
-     * Only landlord who owns the property
+     * Landlord who owns the property OR tenant with active lease
      */
     public function view(User $user, Expense $expense): bool
     {
-        return $expense->property && $expense->property->landlord_id === $user->id;
+        if (! $expense->property) {
+            return false;
+        }
+
+        if ($expense->property->landlord_id === $user->id) {
+            return true;
+        }
+
+        return $user->leases()
+            ->where('property_id', $expense->property_id)
+            ->where('status', 'active')
+            ->exists();
     }
 
     /**
-     * Can user create expenses?
-     * Only landlords
+     * Can user create expenses? Only landlords
      */
     public function create(User $user): bool
     {
         return $user->role === 'landlord';
     }
 
-    /**
-     * Can user delete this expense?
-     * Only landlord who owns the property
-     */
     public function delete(User $user, Expense $expense): bool
     {
         return $this->update($user, $expense);
     }
 
-    /**
-     * Can user update this expense?
-     * Only landlord who owns the property
-     */
     public function update(User $user, Expense $expense): bool
     {
         return $expense->property && $expense->property->landlord_id === $user->id;

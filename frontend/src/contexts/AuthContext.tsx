@@ -8,7 +8,7 @@ interface AuthContextType {
     token: string | null
     isLoading: boolean
     login: (email: string, password: string) => Promise<void>
-    register: (name: string, email: string, password: string, passwordConfirmation: string) => Promise<void>
+    register: (name: string, email: string, password: string, passwordConfirmation: string, role?: string) => Promise<void>
     logout: () => Promise<void>
     isLandlord: boolean
     isTenant: boolean
@@ -49,12 +49,13 @@ export function AuthProvider({children}: { children: ReactNode }) {
         localStorage.setItem('user', JSON.stringify(userData))
     }
 
-    const register = async (name: string, email: string, password: string, passwordConfirmation: string) => {
+    const register = async (name: string, email: string, password: string, passwordConfirmation: string, role?: string) => {
         const res = await authApi.register({
             name,
             email,
             password,
             password_confirmation: passwordConfirmation,
+            role: role || 'tenant',
         })
         const {user: userData, token: newToken} = res.data
         setUser(userData)

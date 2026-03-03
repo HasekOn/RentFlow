@@ -42,7 +42,7 @@ const statusLabel = (status: string) => {
 export default function TicketDetailPage() {
     const {id} = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const {user, isLandlord} = useAuth()
+    const {user, isLandlord, isManager} = useAuth()
     const [ticket, setTicket] = useState<Ticket | null>(null)
     const [comments, setComments] = useState<TicketComment[]>([])
     const [newComment, setNewComment] = useState('')
@@ -253,7 +253,7 @@ export default function TicketDetailPage() {
                     </div>
 
                     {/* Actions — landlord only */}
-                    {isLandlord && ticket.status !== 'resolved' && ticket.status !== 'rejected' && (
+                    {(isLandlord || isManager) && ticket.status !== 'resolved' && ticket.status !== 'rejected' && (
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Actions</h2>
                             <div className="space-y-2">

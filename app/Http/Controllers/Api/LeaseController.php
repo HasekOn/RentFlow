@@ -33,7 +33,7 @@ class LeaseController extends Controller
                 $user->ownedProperties()->pluck('id')
             )->with(['property.images', 'tenant']);
         } else {
-            $query = $user->leases()->with('property')->getQuery();
+            $query = $user->leases()->with(['property.images', 'tenant'])->getQuery();
         }
 
         $this->applyFilters(
