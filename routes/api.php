@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\MeterController;
 use App\Http\Controllers\Api\MeterReadingController;
 use App\Http\Controllers\Api\NoticeController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\PropertyImageController;
 use App\Http\Controllers\Api\RatingController;
@@ -90,6 +91,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         return response()->json($query->get(['id', 'name', 'email', 'role', 'phone', 'trust_score', 'created_at']));
     });
+
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    Route::put('/profile/password', [ProfileController::class, 'changePassword']);
 
     // Landlord-only routes
     Route::middleware('role:landlord')->group(function () {
