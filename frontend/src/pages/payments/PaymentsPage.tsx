@@ -1,3 +1,4 @@
+import * as React from 'react'
 import {useCallback, useEffect, useRef, useState} from 'react'
 import {paymentsApi} from '../../api/payments'
 import type {PaginatedResponse, Payment} from '../../types'
@@ -100,15 +101,14 @@ export default function PaymentsPage() {
         }
     }
 
-    // Stats
     const totalUnpaid = payments.filter((p) => p.status === 'unpaid').length
     const totalOverdue = payments.filter((p) => p.status === 'overdue').length
 
     return (
         <div>
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold text-black">Payments</h1>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <h1 className="text-2xl sm:text-4xl font-bold text-black">Payments</h1>
                 {isLandlord && (
                     <div className="flex items-center gap-2">
                         <input
@@ -123,7 +123,7 @@ export default function PaymentsPage() {
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isImporting}
                         >
-                            {isImporting ? 'Importing...' : '📥 Import CSV'}
+                            {isImporting ? 'Importing...' : '📥 CSV'}
                         </Button>
                         <Button onClick={() => setShowCreateModal(true)}>
                             + Add Payment
@@ -149,7 +149,7 @@ export default function PaymentsPage() {
 
             {/* Quick stats */}
             {(totalUnpaid > 0 || totalOverdue > 0) && (
-                <div className="flex gap-4 mt-4">
+                <div className="flex gap-3 mt-4 flex-wrap">
                     {totalUnpaid > 0 && (
                         <div
                             className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-2 text-sm text-yellow-700">
@@ -166,33 +166,36 @@ export default function PaymentsPage() {
 
             {/* Table */}
             <div className="bg-white rounded-2xl shadow-sm mt-6">
-                <div className="p-4 border-b border-gray-100 flex items-center gap-4 flex-wrap">
+                <div
+                    className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                         <span className="font-semibold text-black">Payments</span>
                         <span>Total {meta?.total || 0}</span>
                     </div>
                     <div className="flex-1"/>
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                    >
-                        <option value="">All Status</option>
-                        <option value="paid">Paid</option>
-                        <option value="unpaid">Unpaid</option>
-                        <option value="overdue">Overdue</option>
-                    </select>
-                    <select
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                    >
-                        <option value="">All Types</option>
-                        <option value="rent">Rent</option>
-                        <option value="utilities">Utilities</option>
-                        <option value="deposit">Deposit</option>
-                        <option value="other">Other</option>
-                    </select>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                        >
+                            <option value="">All Status</option>
+                            <option value="paid">Paid</option>
+                            <option value="unpaid">Unpaid</option>
+                            <option value="overdue">Overdue</option>
+                        </select>
+                        <select
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                        >
+                            <option value="">All Types</option>
+                            <option value="rent">Rent</option>
+                            <option value="utilities">Utilities</option>
+                            <option value="deposit">Deposit</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
                 </div>
 
                 {isLoading ? (
@@ -204,53 +207,36 @@ export default function PaymentsPage() {
                     />
                 ) : (
                     <>
-                        <table className="w-full">
-                            <thead>
-                            <tr className="border-b border-gray-100">
-                                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Tenant
-                                    / Property
-                                </th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Type</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Amount</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Due
-                                    Date
-                                </th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Paid
-                                    Date
-                                </th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Status</th>
-                                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Action</th>
-                            </tr>
-                            </thead>
-                            <tbody>
+                        {/* ── Mobile Cards ── */}
+                        <div className="lg:hidden divide-y divide-gray-50">
                             {payments.map((payment) => (
-                                <tr key={payment.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                                    <td className="px-6 py-4">
-                                        <p className="text-sm font-semibold text-black">
-                                            {payment.lease?.tenant?.name || '—'}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {payment.lease?.property?.address || '—'}
-                                        </p>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <span className="text-sm text-gray-600 capitalize">{payment.type}</span>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <span
-                                            className="text-sm font-semibold text-black">{formatCurrency(payment.amount)}</span>
-                                    </td>
-                                    <td className="px-4 py-4 text-sm text-gray-600">
-                                        {formatDate(payment.due_date)}
-                                    </td>
-                                    <td className="px-4 py-4 text-sm text-gray-600">
-                                        {payment.paid_date ? formatDate(payment.paid_date) : '—'}
-                                    </td>
-                                    <td className="px-4 py-4">
+                                <div key={payment.id} className="p-4 hover:bg-gray-50/50 transition">
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-black">
+                                                {payment.lease?.tenant?.name || '—'}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {payment.lease?.property?.address || '—'}
+                                            </p>
+                                        </div>
                                         <Badge variant={statusVariant(payment.status)}>{payment.status}</Badge>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center justify-end gap-2">
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+                                        <span className="capitalize">{payment.type}</span>
+                                        <span>·</span>
+                                        <span>Due {formatDate(payment.due_date)}</span>
+                                        {payment.paid_date && (
+                                            <>
+                                                <span>·</span>
+                                                <span>Paid {formatDate(payment.paid_date)}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span
+                                            className="text-sm font-bold text-black">{formatCurrency(payment.amount)}</span>
+                                        <div className="flex items-center gap-2">
                                             {isLandlord && payment.status !== 'paid' && (
                                                 <Button
                                                     variant="success"
@@ -270,11 +256,86 @@ export default function PaymentsPage() {
                                                 </Button>
                                             )}
                                         </div>
-                                    </td>
-                                </tr>
+                                    </div>
+                                </div>
                             ))}
-                            </tbody>
-                        </table>
+                        </div>
+
+                        {/* ── Desktop Table ── */}
+                        <div className="hidden lg:block">
+                            <table className="w-full">
+                                <thead>
+                                <tr className="border-b border-gray-100">
+                                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Tenant
+                                        / Property
+                                    </th>
+                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Type</th>
+                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Amount</th>
+                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Due
+                                        Date
+                                    </th>
+                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Paid
+                                        Date
+                                    </th>
+                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Status</th>
+                                    <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Action</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {payments.map((payment) => (
+                                    <tr key={payment.id}
+                                        className="border-b border-gray-50 hover:bg-gray-50/50 transition">
+                                        <td className="px-6 py-4">
+                                            <p className="text-sm font-semibold text-black">
+                                                {payment.lease?.tenant?.name || '—'}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {payment.lease?.property?.address || '—'}
+                                            </p>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <span className="text-sm text-gray-600 capitalize">{payment.type}</span>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <span
+                                                className="text-sm font-semibold text-black">{formatCurrency(payment.amount)}</span>
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-gray-600">
+                                            {formatDate(payment.due_date)}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-gray-600">
+                                            {payment.paid_date ? formatDate(payment.paid_date) : '—'}
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <Badge variant={statusVariant(payment.status)}>{payment.status}</Badge>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center justify-end gap-2">
+                                                {isLandlord && payment.status !== 'paid' && (
+                                                    <Button
+                                                        variant="success"
+                                                        size="sm"
+                                                        onClick={() => handleMarkPaid(payment.id)}
+                                                    >
+                                                        Mark Paid
+                                                    </Button>
+                                                )}
+                                                {isLandlord && (
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        onClick={() => handleDelete(payment.id)}
+                                                    >
+                                                        Delete
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
 
                         {meta && (
                             <Pagination
@@ -289,7 +350,6 @@ export default function PaymentsPage() {
                 )}
             </div>
 
-            {/* Create Modal */}
             <CreatePaymentModal
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}

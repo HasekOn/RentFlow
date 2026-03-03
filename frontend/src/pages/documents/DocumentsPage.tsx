@@ -40,7 +40,6 @@ export default function DocumentsPage() {
     const [isLoadingDocs, setIsLoadingDocs] = useState(false)
     const [showUploadModal, setShowUploadModal] = useState(false)
 
-    // Load properties
     useEffect(() => {
         const load = async () => {
             try {
@@ -59,7 +58,6 @@ export default function DocumentsPage() {
         void load()
     }, [])
 
-    // Load documents when property changes
     useEffect(() => {
         if (!selectedPropertyId) return
         const loadDocs = async () => {
@@ -118,21 +116,21 @@ export default function DocumentsPage() {
         <div>
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h1 className="text-4xl font-bold text-black">Documents</h1>
+                <h1 className="text-2xl sm:text-4xl font-bold text-black">Documents</h1>
                 {isLandlord && selectedPropertyId && (
                     <Button onClick={() => setShowUploadModal(true)}>
-                        + Upload File
+                        + Upload
                     </Button>
                 )}
             </div>
 
             {/* Property selector */}
-            <div className="mt-6 flex items-center gap-3 flex-wrap">
+            <div className="mt-6 flex items-center gap-2 flex-wrap">
                 {properties.map((property) => (
                     <button
                         key={property.id}
                         onClick={() => setSelectedPropertyId(property.id)}
-                        className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+                        className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition ${
                             selectedPropertyId === property.id
                                 ? 'bg-black text-white'
                                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -145,11 +143,11 @@ export default function DocumentsPage() {
 
             {/* Documents list */}
             <div className="bg-white rounded-2xl shadow-sm mt-6">
-                <div className="p-4 border-b border-gray-100 flex items-center gap-2 text-sm text-gray-500">
+                <div className="p-4 border-b border-gray-100 flex items-center gap-2 text-sm text-gray-500 flex-wrap">
                     <span className="font-semibold text-black">Files</span>
                     <span>Total {documents.length}</span>
                     {selectedProperty && (
-                        <span className="text-gray-400">· {selectedProperty.address}</span>
+                        <span className="text-gray-400 hidden sm:inline">· {selectedProperty.address}</span>
                     )}
                 </div>
 
@@ -166,52 +164,61 @@ export default function DocumentsPage() {
                 ) : (
                     <div className="divide-y divide-gray-50">
                         {documents.map((doc) => (
-                            <div key={doc.id}
-                                 className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/50 transition">
-                                <span className="text-2xl">{fileIcon(doc.name)}</span>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-black truncate">{doc.name}</p>
-                                    <div className="flex items-center gap-3 mt-0.5">
-                                        {(doc as any).document_type && (
-                                            <span
-                                                className="text-xs text-gray-500 capitalize">{(doc as any).document_type}</span>
-                                        )}
-                                        {doc.description && (
-                                            <span className="text-xs text-gray-400">{doc.description}</span>
-                                        )}
-                                        <span className="text-xs text-gray-400">
-                      Uploaded {formatDate(doc.created_at)}
-                    </span>
-                                        {doc.valid_until && (
+                            <div key={doc.id} className="p-4 sm:px-6 sm:py-4 hover:bg-gray-50/50 transition">
+                                {/* Mobile layout */}
+                                <div className="flex items-start gap-3">
+                                    <span className="text-2xl mt-0.5">{fileIcon(doc.name)}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-black truncate">{doc.name}</p>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                                            {(doc as any).document_type && (
+                                                <span
+                                                    className="text-xs text-gray-500 capitalize">{(doc as any).document_type}</span>
+                                            )}
+                                            {doc.description && (
+                                                <span
+                                                    className="text-xs text-gray-400 hidden sm:inline">{doc.description}</span>
+                                            )}
                                             <span className="text-xs text-gray-400">
-                        Valid until {formatDate(doc.valid_until)}
+                        {formatDate(doc.created_at)}
                       </span>
+                                            {doc.valid_until && (
+                                                <span className="text-xs text-gray-400">
+                          Until {formatDate(doc.valid_until)}
+                        </span>
+                                            )}
+                                        </div>
+                                        {/* Mobile buttons */}
+                                        <div className="flex items-center gap-2 mt-2 sm:hidden">
+                                            <Button variant="success" size="sm" onClick={() => handleDownload(doc)}>
+                                                Download
+                                            </Button>
+                                            {isLandlord && (
+                                                <Button variant="secondary" size="sm"
+                                                        onClick={() => handleDelete(doc.id)}>
+                                                    Delete
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {/* Desktop buttons */}
+                                    <div className="hidden sm:flex items-center gap-2 shrink-0">
+                                        <Button variant="success" size="sm" onClick={() => handleDownload(doc)}>
+                                            Download
+                                        </Button>
+                                        {isLandlord && (
+                                            <Button variant="secondary" size="sm" onClick={() => handleDelete(doc.id)}>
+                                                Delete
+                                            </Button>
                                         )}
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="success"
-                                        size="sm"
-                                        onClick={() => handleDownload(doc)}
-                                    >
-                                        Download
-                                    </Button>
-                                    {isLandlord && (
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => handleDelete(doc.id)}
-                                        >
-                                            Delete
-                                        </Button>
-                                    )}
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
             {selectedPropertyId && (
                 <UploadDocumentModal
                     isOpen={showUploadModal}

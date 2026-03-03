@@ -153,36 +153,43 @@ export default function PersonDetailPage() {
                                     <div
                                         key={lease.id}
                                         onClick={() => navigate('/leases/' + lease.id)}
-                                        className="flex items-center gap-4 p-4 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition"
+                                        className="p-4 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition"
                                     >
-                                        {lease.property?.images?.[0] ? (
-                                            <img
-                                                src={lease.property.images[0].image_url}
-                                                alt=""
-                                                className="w-12 h-12 rounded-lg object-cover shrink-0"
-                                            />
-                                        ) : (
-                                            <div className="w-12 h-12 rounded-lg bg-gray-100 shrink-0"/>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-black">
-                                                {lease.property?.address || 'Property'}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                {lease.property?.city}
-                                            </p>
-                                            <p className="text-xs text-gray-400 mt-0.5">
-                                                {formatDate(lease.start_date)} — {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-black">
-                        {formatCurrency(lease.rent_amount)}
-                      </span>
-                                            <Badge
-                                                variant={lease.status === 'active' ? 'green' : lease.status === 'terminated' ? 'red' : 'gray'}>
-                                                {lease.status}
-                                            </Badge>
+                                        <div className="flex items-start gap-3">
+                                            {lease.property?.images?.[0] ? (
+                                                <img
+                                                    src={lease.property.images[0].image_url}
+                                                    alt=""
+                                                    className="w-12 h-12 rounded-lg object-cover shrink-0"
+                                                />
+                                            ) : (
+                                                <div className="w-12 h-12 rounded-lg bg-gray-100 shrink-0"/>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-semibold text-black truncate">
+                                                            {lease.property?.address || 'Property'}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">
+                                                            {lease.property?.city}
+                                                        </p>
+                                                    </div>
+                                                    <Badge
+                                                        variant={lease.status === 'active' ? 'green' : lease.status === 'terminated' ? 'red' : 'gray'}
+                                                    >
+                                                        {lease.status}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center justify-between mt-2">
+                                                    <p className="text-xs text-gray-400">
+                                                        {formatDate(lease.start_date)} → {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
+                                                    </p>
+                                                    <span className="text-sm font-semibold text-black">
+                                                        {formatCurrency(lease.rent_amount)}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

@@ -221,7 +221,7 @@ export default function PropertyDetailPage() {
                         {/* Gallery */}
                         {images.length > 0 && (
                             <div className="bg-white rounded-2xl p-4 shadow-sm">
-                                <div className="grid grid-cols-4 grid-rows-2 gap-2 h-80">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 grid-rows-2 gap-2 h-60 sm:h-80">
                                     <div
                                         className={`${images.length === 1 ? 'col-span-4 row-span-2' : 'col-span-2 row-span-2'} cursor-pointer overflow-hidden rounded-xl`}
                                         onClick={() => setLightboxIndex(0)}
