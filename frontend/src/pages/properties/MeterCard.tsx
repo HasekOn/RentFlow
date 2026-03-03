@@ -22,31 +22,37 @@ const meterUnits: Record<string, string> = {
 
 interface Props {
     meter: Meter
-    propertyId: number
     onUpdate: () => void
 }
 
-export default function MeterCard({meter, propertyId, onUpdate}: Props) {
+export default function MeterCard({meter, onUpdate}: Props) {
     const [showForm, setShowForm] = useState(false)
     const [readingValue, setReadingValue] = useState('')
     const [readingDate, setReadingDate] = useState(new Date().toISOString().split('T')[0])
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState('')
 
     const handleSubmit = async (e: React.FormEvent) => {
+        setError('')
+
         e.preventDefault()
-        if (!readingValue) return
+
+        if (!readingValue) {
+            return
+        }
+
         setIsSubmitting(true)
 
         try {
-            await metersApi.addReading(propertyId, meter.id, {
+            await metersApi.addReading(meter.id, {
                 reading_value: Number(readingValue),
                 reading_date: readingDate,
             })
             setReadingValue('')
             setShowForm(false)
             onUpdate()
-        } catch (error) {
-            console.error('Failed to add reading:', error)
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Failed to add reading')
         } finally {
             setIsSubmitting(false)
         }
@@ -93,6 +99,7 @@ export default function MeterCard({meter, propertyId, onUpdate}: Props) {
                         placeholder={`Value (${unit})`}
                         required
                     />
+                    {error && <p className="text-xs text-red-600">{error}</p>}
                     <Input
                         type="date"
                         value={readingDate}

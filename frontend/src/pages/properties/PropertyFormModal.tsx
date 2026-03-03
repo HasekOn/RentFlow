@@ -1,6 +1,7 @@
-import {useState} from 'react'
+import * as React from 'react'
+import {useEffect, useState} from 'react'
 import {propertiesApi} from '../../api/properties'
-import type {ApiError} from '../../types'
+import type {ApiError, Property} from '../../types'
 import {AxiosError} from 'axios'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
@@ -11,9 +12,10 @@ interface Props {
     isOpen: boolean
     onClose: () => void
     onSuccess: () => void
+    property?: Property | null
 }
 
-export default function PropertyFormModal({isOpen, onClose, onSuccess}: Props) {
+export default function PropertyFormModal({isOpen, onClose, onSuccess, property}: Props) {
     const [formData, setFormData] = useState({
         address: '',
         city: '',
@@ -25,6 +27,28 @@ export default function PropertyFormModal({isOpen, onClose, onSuccess}: Props) {
         purchase_price: '',
         description: '',
     })
+
+    useEffect(() => {
+        if (property) {
+            setFormData({
+                address: property.address || '',
+                city: property.city || '',
+                zip_code: property.zip_code || '',
+                floor: property.floor?.toString() || '',
+                disposition: property.disposition || '',
+                size: property.size?.toString() || '',
+                status: property.status || 'available',
+                description: property.description || '',
+                purchase_price: property.purchase_price?.toString() || '',
+            })
+        } else {
+            setFormData({
+                address: '', city: '', zip_code: '', floor: '', disposition: '',
+                size: '', status: 'available', description: '', purchase_price: '',
+            })
+        }
+    }, [property, isOpen])
+
     const [errors, setErrors] = useState<Record<string, string[]>>({})
     const [isLoading, setIsLoading] = useState(false)
 
@@ -38,17 +62,18 @@ export default function PropertyFormModal({isOpen, onClose, onSuccess}: Props) {
         setIsLoading(true)
 
         try {
-            await propertiesApi.create({
-                address: formData.address,
-                city: formData.city || undefined,
-                zip_code: formData.zip_code || undefined,
+            const submitData = {
+                ...formData,
                 size: formData.size ? Number(formData.size) : undefined,
-                disposition: formData.disposition || undefined,
                 floor: formData.floor ? Number(formData.floor) : undefined,
-                status: formData.status,
                 purchase_price: formData.purchase_price ? Number(formData.purchase_price) : undefined,
-                description: formData.description || undefined,
-            })
+            }
+
+            if (property) {
+                await propertiesApi.update(property.id, submitData)
+            } else {
+                await propertiesApi.create(submitData)
+            }
             setFormData({
                 address: '',
                 city: '',
@@ -70,7 +95,7 @@ export default function PropertyFormModal({isOpen, onClose, onSuccess}: Props) {
     }
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add Property" size="lg">
+        <Modal isOpen={isOpen} onClose={onClose} title={property ? 'Edit Property' : 'Add Property'} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
                     label="Address"
@@ -169,7 +194,7 @@ export default function PropertyFormModal({isOpen, onClose, onSuccess}: Props) {
                 <div className="flex justify-end gap-3 pt-2">
                     <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
                     <Button type="submit" disabled={isLoading}>
-                        {isLoading ? 'Creating...' : 'Create Property'}
+                        {isLoading ? 'Saving...' : property ? 'Save Changes' : 'Create Property'}
                     </Button>
                 </div>
             </form>

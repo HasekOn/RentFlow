@@ -120,6 +120,25 @@ export default function PaymentsPage() {
                         />
                         <Button
                             variant="secondary"
+                            onClick={() => {
+                                const BOM = '\uFEFF'
+                                const csv = BOM +
+                                    'variable_symbol;amount;date;note\r\n' +
+                                    '1234567890;15000;2025-03-01;Rent March\r\n' +
+                                    '1234567890;2500;2025-03-01;Utilities March\r\n'
+                                const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'})
+                                const url = window.URL.createObjectURL(blob)
+                                const link = document.createElement('a')
+                                link.href = url
+                                link.download = 'payment_import_template.csv'
+                                link.click()
+                                window.URL.revokeObjectURL(url)
+                            }}
+                        >
+                            📋 Template
+                        </Button>
+                        <Button
+                            variant="secondary"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isImporting}
                         >

@@ -7,6 +7,8 @@ import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
+import Modal from '../../components/ui/Modal'
+import Input from '../../components/ui/Input'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -29,6 +31,7 @@ export default function LeaseDetailPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isDownloading, setIsDownloading] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
 
     const loadLease = async () => {
         try {
@@ -96,19 +99,21 @@ export default function LeaseDetailPage() {
     return (
         <div>
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => navigate('/leases')}
-                        className="text-gray-400 hover:text-black transition text-lg"
-                    >
-                        ←
+                    <button onClick={() => navigate('/leases')}
+                            className="text-gray-400 hover:text-black transition text-lg">←
                     </button>
-                    <h1 className="text-4xl font-bold text-black">Lease Detail</h1>
+                    <h1 className="text-2xl sm:text-4xl font-bold text-black">Lease Detail</h1>
                 </div>
                 <div className="flex items-center gap-2">
+                    {isLandlord && lease.status === 'active' && (
+                        <Button variant="secondary" onClick={() => setShowEditModal(true)}>
+                            ✏️ Edit
+                        </Button>
+                    )}
                     <Button variant="secondary" onClick={handleDownloadPdf} disabled={isDownloading}>
-                        {isDownloading ? 'Generating...' : '📄 Download PDF'}
+                        {isDownloading ? 'Generating...' : '📄 PDF'}
                     </Button>
                 </div>
             </div>
@@ -167,43 +172,61 @@ export default function LeaseDetailPage() {
                         </div>
                     </div>
 
-                    {/* Payments summary */}
+                    {/* Payments */}
                     {lease.payments && lease.payments.length > 0 && (
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
-                            <h2 className="text-lg font-bold text-black mb-4">
-                                Payments ({lease.payments.length})
-                            </h2>
-                            <table className="w-full">
-                                <thead>
-                                <tr className="border-b border-gray-100">
-                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Due
-                                        Date
-                                    </th>
-                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Amount</th>
-                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Status</th>
-                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Paid
-                                        Date
-                                    </th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                            <h2 className="text-lg font-bold text-black mb-4">Payments ({lease.payments.length})</h2>
+                            {/* Desktop */}
+                            <div className="hidden sm:block">
+                                <table className="w-full">
+                                    <thead>
+                                    <tr className="border-b border-gray-100">
+                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Due
+                                            Date
+                                        </th>
+                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Amount</th>
+                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Status</th>
+                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Paid
+                                            Date
+                                        </th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {lease.payments.map((payment) => (
+                                        <tr key={payment.id} className="border-b border-gray-50">
+                                            <td className="py-3 text-sm text-gray-600">{formatDate(payment.due_date)}</td>
+                                            <td className="py-3 text-sm text-gray-600">{formatCurrency(payment.amount)}</td>
+                                            <td className="py-3">
+                                                <Badge
+                                                    variant={payment.status === 'paid' ? 'green' : payment.status === 'overdue' ? 'red' : 'yellow'}>
+                                                    {payment.status}
+                                                </Badge>
+                                            </td>
+                                            <td className="py-3 text-sm text-gray-600">{payment.paid_date ? formatDate(payment.paid_date) : '—'}</td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* Mobile */}
+                            <div className="sm:hidden space-y-2">
                                 {lease.payments.map((payment) => (
-                                    <tr key={payment.id} className="border-b border-gray-50">
-                                        <td className="py-3 text-sm text-gray-600">{formatDate(payment.due_date)}</td>
-                                        <td className="py-3 text-sm text-gray-600">{formatCurrency(payment.amount)}</td>
-                                        <td className="py-3">
+                                    <div key={payment.id} className="p-3 border border-gray-100 rounded-xl">
+                                        <div className="flex items-center justify-between">
+                                            <span
+                                                className="text-sm font-semibold text-black">{formatCurrency(payment.amount)}</span>
                                             <Badge
                                                 variant={payment.status === 'paid' ? 'green' : payment.status === 'overdue' ? 'red' : 'yellow'}>
                                                 {payment.status}
                                             </Badge>
-                                        </td>
-                                        <td className="py-3 text-sm text-gray-600">
-                                            {payment.paid_date ? formatDate(payment.paid_date) : '—'}
-                                        </td>
-                                    </tr>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                            <span>Due {formatDate(payment.due_date)}</span>
+                                            {payment.paid_date && <span>· Paid {formatDate(payment.paid_date)}</span>}
+                                        </div>
+                                    </div>
                                 ))}
-                                </tbody>
-                            </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -221,16 +244,14 @@ export default function LeaseDetailPage() {
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Monthly total</span>
                                 <span className="text-sm font-semibold">
-                  {formatCurrency(
-                      Number(lease.rent_amount) + Number(lease.utility_advances || 0)
-                  )}
+                  {formatCurrency(Number(lease.rent_amount) + Number(lease.utility_advances || 0))}
                 </span>
                             </div>
                             {daysLeft !== null && (
                                 <div className="flex justify-between">
                                     <span className="text-sm text-gray-500">Expires in</span>
                                     <span
-                                        className={`text-sm font-semibold ${daysLeft <= 30 ? 'text-yellow-600' : daysLeft <= 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                                        className={`text-sm font-semibold ${daysLeft <= 0 ? 'text-red-600' : daysLeft <= 30 ? 'text-yellow-600' : 'text-gray-700'}`}>
                     {daysLeft <= 0 ? 'Expired' : `${daysLeft} days`}
                   </span>
                                 </div>
@@ -276,36 +297,24 @@ export default function LeaseDetailPage() {
                         </div>
                     )}
 
-                    {/* Actions — landlord only */}
+                    {/* Actions */}
                     {isLandlord && (
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Actions</h2>
                             <div className="space-y-2">
                                 {lease.status === 'active' && (
                                     <>
-                                        <Button
-                                            variant="secondary"
-                                            className="w-full"
-                                            onClick={() => handleStatusChange('ended')}
-                                            disabled={isUpdating}
-                                        >
+                                        <Button variant="secondary" className="w-full"
+                                                onClick={() => handleStatusChange('ended')} disabled={isUpdating}>
                                             End Lease
                                         </Button>
-                                        <Button
-                                            variant="danger"
-                                            className="w-full"
-                                            onClick={() => handleStatusChange('terminated')}
-                                            disabled={isUpdating}
-                                        >
+                                        <Button variant="danger" className="w-full"
+                                                onClick={() => handleStatusChange('terminated')} disabled={isUpdating}>
                                             Terminate Lease
                                         </Button>
                                     </>
                                 )}
-                                <Button
-                                    variant="danger"
-                                    className="w-full"
-                                    onClick={handleDelete}
-                                >
+                                <Button variant="danger" className="w-full" onClick={handleDelete}>
                                     Delete Lease
                                 </Button>
                             </div>
@@ -313,6 +322,131 @@ export default function LeaseDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            {lease && (
+                <EditLeaseModal
+                    isOpen={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    lease={lease}
+                    onSuccess={() => {
+                        setShowEditModal(false)
+                        void loadLease()
+                    }}
+                />
+            )}
         </div>
+    )
+}
+
+// ─── Edit Lease Modal ──────────────────────────
+interface EditLeaseModalProps {
+    isOpen: boolean
+    onClose: () => void
+    lease: Lease
+    onSuccess: () => void
+}
+
+function EditLeaseModal({isOpen, onClose, lease, onSuccess}: EditLeaseModalProps) {
+    const [formData, setFormData] = useState({
+        rent_amount: '',
+        deposit_amount: '',
+        utility_advances: '',
+        variable_symbol: '',
+        end_date: '',
+    })
+    const [errors, setErrors] = useState<Record<string, string[]>>({})
+    const [isLoading, setIsLoading] = useState(false)
+
+    useEffect(() => {
+        if (lease && isOpen) {
+            setFormData({
+                rent_amount: lease.rent_amount?.toString() || '',
+                deposit_amount: lease.deposit_amount?.toString() || '',
+                utility_advances: lease.utility_advances?.toString() || '',
+                variable_symbol: lease.variable_symbol || '',
+                end_date: lease.end_date || '',
+            })
+        }
+    }, [lease, isOpen])
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setErrors({})
+        setIsLoading(true)
+
+        try {
+            await leasesApi.update(lease.id, {
+                rent_amount: Number(formData.rent_amount),
+                deposit_amount: formData.deposit_amount ? Number(formData.deposit_amount) : undefined,
+                utility_advances: formData.utility_advances ? Number(formData.utility_advances) : undefined,
+                variable_symbol: formData.variable_symbol || undefined,
+                end_date: formData.end_date || undefined,
+            })
+            onSuccess()
+        } catch (err: any) {
+            setErrors(err.response?.data?.errors || {})
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Edit Lease" size="md">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                    label="Monthly Rent (Kč)"
+                    name="rent_amount"
+                    type="number"
+                    value={formData.rent_amount}
+                    onChange={handleChange}
+                    error={errors.rent_amount?.[0]}
+                    required
+                />
+                <div className="grid grid-cols-2 gap-4">
+                    <Input
+                        label="Deposit (Kč)"
+                        name="deposit_amount"
+                        type="number"
+                        value={formData.deposit_amount}
+                        onChange={handleChange}
+                        error={errors.deposit_amount?.[0]}
+                    />
+                    <Input
+                        label="Utility Advances (Kč)"
+                        name="utility_advances"
+                        type="number"
+                        value={formData.utility_advances}
+                        onChange={handleChange}
+                        error={errors.utility_advances?.[0]}
+                    />
+                </div>
+                <Input
+                    label="Variable Symbol"
+                    name="variable_symbol"
+                    value={formData.variable_symbol}
+                    onChange={handleChange}
+                    error={errors.variable_symbol?.[0]}
+                />
+                <Input
+                    label="End Date"
+                    name="end_date"
+                    type="date"
+                    value={formData.end_date}
+                    onChange={handleChange}
+                    error={errors.end_date?.[0]}
+                />
+                <div className="flex justify-end gap-3 pt-2">
+                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    <Button type="submit" disabled={isLoading}>
+                        {isLoading ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </div>
+            </form>
+        </Modal>
     )
 }

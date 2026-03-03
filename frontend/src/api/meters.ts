@@ -1,19 +1,30 @@
 import api from './axios'
 import type {Meter, MeterReading} from '../types'
 
+interface CreateMeterData {
+    meter_type: string
+    serial_number?: string
+    location?: string
+}
+
+interface CreateReadingData {
+    reading_value: number
+    reading_date: string
+}
+
 export const metersApi = {
     getByProperty: (propertyId: number) =>
         api.get<Meter[]>('/properties/' + propertyId + '/meters'),
 
-    create: (propertyId: number, data: { meter_type: string; serial_number?: string; location?: string }) =>
+    create: (propertyId: number, data: CreateMeterData) =>
         api.post<Meter>('/properties/' + propertyId + '/meters', data),
 
-    delete: (propertyId: number, meterId: number) =>
-        api.delete('/properties/' + propertyId + '/meters/' + meterId),
+    delete: (meterId: number) =>
+        api.delete('/meters/' + meterId),
 
-    getReadings: (propertyId: number, meterId: number) =>
-        api.get<MeterReading[]>('/properties/' + propertyId + '/meters/' + meterId + '/readings'),
+    getReadings: (meterId: number) =>
+        api.get<MeterReading[]>('/meters/' + meterId + '/readings'),
 
-    addReading: (propertyId: number, meterId: number, data: { reading_value: number; reading_date: string }) =>
-        api.post<MeterReading>('/properties/' + propertyId + '/meters/' + meterId + '/readings', data),
+    addReading: (meterId: number, data: CreateReadingData) =>
+        api.post<MeterReading>('/meters/' + meterId + '/readings', data),
 }

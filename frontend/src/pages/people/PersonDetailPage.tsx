@@ -31,8 +31,10 @@ export default function PersonDetailPage() {
                 ])
 
                 const found = tenantsRes.data.find((t: User) => t.id === tenantId)
+                
                 if (!found) {
                     navigate('/people')
+
                     return
                 }
 
