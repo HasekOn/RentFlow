@@ -11,6 +11,7 @@ import TrustScoreBadge from '../../components/ui/TrustScoreBadge'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import {managersApi} from '../../api/managers'
+import {useConfirm} from '../../hooks/useConfirm'
 
 export default function PersonDetailPage() {
     const {id} = useParams<{ id: string }>()
@@ -21,12 +22,24 @@ export default function PersonDetailPage() {
     const [leases, setLeases] = useState<Lease[]>([])
     const [ratings, setRatings] = useState<Rating[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const {confirm: showConfirm, dialog} = useConfirm()
 
     const personId = Number(id)
     const isOwnProfile = authUser?.id === personId
 
     const handlePromote = async () => {
-        if (!person || !confirm(`Promote ${person.name} to Manager?`)) return
+        if (!person) return
+        const ok = await showConfirm({
+            title: 'Promote to Manager',
+            message: `Promote ${person.name} to Manager?`,
+            confirmLabel: 'Promote',
+            variant: 'primary',
+        })
+
+        if (!ok) {
+            return
+        }
+
         try {
             await managersApi.promote(person.id)
             setPerson({...person, role: 'manager'})
@@ -36,7 +49,18 @@ export default function PersonDetailPage() {
     }
 
     const handleDemote = async () => {
-        if (!person || !confirm(`Demote ${person.name} back to Tenant? All property assignments will be removed.`)) return
+        if (!person) return
+        const ok = await showConfirm({
+            title: 'Demote to Tenant',
+            message: `Demote ${person.name} back to Tenant? All property assignments will be removed.`,
+            confirmLabel: 'Demote',
+            variant: 'danger',
+        })
+
+        if (!ok) {
+            return
+        }
+
         try {
             await managersApi.demote(person.id)
             setPerson({...person, role: 'tenant'})
@@ -347,6 +371,7 @@ export default function PersonDetailPage() {
                     </div>
                 </div>
             </div>
+            {dialog}
         </div>
     )
 }

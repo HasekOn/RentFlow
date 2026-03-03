@@ -10,6 +10,7 @@ import Spinner from '../../components/ui/Spinner'
 import Pagination from '../../components/ui/Pagination'
 import EmptyState from '../../components/ui/EmptyState'
 import PropertyFormModal from './PropertyFormModal'
+import {useConfirm} from '../../hooks/useConfirm'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -34,6 +35,7 @@ export default function PropertiesPage() {
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
     const [page, setPage] = useState(1)
+    const {confirm, dialog} = useConfirm()
 
     const loadProperties = useCallback(async () => {
         setIsLoading(true)
@@ -62,7 +64,17 @@ export default function PropertiesPage() {
     }, [search, statusFilter])
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this property?')) return
+        const ok = await confirm({
+            title: 'Delete Property',
+            message: 'Are you sure you want to delete this property?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+
+        if (!ok) {
+            return
+        }
+
         try {
             await propertiesApi.delete(id)
             void loadProperties()
@@ -266,6 +278,7 @@ export default function PropertiesPage() {
                     void loadProperties()
                 }}
             />
+            {dialog}
         </div>
     )
 }

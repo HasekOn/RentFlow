@@ -10,6 +10,7 @@ import Spinner from '../../components/ui/Spinner'
 import Pagination from '../../components/ui/Pagination'
 import EmptyState from '../../components/ui/EmptyState'
 import CreatePaymentModal from './CreatePaymentModal'
+import {useConfirm} from "../../hooks/useConfirm.tsx";
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -36,6 +37,7 @@ export default function PaymentsPage() {
     const [isImporting, setIsImporting] = useState(false)
     const [importResult, setImportResult] = useState<{ matched: number; unmatched: number } | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const {confirm, dialog} = useConfirm()
 
     const loadPayments = useCallback(async () => {
         setIsLoading(true)
@@ -73,7 +75,16 @@ export default function PaymentsPage() {
     }
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this payment?')) return
+        const ok = await confirm({
+            title: 'Delete Payment',
+            message: 'Are you sure you want to delete this payment?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+
+        if (!ok) {
+            return
+        }
         try {
             await paymentsApi.delete(id)
             void loadPayments()
@@ -377,6 +388,7 @@ export default function PaymentsPage() {
                     void loadPayments()
                 }}
             />
+            {dialog}
         </div>
     )
 }

@@ -3,6 +3,7 @@ import {managersApi} from '../../api/managers'
 import {usersApi} from '../../api/users'
 import type {User} from '../../types'
 import Button from '../../components/ui/Button'
+import {useConfirm} from '../../hooks/useConfirm'
 
 interface Props {
     propertyId: number
@@ -13,6 +14,7 @@ export default function ManagerAssignment({propertyId}: Props) {
     const [allManagers, setAllManagers] = useState<User[]>([])
     const [selectedId, setSelectedId] = useState('')
     const [isLoading, setIsLoading] = useState(true)
+    const {confirm: showConfirm, dialog} = useConfirm()
 
     const load = async () => {
         try {
@@ -45,7 +47,17 @@ export default function ManagerAssignment({propertyId}: Props) {
     }
 
     const handleRemove = async (userId: number) => {
-        if (!confirm('Remove this manager from property?')) return
+        const ok = await showConfirm({
+            title: 'Remove Manager',
+            message: 'Remove this manager from property?',
+            confirmLabel: 'Remove',
+            variant: 'danger',
+        })
+
+        if (!ok) {
+            return
+        }
+
         try {
             await managersApi.remove(propertyId, userId)
             void load()
@@ -90,7 +102,7 @@ export default function ManagerAssignment({propertyId}: Props) {
                     ))}
                 </div>
             )}
-
+            {dialog}
             {available.length > 0 && (
                 <div className="flex gap-2">
                     <select

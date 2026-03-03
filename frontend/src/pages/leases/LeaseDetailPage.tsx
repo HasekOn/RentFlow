@@ -10,6 +10,7 @@ import Spinner from '../../components/ui/Spinner'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import RateTenantModal from './RateTenantModal'
+import {useConfirm} from "../../hooks/useConfirm.tsx";
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -34,6 +35,7 @@ export default function LeaseDetailPage() {
     const [isUpdating, setIsUpdating] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
     const [showRatingModal, setShowRatingModal] = useState(false)
+    const {confirm: showConfirm, dialog} = useConfirm()
 
     const loadLease = async () => {
         try {
@@ -69,8 +71,19 @@ export default function LeaseDetailPage() {
     }
 
     const handleStatusChange = async (newStatus: string) => {
-        if (!confirm(`Are you sure you want to mark this lease as "${newStatus}"?`)) return
+        const ok = await showConfirm({
+            title: `${newStatus === 'ended' ? 'End' : 'Terminate'} Lease`,
+            message: `Are you sure you want to mark this lease as "${newStatus}"? This action cannot be undone.`,
+            confirmLabel: newStatus === 'ended' ? 'End Lease' : 'Terminate',
+            variant: 'danger',
+        })
+
+        if (!ok) {
+            return
+        }
+
         setIsUpdating(true)
+
         try {
             await leasesApi.update(Number(id), {status: newStatus})
             void loadLease()
@@ -82,7 +95,17 @@ export default function LeaseDetailPage() {
     }
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this lease?')) return
+        const ok = await showConfirm({
+            title: 'Delete Lease',
+            message: 'Are you sure you want to delete this lease? All associated payments will be affected.',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+
+        if (!ok) {
+            return
+        }
+
         try {
             await leasesApi.delete(Number(id))
             navigate('/leases')
@@ -356,6 +379,7 @@ export default function LeaseDetailPage() {
                     void loadLease()
                 }}
             />
+            {dialog}
         </div>
     )
 }

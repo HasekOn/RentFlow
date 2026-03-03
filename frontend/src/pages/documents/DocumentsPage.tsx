@@ -9,6 +9,7 @@ import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
 import UploadDocumentModal from './UploadDocumentModal'
+import {useConfirm} from '../../hooks/useConfirm'
 
 const fileIcon = (name: string) => {
     const ext = name.split('.').pop()?.toLowerCase()
@@ -39,6 +40,7 @@ export default function DocumentsPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingDocs, setIsLoadingDocs] = useState(false)
     const [showUploadModal, setShowUploadModal] = useState(false)
+    const {confirm, dialog} = useConfirm()
 
     useEffect(() => {
         const load = async () => {
@@ -91,7 +93,17 @@ export default function DocumentsPage() {
     }
 
     const handleDelete = async (docId: number) => {
-        if (!confirm('Are you sure you want to delete this document?')) return
+        const ok = await confirm({
+            title: 'Delete Document',
+            message: 'Are you sure you want to delete this document?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+
+        if (!ok) {
+            return
+        }
+
         try {
             await documentsApi.delete(docId)
             setDocuments((prev) => prev.filter((d) => d.id !== docId))
@@ -230,6 +242,7 @@ export default function DocumentsPage() {
                     }}
                 />
             )}
+            {dialog}
         </div>
     )
 }

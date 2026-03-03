@@ -8,6 +8,7 @@ import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
+import {useConfirm} from '../../hooks/useConfirm'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -49,6 +50,7 @@ export default function TicketDetailPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSending, setIsSending] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
+    const {confirm, dialog} = useConfirm()
 
     const loadTicket = async () => {
         try {
@@ -86,7 +88,17 @@ export default function TicketDetailPage() {
     }
 
     const handleDeleteComment = async (commentId: number) => {
-        if (!confirm('Delete this comment?')) return
+        const ok = await confirm({
+            title: 'Delete Comment',
+            message: 'Are you sure you want to delete this comment?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+
+        if (!ok) {
+            return
+        }
+
         try {
             await ticketsApi.deleteComment(Number(id), commentId)
             void loadTicket()
@@ -292,6 +304,7 @@ export default function TicketDetailPage() {
                     )}
                 </div>
             </div>
+            {dialog}
         </div>
     )
 }
