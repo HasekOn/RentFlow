@@ -100,16 +100,19 @@ export default function PeoplePage() {
             </div>
 
             {/* Managers */}
-            {filteredManagers.length > 0 && (
-                <div className="mt-10">
-                    <h2 className="text-lg font-bold text-black mb-4">
-                        Managers ({filteredManagers.length})
-                    </h2>
+            <div className="mt-10">
+                <h2 className="text-lg font-bold text-black mb-4">
+                    Managers ({filteredManagers.length})
+                </h2>
+                {filteredManagers.length === 0 ? (
+                    <EmptyState title="No managers yet"/>
+                ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredManagers.map((manager) => (
                             <div
                                 key={manager.id}
-                                className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"
+                                onClick={() => navigate('/people/' + manager.id)}
+                                className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-gray-200 transition"
                             >
                                 <div className="flex items-start gap-4">
                                     <div
@@ -124,15 +127,15 @@ export default function PeoplePage() {
                                         )}
                                         <span
                                             className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">
-                      Manager
-                    </span>
+                                            Manager
+                                        </span>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     )
 }

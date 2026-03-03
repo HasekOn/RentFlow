@@ -34,7 +34,16 @@ export default function CreateLeaseModal({isOpen, onClose, onSuccess}: Props) {
     useEffect(() => {
         if (isOpen) {
             propertiesApi.getAll().then((res) => setProperties(res.data.data)).catch(console.error)
-            usersApi.getTenants().then((res) => setTenants(res.data)).catch(console.error)
+            // Load tenants + managers (managers can also be tenants)
+            Promise.all([
+                usersApi.getTenants(),
+                usersApi.getManagers(),
+            ]).then(([tenantsRes, managersRes]) => {
+                const all = [...tenantsRes.data, ...managersRes.data]
+                // Deduplicate by id
+                const unique = all.filter((u, i, arr) => arr.findIndex((x) => x.id === u.id) === i)
+                setTenants(unique)
+            }).catch(console.error)
         }
     }, [isOpen])
 

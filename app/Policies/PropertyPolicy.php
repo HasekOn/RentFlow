@@ -26,8 +26,10 @@ class PropertyPolicy
             return true;
         }
 
-        if ($user->role === 'manager' && $property->managers()->where('user_id', $user->id)->exists()) {
-            return true;
+        if ($user->role === 'manager') {
+            if ($property->managers()->where('user_id', $user->id)->exists()) {
+                return true;
+            }
         }
 
         return $user->leases()

@@ -26,7 +26,13 @@ class PropertyController extends Controller
         if ($user->role === 'landlord') {
             $query = $user->ownedProperties()->with(['leases.tenant', 'images'])->getQuery();
         } elseif ($user->role === 'manager') {
-            $query = $user->managedProperties()->with(['leases.tenant', 'images'])->getQuery();
+            $managedIds = $user->managedProperties()->pluck('properties.id');
+            $leaseIds = $user->leases()->where('status', 'active')->pluck('property_id');
+            $allIds = $managedIds->merge($leaseIds)->unique();
+
+            $query = Property::query()
+                ->whereIn('id', $allIds)
+                ->with(['leases.tenant', 'images']);
         } else {
             $query = Property::query()->whereIn('id',
                 $user->leases()->where('status', 'active')->pluck('property_id')

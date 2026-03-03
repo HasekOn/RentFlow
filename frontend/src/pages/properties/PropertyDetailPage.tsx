@@ -331,10 +331,6 @@ export default function PropertyDetailPage() {
                     <div className="space-y-6">
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Quick Info</h2>
-                            {/* Manager Assignment — landlord only */}
-                            {isLandlord && (
-                                <ManagerAssignment propertyId={propertyId}/>
-                            )}
                             <div className="space-y-3">
                                 <div className="flex justify-between"><span
                                     className="text-sm text-gray-500">Leases</span><span
@@ -347,6 +343,11 @@ export default function PropertyDetailPage() {
                                     className="text-sm font-semibold">{images.length}</span></div>
                             </div>
                         </div>
+
+                        {/* Manager Assignment — landlord only */}
+                        {isLandlord && (
+                            <ManagerAssignment propertyId={propertyId}/>
+                        )}
                     </div>
                 </div>
             )}

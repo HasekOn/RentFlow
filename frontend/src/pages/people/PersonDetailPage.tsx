@@ -52,12 +52,11 @@ export default function PersonDetailPage() {
                 let foundPerson: User | null
 
                 if (isOwnProfile && authUser) {
-                    // Viewing own profile — use auth user directly
                     foundPerson = authUser
                 } else {
-                    // Landlord viewing someone else — lookup from users list
-                    const usersRes = await usersApi.getTenants()
-                    foundPerson = usersRes.data.find((t: User) => t.id === personId) || null
+                    // Lookup from all users
+                    const usersRes = await usersApi.getAll()
+                    foundPerson = usersRes.data.find((u: User) => u.id === personId) || null
                 }
 
                 if (!foundPerson) {
