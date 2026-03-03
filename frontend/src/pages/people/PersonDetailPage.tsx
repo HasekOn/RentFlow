@@ -10,6 +10,7 @@ import Spinner from '../../components/ui/Spinner'
 import TrustScoreBadge from '../../components/ui/TrustScoreBadge'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import {managersApi} from '../../api/managers'
 
 export default function PersonDetailPage() {
     const {id} = useParams<{ id: string }>()
@@ -23,6 +24,26 @@ export default function PersonDetailPage() {
 
     const personId = Number(id)
     const isOwnProfile = authUser?.id === personId
+
+    const handlePromote = async () => {
+        if (!person || !confirm(`Promote ${person.name} to Manager?`)) return
+        try {
+            await managersApi.promote(person.id)
+            setPerson({...person, role: 'manager'})
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Failed to promote')
+        }
+    }
+
+    const handleDemote = async () => {
+        if (!person || !confirm(`Demote ${person.name} back to Tenant? All property assignments will be removed.`)) return
+        try {
+            await managersApi.demote(person.id)
+            setPerson({...person, role: 'tenant'})
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Failed to demote')
+        }
+    }
 
     useEffect(() => {
         const load = async () => {
@@ -297,6 +318,24 @@ export default function PersonDetailPage() {
                             {isOwnProfile && (
                                 <Button variant="secondary" className="w-full" onClick={() => navigate('/settings')}>
                                     Edit Profile
+                                </Button>
+                            )}
+                            {isLandlord && !isOwnProfile && person.role === 'tenant' && (
+                                <Button
+                                    variant="primary"
+                                    className="w-full"
+                                    onClick={handlePromote}
+                                >
+                                    👑 Promote to Manager
+                                </Button>
+                            )}
+                            {isLandlord && !isOwnProfile && person.role === 'manager' && (
+                                <Button
+                                    variant="danger"
+                                    className="w-full"
+                                    onClick={handleDemote}
+                                >
+                                    Demote to Tenant
                                 </Button>
                             )}
                             <Button variant="secondary" className="w-full" onClick={() => navigate('/leases')}>

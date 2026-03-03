@@ -8,8 +8,8 @@ export const usersApi = {
     getManagers: () =>
         api.get<User[]>('/users', {params: {role: 'manager'}}),
 
-    getAll: () =>
-        api.get<User[]>('/users'),
+    getAll: (filters?: { role?: string }) =>
+        api.get<User[]>('/users', {params: filters}),
 
     getTrustScore: (tenantId: number) =>
         api.get<TrustScoreData>('/tenants/' + tenantId + '/trust-score'),

@@ -7,7 +7,7 @@ const allMenuItems = [
     {label: 'Leases', path: '/leases', icon: '📋', roles: ['landlord', 'tenant', 'manager']},
     {label: 'Payments', path: '/payments', icon: '💰', roles: ['landlord', 'tenant', 'manager']},
     {label: 'Helpdesk', path: '/tickets', icon: '🎫', roles: ['landlord', 'tenant', 'manager']},
-    {label: 'People', path: '/people', icon: '👥', roles: ['landlord']},
+    {label: 'People', path: '/people', icon: '👥', roles: ['landlord', 'manager']},
     {label: 'Documents', path: '/documents', icon: '📄', roles: ['landlord', 'tenant', 'manager']},
 ]
 

@@ -7,19 +7,11 @@ use App\Models\User;
 
 class TicketPolicy
 {
-    /**
-     * Can user see list of tickets?
-     * All roles — controller filters by role
-     */
     public function viewAny(User $user): bool
     {
         return true;
     }
 
-    /**
-     * Can user see this ticket?
-     * Landlord owns the property, manager is assigned, tenant created it
-     */
     public function view(User $user, Ticket $ticket): bool
     {
         // Landlord owns the property
@@ -27,28 +19,22 @@ class TicketPolicy
             return true;
         }
 
-        // Manager is assigned to this ticket
-        if ($user->role === 'manager' && $ticket->assigned_to === $user->id) {
-            return true;
+        // Manager manages this property
+        if ($user->role === 'manager' && $ticket->property) {
+            return $user->managedProperties()
+                ->where('properties.id', $ticket->property_id)
+                ->exists();
         }
 
         // Tenant created this ticket
         return $ticket->tenant_id === $user->id;
     }
 
-    /**
-     * Can user create tickets?
-     * Tenants and landlords (landlord might report issues too)
-     */
     public function create(User $user): bool
     {
-        return in_array($user->role, ['tenant', 'landlord']);
+        return in_array($user->role, ['tenant', 'landlord', 'manager']);
     }
 
-    /**
-     * Can user update this ticket? (status, priority, assignment)
-     * Landlord owns the property OR assigned manager
-     */
     public function update(User $user, Ticket $ticket): bool
     {
         // Landlord owns the property
@@ -56,14 +42,16 @@ class TicketPolicy
             return true;
         }
 
-        // Assigned manager
-        return $user->role === 'manager' && $ticket->assigned_to === $user->id;
+        // Manager manages this property
+        if ($user->role === 'manager' && $ticket->property) {
+            return $user->managedProperties()
+                ->where('properties.id', $ticket->property_id)
+                ->exists();
+        }
+
+        return false;
     }
 
-    /**
-     * Can user delete this ticket?
-     * Only landlord who owns the property
-     */
     public function delete(User $user, Ticket $ticket): bool
     {
         return $ticket->property && $ticket->property->landlord_id === $user->id;

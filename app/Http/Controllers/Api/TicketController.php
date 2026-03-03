@@ -31,9 +31,10 @@ class TicketController extends Controller
                 $user->ownedProperties()->pluck('id')
             )->with(['property', 'tenant', 'assignedUser']);
         } elseif ($user->role === 'manager') {
-            $query = $user->assignedTickets()
-                ->with(['property', 'tenant'])
-                ->getQuery();
+            $query = Ticket::query()->whereIn(
+                'property_id',
+                $user->managedProperties()->pluck('properties.id')
+            )->with(['property', 'tenant', 'assignedUser']);
         } else {
             $query = $user->tickets()
                 ->with('property')
@@ -56,14 +57,27 @@ class TicketController extends Controller
         $this->authorize('create', Ticket::class);
 
         $validated = $request->validated();
+        $user = $request->user();
 
-        $validated['tenant_id'] = $request->user()->id;
+        // Manager creates ticket on behalf — set tenant_id to null or self
+        $validated['tenant_id'] = $user->id;
+
+        // Verify manager has access to this property
+        if ($user->role === 'manager') {
+            $hasAccess = $user->managedProperties()
+                ->where('properties.id', $validated['property_id'])
+                ->exists();
+
+            if (! $hasAccess) {
+                return response()->json([
+                    'message' => 'You can only create tickets for your managed properties.',
+                ], 403);
+            }
+        }
 
         $ticket = Ticket::query()->create($validated);
-
         $ticket->load(['property', 'tenant']);
 
-        // Notify landlord about new ticket
         TicketCreated::dispatch($ticket);
 
         return response()->json(new TicketResource($ticket), 201);

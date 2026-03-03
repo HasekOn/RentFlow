@@ -22,12 +22,14 @@ class PropertyPolicy
      */
     public function view(User $user, Property $property): bool
     {
-        // Landlord owns this property
         if ($property->landlord_id === $user->id) {
             return true;
         }
 
-        // Tenant has active lease for this property
+        if ($user->role === 'manager' && $property->managers()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
         return $user->leases()
             ->where('property_id', $property->id)
             ->where('status', 'active')

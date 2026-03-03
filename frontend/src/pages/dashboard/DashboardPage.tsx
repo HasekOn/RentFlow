@@ -27,7 +27,7 @@ export default function DashboardPage() {
     const {isTenant} = useAuth()
 
     if (isTenant) return <TenantDashboard/>
-    return <LandlordDashboard/>
+    return <LandlordDashboard/> // Works for both landlord and manager
 }
 
 // ─── Tenant Dashboard ──────────────────────────

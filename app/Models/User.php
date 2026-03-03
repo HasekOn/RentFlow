@@ -7,6 +7,7 @@ use App\Services\TrustScoreService;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\DatabaseNotificationCollection;
@@ -83,6 +84,11 @@ class User extends Authenticatable
     public function givenRatings(): HasMany
     {
         return $this->hasMany(Rating::class, 'rated_by');
+    }
+
+    public function managedProperties(): BelongsToMany
+    {
+        return $this->belongsToMany(Property::class, 'property_manager');
     }
 
     /**

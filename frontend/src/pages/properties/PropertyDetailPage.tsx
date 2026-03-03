@@ -17,6 +17,8 @@ import PropertyFormModal from './PropertyFormModal'
 import CreateMeterModal from './CreateMeterModal'
 import CreateExpenseModal from './CreateExpenseModal'
 import CreateInventoryModal from './CreateInventoryModal'
+import ImageUploadModal from './ImageUploadModal'
+import ManagerAssignment from "./ManagerAssignment.tsx";
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -81,6 +83,7 @@ export default function PropertyDetailPage() {
     const [showMeterModal, setShowMeterModal] = useState(false)
     const [showExpenseModal, setShowExpenseModal] = useState(false)
     const [showInventoryModal, setShowInventoryModal] = useState(false)
+    const [showImageModal, setShowImageModal] = useState(false)
 
     const propertyId = Number(id)
 
@@ -210,33 +213,54 @@ export default function PropertyDetailPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
                         {/* Gallery */}
-                        {images.length > 0 && (
-                            <div className="bg-white rounded-2xl p-4 shadow-sm">
-                                <div className="grid grid-cols-2 sm:grid-cols-4 grid-rows-2 gap-2 h-60 sm:h-80">
-                                    <div
-                                        className={`${images.length === 1 ? 'col-span-4 row-span-2' : 'col-span-2 row-span-2'} cursor-pointer overflow-hidden rounded-xl`}
-                                        onClick={() => setLightboxIndex(0)}
-                                    >
-                                        <img src={images[0].image_url} alt={images[0].description || 'Property'}
-                                             className="w-full h-full object-cover hover:scale-105 transition duration-300"/>
-                                    </div>
-                                    {images.slice(1, 5).map((img, idx) => (
-                                        <div key={img.id} className="cursor-pointer overflow-hidden rounded-xl relative"
-                                             onClick={() => setLightboxIndex(idx + 1)}>
-                                            <img src={img.image_url} alt={img.description || 'Property'}
+                        <div className="bg-white rounded-2xl p-4 shadow-sm">
+                            {images.length > 0 ? (
+                                <>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 grid-rows-2 gap-2 h-60 sm:h-80">
+                                        <div
+                                            className={`${images.length === 1 ? 'col-span-4 row-span-2' : 'col-span-2 row-span-2'} cursor-pointer overflow-hidden rounded-xl`}
+                                            onClick={() => setLightboxIndex(0)}
+                                        >
+                                            <img src={images[0].image_url} alt={images[0].description || 'Property'}
                                                  className="w-full h-full object-cover hover:scale-105 transition duration-300"/>
-                                            {idx === 3 && images.length > 5 && (
-                                                <div
-                                                    className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                    <span
-                                                        className="text-white text-lg font-bold">+{images.length - 5}</span>
-                                                </div>
-                                            )}
                                         </div>
-                                    ))}
+                                        {images.slice(1, 5).map((img, idx) => (
+                                            <div key={img.id}
+                                                 className="cursor-pointer overflow-hidden rounded-xl relative"
+                                                 onClick={() => setLightboxIndex(idx + 1)}>
+                                                <img src={img.image_url} alt={img.description || 'Property'}
+                                                     className="w-full h-full object-cover hover:scale-105 transition duration-300"/>
+                                                {idx === 3 && images.length > 5 && (
+                                                    <div
+                                                        className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                        <span
+                                                            className="text-white text-lg font-bold">+{images.length - 5}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {isLandlord && (
+                                        <div className="mt-3 flex justify-end">
+                                            <Button size="sm" variant="secondary"
+                                                    onClick={() => setShowImageModal(true)}>
+                                                📷 Add Photo
+                                            </Button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <span className="text-4xl">🏠</span>
+                                    <p className="text-sm text-gray-400 mt-2">No photos yet</p>
+                                    {isLandlord && (
+                                        <Button size="sm" className="mt-3" onClick={() => setShowImageModal(true)}>
+                                            📷 Add First Photo
+                                        </Button>
+                                    )}
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
 
                         {/* Price & Status */}
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -307,6 +331,10 @@ export default function PropertyDetailPage() {
                     <div className="space-y-6">
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Quick Info</h2>
+                            {/* Manager Assignment — landlord only */}
+                            {isLandlord && (
+                                <ManagerAssignment propertyId={propertyId}/>
+                            )}
                             <div className="space-y-3">
                                 <div className="flex justify-between"><span
                                     className="text-sm text-gray-500">Leases</span><span
@@ -367,9 +395,7 @@ export default function PropertyDetailPage() {
                             <div className="bg-white rounded-2xl p-6 shadow-sm">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-bold text-black">Expenses</h2>
-                                    {isLandlord && (
-                                        <Button size="sm" onClick={() => setShowExpenseModal(true)}>+ Add</Button>
-                                    )}
+                                    <Button size="sm" onClick={() => setShowExpenseModal(true)}>+ Add</Button>
                                 </div>
                                 {expenses.length === 0 ? (
                                     <p className="text-sm text-gray-400 text-center py-4">No expenses recorded</p>
@@ -516,6 +542,15 @@ export default function PropertyDetailPage() {
                 onSuccess={() => {
                     setShowInventoryModal(false)
                     void loadManagementData()
+                }}
+            />
+            <ImageUploadModal
+                isOpen={showImageModal}
+                onClose={() => setShowImageModal(false)}
+                propertyId={propertyId}
+                onSuccess={() => {
+                    setShowImageModal(false)
+                    void loadProperty()
                 }}
             />
         </div>

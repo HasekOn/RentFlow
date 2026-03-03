@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InventoryItemController;
 use App\Http\Controllers\Api\LeaseController;
+use App\Http\Controllers\Api\ManagerController;
 use App\Http\Controllers\Api\MeterController;
 use App\Http\Controllers\Api\MeterReadingController;
 use App\Http\Controllers\Api\NoticeController;
@@ -117,8 +118,20 @@ Route::middleware('auth:sanctum')->group(function () {
     // Trust score (read)
     Route::get('tenants/{tenant}/trust-score', [DashboardController::class, 'trustScore']);
 
+    // Manager management (landlord only in controller)
+    Route::post('users/{user}/promote-manager', [ManagerController::class, 'promote']);
+    Route::post('users/{user}/demote-manager', [ManagerController::class, 'demote']);
+    Route::get('properties/{property}/managers', [ManagerController::class, 'list']);
+    Route::post('properties/{property}/assign-manager', [ManagerController::class, 'assign']);
+    Route::delete('properties/{property}/remove-manager/{user}', [ManagerController::class, 'remove']);
+
+    // Dashboard (landlord stats)
+    Route::get('dashboard/stats', [DashboardController::class, 'stats']);
+    Route::get('dashboard/finance-chart', [DashboardController::class, 'financeChart']);
+    Route::get('dashboard/occupancy-chart', [DashboardController::class, 'occupancyChart']);
+
     // ─── Landlord-only WRITE routes ───
-    Route::middleware('role:landlord')->group(function () {
+    Route::middleware('role:landlord,manager')->group(function () {
         // Expenses (write)
         Route::post('expenses', [ExpenseController::class, 'store']);
         Route::put('expenses/{expense}', [ExpenseController::class, 'update']);
@@ -137,10 +150,5 @@ Route::middleware('auth:sanctum')->group(function () {
         // Ratings (write)
         Route::post('leases/{lease}/ratings', [RatingController::class, 'store']);
         Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
-
-        // Dashboard (landlord stats)
-        Route::get('dashboard/stats', [DashboardController::class, 'stats']);
-        Route::get('dashboard/finance-chart', [DashboardController::class, 'financeChart']);
-        Route::get('dashboard/occupancy-chart', [DashboardController::class, 'occupancyChart']);
     });
 });

@@ -18,7 +18,15 @@ class DashboardController extends Controller
     public function stats(Request $request): JsonResponse
     {
         $user = $request->user();
-        $propertyIds = $user->ownedProperties()->pluck('id');
+
+        if ($user->role === 'landlord') {
+            $propertyIds = $user->ownedProperties()->pluck('id');
+        } elseif ($user->role === 'manager') {
+            $propertyIds = $user->managedProperties()->pluck('properties.id');
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $leaseIds = Lease::query()->whereIn('property_id', $propertyIds)->pluck('id');
 
         // Property stats
@@ -92,7 +100,15 @@ class DashboardController extends Controller
     public function financeChart(Request $request): JsonResponse
     {
         $user = $request->user();
-        $propertyIds = $user->ownedProperties()->pluck('id');
+
+        if ($user->role === 'landlord') {
+            $propertyIds = $user->ownedProperties()->pluck('id');
+        } elseif ($user->role === 'manager') {
+            $propertyIds = $user->managedProperties()->pluck('properties.id');
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $leaseIds = Lease::query()->whereIn('property_id', $propertyIds)->pluck('id');
 
         $months = collect();
@@ -131,9 +147,17 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        $occupied = $user->ownedProperties()->where('status', 'occupied')->count();
-        $available = $user->ownedProperties()->where('status', 'available')->count();
-        $renovation = $user->ownedProperties()->where('status', 'renovation')->count();
+        if ($user->role === 'landlord') {
+            $query = $user->ownedProperties();
+        } elseif ($user->role === 'manager') {
+            $query = $user->managedProperties();
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $occupied = (clone $query)->where('status', 'occupied')->count();
+        $available = (clone $query)->where('status', 'available')->count();
+        $renovation = (clone $query)->where('status', 'renovation')->count();
 
         return response()->json([
             ['label' => 'Occupied', 'value' => $occupied],
