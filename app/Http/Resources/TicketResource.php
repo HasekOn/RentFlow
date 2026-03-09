@@ -23,14 +23,14 @@ class TicketResource extends JsonResource
             'priority' => $this->priority,
             'resolved_at' => $this->resolved_at?->toDateTimeString(),
             'resolution_time' => $this->resolved_at
-                ? $this->created_at->diffInHours($this->resolved_at) . 'h'
+                ? $this->created_at->diffInHours($this->resolved_at).'h'
                 : null,
             'created_at' => $this->created_at->toDateTimeString(),
             'property' => new PropertyResource($this->whenLoaded('property')),
             'tenant' => new UserResource($this->whenLoaded('tenant')),
             'assigned_user' => new UserResource($this->whenLoaded('assignedUser')),
             'comments' => TicketCommentResource::collection($this->whenLoaded('comments')),
-            'images' => $this->whenLoaded('images', fn() => $this->images->map(fn($img) => [
+            'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($img) => [
                 'id' => $img->id,
                 'image_path' => $img->image_path,
                 'image_url' => $img->image_url,

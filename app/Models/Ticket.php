@@ -69,7 +69,7 @@ class Ticket extends Model
     {
         return $this->hasMany(TicketImage::class);
     }
-    
+
     protected function casts(): array
     {
         return [

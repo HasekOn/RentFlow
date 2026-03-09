@@ -32,7 +32,7 @@ class TicketCommentController extends Controller
 
         if ($request->hasFile('attachment')) {
             $attachmentPath = $request->file('attachment')->store(
-                'tickets/' . $ticket->id,
+                'tickets/'.$ticket->id,
                 'public'
             );
         }

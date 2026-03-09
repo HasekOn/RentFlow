@@ -33,7 +33,7 @@ class TicketImageController extends Controller
         ]);
 
         $path = $request->file('image')->store(
-            'tickets/' . $ticket->id . '/images',
+            'tickets/'.$ticket->id.'/images',
             'public'
         );
 

@@ -22,7 +22,7 @@ class TicketCommentResource extends JsonResource
                 ? url(Storage::url($this->attachment_path))
                 : null,
             'created_at' => $this->created_at,
-            'user' => $this->whenLoaded('user', fn() => [
+            'user' => $this->whenLoaded('user', fn () => [
                 'id' => $this->user->id,
                 'name' => $this->user->name,
                 'email' => $this->user->email,
