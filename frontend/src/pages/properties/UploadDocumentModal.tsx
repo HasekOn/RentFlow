@@ -25,7 +25,7 @@ export default function UploadDocumentModal({isOpen, onClose, propertyId, onSucc
         if (selected) {
             setFile(selected)
             if (!name) {
-                setName(selected.name)
+                setName(selected.name.replace(/\.[^.]+$/, ''))
             }
         }
     }
@@ -62,24 +62,17 @@ export default function UploadDocumentModal({isOpen, onClose, propertyId, onSucc
         onClose()
     }
 
-    const fileIcon = file ? (
-        file.name.endsWith('.pdf') ? '📄' :
-            file.name.match(/\.(jpg|jpeg|png|webp)$/i) ? '🖼️' :
-                file.name.match(/\.(doc|docx)$/i) ? '📝' :
-                    file.name.match(/\.(xls|xlsx)$/i) ? '📊' : '📎'
-    ) : '📁'
-
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="Upload Document" size="md">
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Drop zone */}
+                {/* File picker */}
                 <div
                     className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-gray-400 transition cursor-pointer"
-                    onClick={() => window.document.getElementById('doc-file-input')?.click()}
+                    onClick={() => document.getElementById('doc-file-input')?.click()}
                 >
                     {file ? (
                         <div>
-                            <span className="text-3xl">{fileIcon}</span>
+                            <span className="text-3xl">📎</span>
                             <p className="text-sm font-semibold text-black mt-2">{file.name}</p>
                             <p className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                         </div>

@@ -8,6 +8,16 @@ export interface User {
     created_at: string
 }
 
+export interface Document {
+    id: number
+    document_type: string
+    name: string
+    file_path: string
+    file_url?: string
+    created_at: string
+    uploaded_by?: User
+}
+
 export interface Property {
     id: number
     address: string

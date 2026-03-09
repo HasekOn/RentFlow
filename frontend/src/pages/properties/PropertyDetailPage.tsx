@@ -6,7 +6,8 @@ import {expensesApi} from '../../api/expenses'
 import {inventoryApi} from '../../api/inventory'
 import {ticketsApi} from '../../api/tickets'
 import {managersApi} from '../../api/managers'
-import type {Expense, InventoryItem, Meter, Property, Ticket} from '../../types'
+import {documentsApi} from '../../api/documents'
+import type {Document as PropertyDocument, Expense, InventoryItem, Meter, Property, Ticket} from '../../types'
 import {formatCurrency, formatDate} from '../../utils/format'
 import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
@@ -20,6 +21,7 @@ import CreateExpenseModal from './CreateExpenseModal'
 import CreateInventoryModal from './CreateInventoryModal'
 import ImageUploadModal from './ImageUploadModal'
 import ManagerAssignment from './ManagerAssignment'
+import UploadDocumentModal from './UploadDocumentModal'
 import {useConfirm} from '../../hooks/useConfirm'
 
 const statusVariant = (status: string) => {
@@ -76,6 +78,7 @@ export default function PropertyDetailPage() {
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [inventory, setInventory] = useState<InventoryItem[]>([])
     const [tickets, setTickets] = useState<Ticket[]>([])
+    const [documents, setDocuments] = useState<PropertyDocument[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<Tab>('overview')
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
@@ -87,9 +90,9 @@ export default function PropertyDetailPage() {
     const [showExpenseModal, setShowExpenseModal] = useState(false)
     const [showInventoryModal, setShowInventoryModal] = useState(false)
     const [showImageModal, setShowImageModal] = useState(false)
+    const [showDocumentModal, setShowDocumentModal] = useState(false)
 
     const propertyId = Number(id)
-
     const {confirm: showConfirm, dialog} = useConfirm()
 
     const loadProperty = async () => {
@@ -105,16 +108,18 @@ export default function PropertyDetailPage() {
 
     const loadManagementData = async () => {
         try {
-            const [metersRes, expensesRes, inventoryRes, ticketsRes] = await Promise.all([
+            const [metersRes, expensesRes, inventoryRes, ticketsRes, documentsRes] = await Promise.all([
                 metersApi.getByProperty(propertyId),
                 expensesApi.getAll({property_id: propertyId, sort: '-expense_date'}),
                 inventoryApi.getByProperty(propertyId),
                 ticketsApi.getAll({property_id: propertyId, sort: '-created_at'}),
+                documentsApi.getByProperty(propertyId),
             ])
             setMeters(Array.isArray(metersRes.data) ? metersRes.data : [])
             setExpenses(expensesRes.data.data || [])
             setInventory(Array.isArray(inventoryRes.data) ? inventoryRes.data : [])
             setTickets(ticketsRes.data.data || [])
+            setDocuments(Array.isArray(documentsRes.data) ? documentsRes.data : [])
         } catch (error) {
             console.error('Failed to load management data:', error)
         }
@@ -127,16 +132,46 @@ export default function PropertyDetailPage() {
             confirmLabel: 'Delete',
             variant: 'danger',
         })
-
-        if (!ok) {
-            return
-        }
+        if (!ok) return
 
         try {
             await propertiesApi.deleteImage(imageId)
             void loadProperty()
         } catch (error) {
             console.error('Failed to delete image:', error)
+        }
+    }
+
+    const handleDownloadDocument = async (doc: PropertyDocument) => {
+        try {
+            const res = await documentsApi.download(doc.id)
+            const blob = new Blob([res.data])
+            const url = window.URL.createObjectURL(blob)
+            const link = window.document.createElement('a')
+            link.href = url
+            // Ensure filename has extension
+            const ext = doc.file_path.split('.').pop()
+            link.download = doc.name.includes('.') ? doc.name : `${doc.name}.${ext}`
+            link.click()
+            window.URL.revokeObjectURL(url)
+        } catch (error) {
+            console.error('Failed to download document:', error)
+        }
+    }
+
+    const handleDeleteDocument = async (docId: number) => {
+        const ok = await showConfirm({
+            title: 'Delete Document',
+            message: 'Are you sure you want to delete this document?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+        if (!ok) return
+        try {
+            await documentsApi.delete(docId)
+            void loadManagementData()
+        } catch (error) {
+            console.error('Failed to delete document:', error)
         }
     }
 
@@ -176,7 +211,7 @@ export default function PropertyDetailPage() {
                             e.stopPropagation();
                             setLightboxIndex(null)
                         }}
-                        className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition"
+                        className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition cursor-pointer"
                     >✕
                     </button>
                     {lightboxIndex > 0 && (
@@ -185,7 +220,7 @@ export default function PropertyDetailPage() {
                                 e.stopPropagation();
                                 setLightboxIndex(lightboxIndex - 1)
                             }}
-                            className="absolute left-6 text-white text-4xl hover:opacity-70 transition"
+                            className="absolute left-6 text-white text-4xl hover:opacity-70 transition cursor-pointer"
                         >‹</button>
                     )}
                     {lightboxIndex < images.length - 1 && (
@@ -194,7 +229,7 @@ export default function PropertyDetailPage() {
                                 e.stopPropagation();
                                 setLightboxIndex(lightboxIndex + 1)
                             }}
-                            className="absolute right-6 text-white text-4xl hover:opacity-70 transition"
+                            className="absolute right-6 text-white text-4xl hover:opacity-70 transition cursor-pointer"
                         >›</button>
                     )}
                     <img
@@ -215,7 +250,7 @@ export default function PropertyDetailPage() {
                                     setLightboxIndex(null)
                                     handleDeleteImage(images[lightboxIndex].id)
                                 }}
-                                className="text-red-400 hover:text-red-300 text-sm transition"
+                                className="text-red-400 hover:text-red-300 text-sm transition cursor-pointer"
                             >
                                 🗑 Delete
                             </button>
@@ -228,7 +263,7 @@ export default function PropertyDetailPage() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                     <button onClick={() => navigate('/properties')}
-                            className="text-gray-400 hover:text-black transition text-lg">←
+                            className="text-gray-400 hover:text-black transition text-lg cursor-pointer">←
                     </button>
                     <h1 className="text-2xl sm:text-4xl font-bold text-black">Property Detail</h1>
                 </div>
@@ -243,14 +278,14 @@ export default function PropertyDetailPage() {
             <div className="flex gap-2 mb-6">
                 <button
                     onClick={() => setActiveTab('overview')}
-                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition ${
+                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
                         activeTab === 'overview' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                     }`}
                 >Overview
                 </button>
                 <button
                     onClick={() => setActiveTab('management')}
-                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition ${
+                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
                         activeTab === 'management' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                     }`}
                 >{isLandlord ? 'Management' : 'Details'}</button>
@@ -393,7 +428,6 @@ export default function PropertyDetailPage() {
                             </div>
                         </div>
 
-                        {/* Manager Assignment — landlord only */}
                         {isLandlord && (
                             <ManagerAssignment propertyId={propertyId}/>
                         )}
@@ -451,7 +485,6 @@ export default function PropertyDetailPage() {
                                     <p className="text-sm text-gray-400 text-center py-4">No expenses recorded</p>
                                 ) : (
                                     <>
-                                        {/* Desktop table */}
                                         <div className="hidden sm:block">
                                             <table className="w-full">
                                                 <thead>
@@ -474,22 +507,18 @@ export default function PropertyDetailPage() {
                                                 </tbody>
                                             </table>
                                         </div>
-                                        {/* Mobile cards */}
                                         <div className="sm:hidden space-y-2">
                                             {expenses.slice(0, 10).map((expense) => (
-                                                <div key={expense.id}
-                                                     className="p-3 border border-gray-100 rounded-xl">
+                                                <div key={expense.id} className="p-3 border border-gray-100 rounded-xl">
                                                     <div className="flex items-center justify-between">
                                                         <span
                                                             className="text-sm font-semibold text-black capitalize">{expense.type}</span>
                                                         <span
                                                             className="text-sm font-bold text-black">{formatCurrency(expense.amount)}</span>
                                                     </div>
-                                                    <div
-                                                        className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                                                         <span>{formatDate(expense.expense_date)}</span>
-                                                        {expense.description &&
-                                                            <span>· {expense.description}</span>}
+                                                        {expense.description && <span>· {expense.description}</span>}
                                                     </div>
                                                 </div>
                                             ))}
@@ -526,8 +555,68 @@ export default function PropertyDetailPage() {
                                                 {item.purchase_date && <span
                                                     className="text-xs text-gray-400">{formatDate(item.purchase_date)}</span>}
                                             </div>
-                                            {item.note &&
-                                                <p className="text-xs text-gray-400 mt-1">{item.note}</p>}
+                                            {item.note && <p className="text-xs text-gray-400 mt-1">{item.note}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Documents */}
+                        <div className="bg-white rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-lg font-bold text-black">Documents</h2>
+                                {isLandlord && (
+                                    <Button size="sm" onClick={() => setShowDocumentModal(true)}>+ Add</Button>
+                                )}
+                            </div>
+                            {documents.length === 0 ? (
+                                <p className="text-sm text-gray-400 text-center py-4">No documents uploaded</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {documents.map((doc) => (
+                                        <div key={doc.id}
+                                             className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition">
+                                            <div
+                                                className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                                                onClick={() => handleDownloadDocument(doc)}
+                                            >
+                                                <span className="text-xl shrink-0">
+                                                    {(doc.name + doc.file_path).match(/\.pdf/i) ? '📄' :
+                                                        (doc.name + doc.file_path).match(/\.(jpg|jpeg|png|webp)/i) ? '🖼️' :
+                                                            (doc.name + doc.file_path).match(/\.(doc|docx)/i) ? '📝' :
+                                                                (doc.name + doc.file_path).match(/\.(xls|xlsx)/i) ? '📊' : '📎'}
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-black truncate">{doc.name}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                                                        <span className="capitalize">{doc.document_type}</span>
+                                                        <span>·</span>
+                                                        <span>{formatDate(doc.created_at)}</span>
+                                                        {doc.uploaded_by && (
+                                                            <>
+                                                                <span>·</span>
+                                                                <span>{doc.uploaded_by.name}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1 shrink-0 ml-2">
+                                                <button
+                                                    onClick={() => handleDownloadDocument(doc)}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-600 cursor-pointer"
+                                                    title="Download"
+                                                >⬇️
+                                                </button>
+                                                {isLandlord && (
+                                                    <button
+                                                        onClick={() => handleDeleteDocument(doc.id)}
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500 cursor-pointer"
+                                                        title="Delete"
+                                                    >🗑</button>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -607,6 +696,15 @@ export default function PropertyDetailPage() {
                 onSuccess={() => {
                     setShowImageModal(false)
                     void loadProperty()
+                }}
+            />
+            <UploadDocumentModal
+                isOpen={showDocumentModal}
+                onClose={() => setShowDocumentModal(false)}
+                propertyId={propertyId}
+                onSuccess={() => {
+                    setShowDocumentModal(false)
+                    void loadManagementData()
                 }}
             />
             {dialog}
