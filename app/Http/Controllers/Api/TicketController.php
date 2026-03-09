@@ -31,10 +31,14 @@ class TicketController extends Controller
                 $user->ownedProperties()->pluck('id')
             )->with(['property', 'tenant', 'assignedUser']);
         } elseif ($user->role === 'manager') {
-            $query = Ticket::query()->whereIn(
-                'property_id',
-                $user->managedProperties()->pluck('properties.id')
-            )->with(['property', 'tenant', 'assignedUser']);
+            $managedPropertyIds = $user->managedProperties()->pluck('properties.id');
+
+            $query = Ticket::query()
+                ->where(function ($q) use ($user, $managedPropertyIds) {
+                    $q->whereIn('property_id', $managedPropertyIds)
+                        ->orWhere('assigned_to', $user->id);
+                })
+                ->with(['property', 'tenant', 'assignedUser']);
         } else {
             $query = $user->tickets()
                 ->with('property')

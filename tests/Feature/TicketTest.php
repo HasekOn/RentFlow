@@ -50,13 +50,24 @@ class TicketTest extends TestCase
             ->assertJsonCount(2, 'data');
     }
 
-    public function test_manager_sees_only_assigned_tickets(): void
+    public function test_manager_sees_assigned_and_managed_property_tickets(): void
     {
+        // Ticket directly assigned to manager
         Ticket::factory()->create([
             'property_id' => $this->property->id,
             'tenant_id' => $this->tenant->id,
             'assigned_to' => $this->manager->id,
         ]);
+
+        // Ticket on managed property (not directly assigned)
+        $managedProperty = Property::factory()->create(['landlord_id' => $this->landlord->id]);
+        $managedProperty->managers()->attach($this->manager->id);
+        Ticket::factory()->create([
+            'property_id' => $managedProperty->id,
+            'tenant_id' => $this->tenant->id,
+        ]);
+
+        // Ticket on unrelated property — should NOT see
         Ticket::factory()->create([
             'property_id' => $this->property->id,
             'tenant_id' => $this->tenant->id,
@@ -65,7 +76,7 @@ class TicketTest extends TestCase
         $response = $this->actingAs($this->manager)->getJson($this->apiUrl('/tickets'));
 
         $response->assertStatus(200)
-            ->assertJsonCount(1, 'data');
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_tenant_can_create_ticket(): void
@@ -100,12 +111,28 @@ class TicketTest extends TestCase
         $response->assertStatus(201);
     }
 
-    public function test_manager_cannot_create_ticket(): void
+    public function test_manager_can_create_ticket_for_managed_property(): void
     {
+        // Assign manager to this property
+        $this->property->managers()->attach($this->manager->id);
+
+        $response = $this->actingAs($this->manager)->postJson($this->apiUrl('/tickets'), [
+            'property_id' => $this->property->id,
+            'title' => 'Maintenance needed',
+            'description' => 'Manager reporting issue for managed property.',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('title', 'Maintenance needed');
+    }
+
+    public function test_manager_cannot_create_ticket_for_unmanaged_property(): void
+    {
+        // Manager is NOT assigned to this property
         $response = $this->actingAs($this->manager)->postJson($this->apiUrl('/tickets'), [
             'property_id' => $this->property->id,
             'title' => 'Test ticket',
-            'description' => 'Manager should not be able to create.',
+            'description' => 'Manager should not create for unmanaged property.',
         ]);
 
         $response->assertStatus(403);

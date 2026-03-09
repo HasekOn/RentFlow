@@ -14,19 +14,22 @@ class TicketPolicy
 
     public function view(User $user, Ticket $ticket): bool
     {
-        // Landlord owns the property
         if ($ticket->property && $ticket->property->landlord_id === $user->id) {
             return true;
         }
 
-        // Manager manages this property
-        if ($user->role === 'manager' && $ticket->property) {
-            return $user->managedProperties()
-                ->where('properties.id', $ticket->property_id)
-                ->exists();
+        if ($user->role === 'manager') {
+            if ($ticket->assigned_to === $user->id) {
+                return true;
+            }
+
+            if ($ticket->property) {
+                return $user->managedProperties()
+                    ->where('properties.id', $ticket->property_id)
+                    ->exists();
+            }
         }
 
-        // Tenant created this ticket
         return $ticket->tenant_id === $user->id;
     }
 
@@ -37,16 +40,22 @@ class TicketPolicy
 
     public function update(User $user, Ticket $ticket): bool
     {
-        // Landlord owns the property
         if ($ticket->property && $ticket->property->landlord_id === $user->id) {
             return true;
         }
 
-        // Manager manages this property
-        if ($user->role === 'manager' && $ticket->property) {
-            return $user->managedProperties()
-                ->where('properties.id', $ticket->property_id)
-                ->exists();
+        if ($user->role === 'manager') {
+            // Assigned directly to this ticket
+            if ($ticket->assigned_to === $user->id) {
+                return true;
+            }
+
+            // Manages this property
+            if ($ticket->property) {
+                return $user->managedProperties()
+                    ->where('properties.id', $ticket->property_id)
+                    ->exists();
+            }
         }
 
         return false;
