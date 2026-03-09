@@ -7,7 +7,8 @@ import {inventoryApi} from '../../api/inventory'
 import {ticketsApi} from '../../api/tickets'
 import {managersApi} from '../../api/managers'
 import {documentsApi} from '../../api/documents'
-import type {Document as PropertyDocument, Expense, InventoryItem, Meter, Property, Ticket} from '../../types'
+import {noticesApi} from '../../api/notices'
+import type {Document as PropertyDocument, Expense, InventoryItem, Meter, Notice, Property, Ticket} from '../../types'
 import {formatCurrency, formatDate} from '../../utils/format'
 import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
@@ -22,6 +23,7 @@ import CreateInventoryModal from './CreateInventoryModal'
 import ImageUploadModal from './ImageUploadModal'
 import ManagerAssignment from './ManagerAssignment'
 import UploadDocumentModal from './UploadDocumentModal'
+import CreateNoticeModal from './CreateNoticeModal'
 import {useConfirm} from '../../hooks/useConfirm'
 
 const statusVariant = (status: string) => {
@@ -79,6 +81,7 @@ export default function PropertyDetailPage() {
     const [inventory, setInventory] = useState<InventoryItem[]>([])
     const [tickets, setTickets] = useState<Ticket[]>([])
     const [documents, setDocuments] = useState<PropertyDocument[]>([])
+    const [notices, setNotices] = useState<Notice[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<Tab>('overview')
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
@@ -91,6 +94,7 @@ export default function PropertyDetailPage() {
     const [showInventoryModal, setShowInventoryModal] = useState(false)
     const [showImageModal, setShowImageModal] = useState(false)
     const [showDocumentModal, setShowDocumentModal] = useState(false)
+    const [showNoticeModal, setShowNoticeModal] = useState(false)
 
     const propertyId = Number(id)
     const {confirm: showConfirm, dialog} = useConfirm()
@@ -108,18 +112,20 @@ export default function PropertyDetailPage() {
 
     const loadManagementData = async () => {
         try {
-            const [metersRes, expensesRes, inventoryRes, ticketsRes, documentsRes] = await Promise.all([
+            const [metersRes, expensesRes, inventoryRes, ticketsRes, documentsRes, noticesRes] = await Promise.all([
                 metersApi.getByProperty(propertyId),
                 expensesApi.getAll({property_id: propertyId, sort: '-expense_date'}),
                 inventoryApi.getByProperty(propertyId),
                 ticketsApi.getAll({property_id: propertyId, sort: '-created_at'}),
                 documentsApi.getByProperty(propertyId),
+                noticesApi.getByProperty(propertyId),
             ])
             setMeters(Array.isArray(metersRes.data) ? metersRes.data : [])
             setExpenses(expensesRes.data.data || [])
             setInventory(Array.isArray(inventoryRes.data) ? inventoryRes.data : [])
             setTickets(ticketsRes.data.data || [])
             setDocuments(Array.isArray(documentsRes.data) ? documentsRes.data : [])
+            setNotices(Array.isArray(noticesRes.data) ? noticesRes.data : [])
         } catch (error) {
             console.error('Failed to load management data:', error)
         }
@@ -149,7 +155,6 @@ export default function PropertyDetailPage() {
             const url = window.URL.createObjectURL(blob)
             const link = window.document.createElement('a')
             link.href = url
-            // Ensure filename has extension
             const ext = doc.file_path.split('.').pop()
             link.download = doc.name.includes('.') ? doc.name : `${doc.name}.${ext}`
             link.click()
@@ -172,6 +177,31 @@ export default function PropertyDetailPage() {
             void loadManagementData()
         } catch (error) {
             console.error('Failed to delete document:', error)
+        }
+    }
+
+    const handleToggleNotice = async (notice: Notice) => {
+        try {
+            await noticesApi.update(notice.id, {is_active: !notice.is_active})
+            void loadManagementData()
+        } catch (error) {
+            console.error('Failed to toggle notice:', error)
+        }
+    }
+
+    const handleDeleteNotice = async (noticeId: number) => {
+        const ok = await showConfirm({
+            title: 'Delete Notice',
+            message: 'Are you sure you want to delete this notice?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+        if (!ok) return
+        try {
+            await noticesApi.delete(noticeId)
+            void loadManagementData()
+        } catch (error) {
+            console.error('Failed to delete notice:', error)
         }
     }
 
@@ -440,6 +470,76 @@ export default function PropertyDetailPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left column */}
                     <div className="lg:col-span-2 space-y-6">
+                        {/* Notices */}
+                        <div className="bg-white rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-lg font-bold text-black">Notices</h2>
+                                {isLandlord && (
+                                    <Button size="sm" onClick={() => setShowNoticeModal(true)}>+ Add</Button>
+                                )}
+                            </div>
+                            {notices.length === 0 ? (
+                                <p className="text-sm text-gray-400 text-center py-4">No notices posted</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {notices.map((notice) => (
+                                        <div
+                                            key={notice.id}
+                                            className={`p-4 border rounded-xl transition ${
+                                                notice.is_active
+                                                    ? 'border-green-200 bg-green-50/50'
+                                                    : 'border-gray-100 bg-gray-50/50 opacity-60'
+                                            }`}
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm">📢</span>
+                                                        <p className="text-sm font-semibold text-black">{notice.title}</p>
+                                                        {!notice.is_active && (
+                                                            <span
+                                                                className="text-xs text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">Inactive</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-line">{notice.content}</p>
+                                                    <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
+                                                        <span>{formatDate(notice.created_at)}</span>
+                                                        {notice.created_by && (
+                                                            <>
+                                                                <span>·</span>
+                                                                <span>{notice.created_by.name}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {isLandlord && (
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <button
+                                                            onClick={() => handleToggleNotice(notice)}
+                                                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition cursor-pointer ${
+                                                                notice.is_active
+                                                                    ? 'hover:bg-yellow-50 text-green-500 hover:text-yellow-500'
+                                                                    : 'hover:bg-green-50 text-gray-400 hover:text-green-500'
+                                                            }`}
+                                                            title={notice.is_active ? 'Deactivate' : 'Activate'}
+                                                        >
+                                                            {notice.is_active ? '🔕' : '🔔'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteNotice(notice.id)}
+                                                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500 cursor-pointer"
+                                                            title="Delete"
+                                                        >🗑
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         {/* Tickets */}
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
@@ -704,6 +804,15 @@ export default function PropertyDetailPage() {
                 propertyId={propertyId}
                 onSuccess={() => {
                     setShowDocumentModal(false)
+                    void loadManagementData()
+                }}
+            />
+            <CreateNoticeModal
+                isOpen={showNoticeModal}
+                onClose={() => setShowNoticeModal(false)}
+                propertyId={propertyId}
+                onSuccess={() => {
+                    setShowNoticeModal(false)
                     void loadManagementData()
                 }}
             />
