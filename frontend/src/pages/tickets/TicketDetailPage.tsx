@@ -2,7 +2,7 @@ import * as React from 'react'
 import {useEffect, useState} from 'react'
 import {useNavigate, useParams} from 'react-router-dom'
 import {ticketsApi} from '../../api/tickets'
-import type {Ticket, TicketComment} from '../../types'
+import type {Ticket, TicketComment, TicketImage} from '../../types'
 import {formatDate} from '../../utils/format'
 import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
@@ -49,13 +49,16 @@ export default function TicketDetailPage() {
     const {user, isLandlord, isManager} = useAuth()
     const [ticket, setTicket] = useState<Ticket | null>(null)
     const [comments, setComments] = useState<TicketComment[]>([])
+    const [ticketImages, setTicketImages] = useState<TicketImage[]>([])
     const [newComment, setNewComment] = useState('')
     const [attachment, setAttachment] = useState<File | null>(null)
     const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSending, setIsSending] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
+    const [isUploadingImage, setIsUploadingImage] = useState(false)
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
     const [showEditModal, setShowEditModal] = useState(false)
     const {confirm: showConfirm, dialog} = useConfirm()
 
@@ -67,6 +70,7 @@ export default function TicketDetailPage() {
             ])
             setTicket(ticketRes.data)
             setComments(Array.isArray(commentsRes.data) ? commentsRes.data : [])
+            setTicketImages(ticketRes.data.images || [])
         } catch {
             navigate('/tickets')
         } finally {
@@ -161,15 +165,48 @@ export default function TicketDetailPage() {
         }
     }
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setIsUploadingImage(true)
+        try {
+            const formData = new FormData()
+            formData.append('image', file)
+            await ticketsApi.uploadImage(Number(id), formData)
+            void loadTicket()
+        } catch (error) {
+            console.error('Failed to upload image:', error)
+        } finally {
+            setIsUploadingImage(false)
+            e.target.value = ''
+        }
+    }
+
+    const handleDeleteTicketImage = async (imageId: number) => {
+        const ok = await showConfirm({
+            title: 'Delete Photo',
+            message: 'Are you sure you want to delete this photo?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+        if (!ok) return
+        try {
+            await ticketsApi.deleteImage(Number(id), imageId)
+            void loadTicket()
+        } catch (error) {
+            console.error('Failed to delete image:', error)
+        }
+    }
+
     if (isLoading) return <Spinner/>
     if (!ticket) return null
 
-    const isAuthor = ticket.tenant === user?.id
+    const isAuthor = ticket.tenant?.id === user?.id
     const canEdit = isLandlord || isManager || (isAuthor && ticket.status === 'new')
 
     return (
         <div>
-            {/* Lightbox */}
+            {/* Comment attachment lightbox */}
             {lightboxUrl && (
                 <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
                      onClick={() => setLightboxUrl(null)}>
@@ -187,6 +224,65 @@ export default function TicketDetailPage() {
                         className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
                         onClick={(e) => e.stopPropagation()}
                     />
+                </div>
+            )}
+
+            {/* Ticket images lightbox with navigation */}
+            {lightboxIndex !== null && ticketImages.length > 0 && (
+                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+                     onClick={() => setLightboxIndex(null)}>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setLightboxIndex(null)
+                        }}
+                        className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition"
+                    >✕
+                    </button>
+                    {lightboxIndex > 0 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setLightboxIndex(lightboxIndex - 1)
+                            }}
+                            className="absolute left-6 text-white text-4xl hover:opacity-70 transition"
+                        >‹
+                        </button>
+                    )}
+                    {lightboxIndex < ticketImages.length - 1 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setLightboxIndex(lightboxIndex + 1)
+                            }}
+                            className="absolute right-6 text-white text-4xl hover:opacity-70 transition"
+                        >›
+                        </button>
+                    )}
+                    <img
+                        src={ticketImages[lightboxIndex].image_url}
+                        alt={ticketImages[lightboxIndex].description || 'Ticket photo'}
+                        className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="absolute bottom-6 flex items-center gap-4">
+                        <p className="text-white text-sm">
+                            {lightboxIndex + 1} / {ticketImages.length}
+                            {ticketImages[lightboxIndex].uploader && ` — ${ticketImages[lightboxIndex].uploader!.name}`}
+                        </p>
+                        {(isLandlord || ticketImages[lightboxIndex].uploader?.id === user?.id) && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    const imgId = ticketImages[lightboxIndex].id
+                                    setLightboxIndex(null)
+                                    handleDeleteTicketImage(imgId)
+                                }}
+                                className="text-red-400 hover:text-red-300 text-sm transition"
+                            >🗑 Delete
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -208,7 +304,7 @@ export default function TicketDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main — comments */}
+                {/* Main column */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Ticket info */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -224,6 +320,57 @@ export default function TicketDetailPage() {
                         <p className="text-sm text-gray-600 mt-4 leading-relaxed">
                             {ticket.description}
                         </p>
+                    </div>
+
+                    {/* Photos */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-black">
+                                Photos ({ticketImages.length})
+                            </h2>
+                            {ticket.status !== 'resolved' && ticket.status !== 'rejected' && (
+                                <>
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => document.getElementById('ticket-image-upload')?.click()}
+                                        disabled={isUploadingImage}
+                                    >
+                                        {isUploadingImage ? 'Uploading...' : '📷 Add Photo'}
+                                    </Button>
+                                    <input
+                                        id="ticket-image-upload"
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        onChange={handleImageUpload}
+                                        className="hidden"
+                                    />
+                                </>
+                            )}
+                        </div>
+                        {ticketImages.length === 0 ? (
+                            <p className="text-sm text-gray-400 text-center py-4">No photos attached</p>
+                        ) : (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                {ticketImages.map((img, idx) => (
+                                    <div
+                                        key={img.id}
+                                        className="aspect-square cursor-pointer overflow-hidden rounded-xl relative group"
+                                        onClick={() => setLightboxIndex(idx)}
+                                    >
+                                        <img
+                                            src={img.image_url}
+                                            alt={img.description || 'Ticket photo'}
+                                            className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                                        />
+                                        <div
+                                            className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/50 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition">
+                                            <p className="text-white text-xs truncate">{img.uploader?.name}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Comments */}
@@ -264,7 +411,8 @@ export default function TicketDetailPage() {
                                                 </div>
                                                 <div
                                                     className={`flex items-center gap-2 mt-1 ${isOwn ? 'justify-end' : ''}`}>
-                                                    <span className="text-xs text-gray-400">{comment.user?.name}</span>
+                                                    <span
+                                                        className="text-xs text-gray-400">{comment.user?.name}</span>
                                                     <span className="text-xs text-gray-300">·</span>
                                                     <span
                                                         className="text-xs text-gray-400">{formatDate(comment.created_at)}</span>
@@ -334,7 +482,7 @@ export default function TicketDetailPage() {
                     </div>
                 </div>
 
-                {/* Sidebar — ticket info */}
+                {/* Sidebar */}
                 <div className="space-y-6">
                     {/* Details */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -346,7 +494,8 @@ export default function TicketDetailPage() {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Category</span>
-                                <span className="text-sm font-semibold capitalize">{ticket.category || '—'}</span>
+                                <span
+                                    className="text-sm font-semibold capitalize">{ticket.category || '—'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Created</span>
@@ -354,7 +503,8 @@ export default function TicketDetailPage() {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Reporter</span>
-                                <span className="text-sm font-semibold">{ticket.tenant?.name || '—'}</span>
+                                <span
+                                    className="text-sm font-semibold">{ticket.tenant?.name || '—'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Assigned to</span>
@@ -364,13 +514,15 @@ export default function TicketDetailPage() {
                             {ticket.resolved_at && (
                                 <div className="flex justify-between">
                                     <span className="text-sm text-gray-500">Resolved</span>
-                                    <span className="text-sm font-semibold">{formatDate(ticket.resolved_at)}</span>
+                                    <span
+                                        className="text-sm font-semibold">{formatDate(ticket.resolved_at)}</span>
                                 </div>
                             )}
                             {ticket.resolution_time && (
                                 <div className="flex justify-between">
                                     <span className="text-sm text-gray-500">Resolution time</span>
-                                    <span className="text-sm font-semibold">{ticket.resolution_time}h</span>
+                                    <span
+                                        className="text-sm font-semibold">{ticket.resolution_time}h</span>
                                 </div>
                             )}
                         </div>
@@ -484,13 +636,11 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
         try {
             const updateData: Record<string, unknown> = {}
 
-            // Author can edit title/description when status is new
             if (isAuthor && ticket.status === 'new') {
                 updateData.title = formData.title
                 updateData.description = formData.description
             }
 
-            // Landlord/manager can edit priority and category
             if (isLandlordOrManager) {
                 updateData.priority = formData.priority
                 updateData.category = formData.category || undefined
@@ -510,7 +660,6 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Edit Ticket" size="md">
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Title & Description — only author when status=new */}
                 {canEditContent && (
                     <>
                         <Input
@@ -538,7 +687,6 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
                     </>
                 )}
 
-                {/* Priority & Category — landlord/manager */}
                 {isLandlordOrManager && (
                     <div className="grid grid-cols-2 gap-4">
                         <Select
@@ -573,7 +721,6 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
                     </div>
                 )}
 
-                {/* Show info if nothing editable */}
                 {!canEditContent && !isLandlordOrManager && (
                     <p className="text-sm text-gray-500 text-center py-4">
                         Tickets can only be edited while status is "New".

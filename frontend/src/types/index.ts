@@ -82,6 +82,7 @@ export interface Ticket {
     tenant?: User
     assigned_user?: User
     comments?: TicketComment[]
+    images?: TicketImage[]
 }
 
 export interface TicketComment {
@@ -91,6 +92,15 @@ export interface TicketComment {
     attachment_url: string | null
     created_at: string
     user?: User
+}
+
+export interface TicketImage {
+    id: number
+    image_path: string
+    image_url: string
+    description: string | null
+    created_at: string
+    uploader?: { id: number; name: string }
 }
 
 export interface Meter {

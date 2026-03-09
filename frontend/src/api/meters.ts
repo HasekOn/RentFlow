@@ -19,6 +19,9 @@ export const metersApi = {
     create: (propertyId: number, data: CreateMeterData) =>
         api.post<Meter>('/properties/' + propertyId + '/meters', data),
 
+    update: (meterId: number, data: { serial_number?: string; location?: string }) =>
+        api.put<Meter>('/meters/' + meterId, data),
+    
     delete: (meterId: number) =>
         api.delete('/meters/' + meterId),
 

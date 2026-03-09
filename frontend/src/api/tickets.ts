@@ -1,5 +1,5 @@
 import api from './axios'
-import type {PaginatedResponse, Ticket, TicketComment} from '../types'
+import type {PaginatedResponse, Ticket, TicketComment, TicketImage} from '../types'
 
 interface TicketFilters {
     status?: string
@@ -53,7 +53,7 @@ export const ticketsApi = {
         if (attachment) {
             formData.append('attachment', attachment)
         }
-        
+
         return api.post<TicketComment>('/tickets/' + ticketId + '/comments', formData, {
             headers: {'Content-Type': 'multipart/form-data'},
         })
@@ -61,4 +61,14 @@ export const ticketsApi = {
 
     deleteComment: (ticketId: number, commentId: number) =>
         api.delete('/tickets/' + ticketId + '/comments/' + commentId),
+
+    // Images
+    getImages: (ticketId: number) =>
+        api.get<TicketImage[]>('/tickets/' + ticketId + '/images'),
+
+    uploadImage: (ticketId: number, formData: FormData) =>
+        api.post('/tickets/' + ticketId + '/images', formData),
+
+    deleteImage: (ticketId: number, imageId: number) =>
+        api.delete('/tickets/' + ticketId + '/images/' + imageId),
 }

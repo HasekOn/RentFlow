@@ -68,7 +68,7 @@ class TicketController extends Controller
                 ->where('properties.id', $validated['property_id'])
                 ->exists();
 
-            if (! $hasAccess) {
+            if (!$hasAccess) {
                 return response()->json([
                     'message' => 'You can only create tickets for your managed properties.',
                 ], 403);
@@ -90,6 +90,7 @@ class TicketController extends Controller
             'tenant',
             'assignedUser',
             'comments.user',
+            'images.uploader',
         ])->findOrFail($id);
 
         $this->authorize('view', $ticket);

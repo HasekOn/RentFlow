@@ -65,6 +65,11 @@ class Ticket extends Model
         return $this->hasMany(TicketComment::class);
     }
 
+    public function images(): HasMany
+    {
+        return $this->hasMany(TicketImage::class);
+    }
+    
     protected function casts(): array
     {
         return [

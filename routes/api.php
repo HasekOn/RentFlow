@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\PropertyImageController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\TicketCommentController;
 use App\Http\Controllers\Api\TicketController;
+use App\Http\Controllers\Api\TicketImageController;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ Route::middleware('throttle:10,1')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', fn (Request $request) => new UserResource($request->user()));
+    Route::get('/user', fn(Request $request) => new UserResource($request->user()));
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'show']);
@@ -67,6 +68,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('tickets/{ticket}/comments', [TicketCommentController::class, 'index']);
     Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store']);
     Route::delete('tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy']);
+
+    // Ticket images
+    Route::get('tickets/{ticket}/images', [TicketImageController::class, 'index']);
+    Route::post('tickets/{ticket}/images', [TicketImageController::class, 'store']);
+    Route::delete('tickets/{ticket}/images/{image}', [TicketImageController::class, 'destroy']);
 
     // Meters (read for all, write checked in controller)
     Route::get('properties/{property}/meters', [MeterController::class, 'index']);

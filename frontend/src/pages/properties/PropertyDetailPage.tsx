@@ -554,6 +554,7 @@ export default function PropertyDetailPage() {
                                     key={meter.id}
                                     meter={meter}
                                     canEdit={isLandlord || isAssignedManager}
+                                    isLandlord={isLandlord}
                                     onUpdate={() => void loadManagementData()}
                                 />
                             ))
