@@ -12,6 +12,7 @@ import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import {useConfirm} from '../../hooks/useConfirm'
+import {usersApi} from '../../api/users'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -609,7 +610,9 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
         description: '',
         priority: '',
         category: '',
+        assigned_to: '',
     })
+    const [managers, setManagers] = useState<Array<{ id: number; name: string; email: string }>>([])
     const [errors, setErrors] = useState<Record<string, string[]>>({})
     const [isLoading, setIsLoading] = useState(false)
 
@@ -620,9 +623,17 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
                 description: ticket.description || '',
                 priority: ticket.priority || 'medium',
                 category: ticket.category || '',
+                assigned_to: ticket.assigned_user?.id?.toString() || '',
             })
+
+            // Load managers for assignment
+            if (isLandlordOrManager) {
+                usersApi.getManagers().then((res) => {
+                    setManagers(res.data)
+                }).catch(console.error)
+            }
         }
-    }, [ticket, isOpen])
+    }, [ticket, isOpen, isLandlordOrManager])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
@@ -644,6 +655,7 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
             if (isLandlordOrManager) {
                 updateData.priority = formData.priority
                 updateData.category = formData.category || undefined
+                updateData.assigned_to = formData.assigned_to ? Number(formData.assigned_to) : null
             }
 
             await ticketsApi.update(ticket.id, updateData as any)
@@ -688,37 +700,51 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
                 )}
 
                 {isLandlordOrManager && (
-                    <div className="grid grid-cols-2 gap-4">
+                    <>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Select
+                                label="Priority"
+                                name="priority"
+                                value={formData.priority}
+                                onChange={handleChange}
+                                options={[
+                                    {value: 'low', label: 'Low'},
+                                    {value: 'medium', label: 'Medium'},
+                                    {value: 'high', label: 'High'},
+                                    {value: 'urgent', label: 'Urgent'},
+                                ]}
+                                error={errors.priority?.[0]}
+                            />
+                            <Select
+                                label="Category"
+                                name="category"
+                                value={formData.category}
+                                onChange={handleChange}
+                                placeholder="Select..."
+                                options={[
+                                    {value: 'plumbing', label: 'Plumbing'},
+                                    {value: 'electrical', label: 'Electrical'},
+                                    {value: 'heating', label: 'Heating'},
+                                    {value: 'structural', label: 'Structural'},
+                                    {value: 'appliance', label: 'Appliance'},
+                                    {value: 'other', label: 'Other'},
+                                ]}
+                                error={errors.category?.[0]}
+                            />
+                        </div>
                         <Select
-                            label="Priority"
-                            name="priority"
-                            value={formData.priority}
+                            label="Assign to Manager"
+                            name="assigned_to"
+                            value={formData.assigned_to}
                             onChange={handleChange}
-                            options={[
-                                {value: 'low', label: 'Low'},
-                                {value: 'medium', label: 'Medium'},
-                                {value: 'high', label: 'High'},
-                                {value: 'urgent', label: 'Urgent'},
-                            ]}
-                            error={errors.priority?.[0]}
+                            placeholder="Unassigned"
+                            options={managers.map((m) => ({
+                                value: String(m.id),
+                                label: `${m.name} (${m.email})`,
+                            }))}
+                            error={errors.assigned_to?.[0]}
                         />
-                        <Select
-                            label="Category"
-                            name="category"
-                            value={formData.category}
-                            onChange={handleChange}
-                            placeholder="Select..."
-                            options={[
-                                {value: 'plumbing', label: 'Plumbing'},
-                                {value: 'electrical', label: 'Electrical'},
-                                {value: 'heating', label: 'Heating'},
-                                {value: 'structural', label: 'Structural'},
-                                {value: 'appliance', label: 'Appliance'},
-                                {value: 'other', label: 'Other'},
-                            ]}
-                            error={errors.category?.[0]}
-                        />
-                    </div>
+                    </>
                 )}
 
                 {!canEditContent && !isLandlordOrManager && (

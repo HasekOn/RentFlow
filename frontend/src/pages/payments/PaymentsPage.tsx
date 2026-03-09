@@ -66,6 +66,17 @@ export default function PaymentsPage() {
     }, [statusFilter, typeFilter])
 
     const handleMarkPaid = async (id: number) => {
+        const ok = await confirm({
+            title: 'Mark as Paid',
+            message: 'Mark this payment as paid with today\'s date?',
+            confirmLabel: 'Mark Paid',
+            variant: 'primary',
+        })
+
+        if (!ok) {
+            return
+        }
+
         try {
             await paymentsApi.markPaid(id)
             void loadPayments()

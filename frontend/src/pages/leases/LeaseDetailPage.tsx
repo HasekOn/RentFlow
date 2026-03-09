@@ -11,6 +11,7 @@ import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import RateTenantModal from './RateTenantModal'
 import {useConfirm} from "../../hooks/useConfirm.tsx";
+import {paymentsApi} from "../../api/payments.ts";
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -91,6 +92,22 @@ export default function LeaseDetailPage() {
             console.error('Failed to update lease:', error)
         } finally {
             setIsUpdating(false)
+        }
+    }
+
+    const handleMarkPaid = async (paymentId: number) => {
+        const ok = await showConfirm({
+            title: 'Mark as Paid',
+            message: 'Mark this payment as paid with today\'s date?',
+            confirmLabel: 'Mark Paid',
+            variant: 'primary',
+        })
+        if (!ok) return
+        try {
+            await paymentsApi.markPaid(paymentId)
+            void loadLease()
+        } catch (error) {
+            console.error('Failed to mark payment as paid:', error)
         }
     }
 
@@ -227,7 +244,18 @@ export default function LeaseDetailPage() {
                                                     {payment.status}
                                                 </Badge>
                                             </td>
-                                            <td className="py-3 text-sm text-gray-600">{payment.paid_date ? formatDate(payment.paid_date) : '—'}</td>
+                                            <td className="py-3 text-sm text-gray-600">
+                                                {payment.paid_date ? formatDate(payment.paid_date) : (
+                                                    isLandlord && payment.status !== 'paid' ? (
+                                                        <button
+                                                            onClick={() => handleMarkPaid(payment.id)}
+                                                            className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1 hover:bg-green-100 cursor-pointer transition"
+                                                        >
+                                                            ✓ Mark Paid
+                                                        </button>
+                                                    ) : '—'
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                     </tbody>
@@ -247,7 +275,16 @@ export default function LeaseDetailPage() {
                                         </div>
                                         <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                                             <span>Due {formatDate(payment.due_date)}</span>
-                                            {payment.paid_date && <span>· Paid {formatDate(payment.paid_date)}</span>}
+                                            {payment.paid_date ? (
+                                                <span>· Paid {formatDate(payment.paid_date)}</span>
+                                            ) : isLandlord && payment.status !== 'paid' ? (
+                                                <button
+                                                    onClick={() => handleMarkPaid(payment.id)}
+                                                    className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1 hover:bg-green-100 cursor-pointer transition"
+                                                >
+                                                    ✓ Mark Paid
+                                                </button>
+                                            ) : null}
                                         </div>
                                     </div>
                                 ))}
