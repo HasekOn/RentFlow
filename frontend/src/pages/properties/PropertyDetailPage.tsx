@@ -5,6 +5,7 @@ import {metersApi} from '../../api/meters'
 import {expensesApi} from '../../api/expenses'
 import {inventoryApi} from '../../api/inventory'
 import {ticketsApi} from '../../api/tickets'
+import {managersApi} from '../../api/managers'
 import type {Expense, InventoryItem, Meter, Property, Ticket} from '../../types'
 import {formatCurrency, formatDate} from '../../utils/format'
 import {useAuth} from '../../contexts/AuthContext'
@@ -18,7 +19,8 @@ import CreateMeterModal from './CreateMeterModal'
 import CreateExpenseModal from './CreateExpenseModal'
 import CreateInventoryModal from './CreateInventoryModal'
 import ImageUploadModal from './ImageUploadModal'
-import ManagerAssignment from "./ManagerAssignment.tsx";
+import ManagerAssignment from './ManagerAssignment'
+import {useConfirm} from '../../hooks/useConfirm'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -68,7 +70,7 @@ type Tab = 'overview' | 'management'
 export default function PropertyDetailPage() {
     const {id} = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const {isLandlord} = useAuth()
+    const {isLandlord, isManager, user} = useAuth()
     const [property, setProperty] = useState<Property | null>(null)
     const [meters, setMeters] = useState<Meter[]>([])
     const [expenses, setExpenses] = useState<Expense[]>([])
@@ -77,6 +79,7 @@ export default function PropertyDetailPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<Tab>('overview')
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+    const [isAssignedManager, setIsAssignedManager] = useState(false)
 
     // Modals
     const [showEditModal, setShowEditModal] = useState(false)
@@ -86,6 +89,8 @@ export default function PropertyDetailPage() {
     const [showImageModal, setShowImageModal] = useState(false)
 
     const propertyId = Number(id)
+
+    const {confirm: showConfirm, dialog} = useConfirm()
 
     const loadProperty = async () => {
         try {
@@ -115,9 +120,38 @@ export default function PropertyDetailPage() {
         }
     }
 
+    const handleDeleteImage = async (imageId: number) => {
+        const ok = await showConfirm({
+            title: 'Delete Photo',
+            message: 'Are you sure you want to delete this photo?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+
+        if (!ok) {
+            return
+        }
+
+        try {
+            await propertiesApi.deleteImage(imageId)
+            void loadProperty()
+        } catch (error) {
+            console.error('Failed to delete image:', error)
+        }
+    }
+
     useEffect(() => {
         void loadProperty()
     }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (isManager && propertyId) {
+            managersApi.getByProperty(propertyId).then((res) => {
+                const managers = Array.isArray(res.data) ? res.data : []
+                setIsAssignedManager(managers.some((m) => m.id === user?.id))
+            }).catch(() => setIsAssignedManager(false))
+        }
+    }, [isManager, propertyId, user?.id])
 
     useEffect(() => {
         if (activeTab === 'management') {
@@ -169,10 +203,24 @@ export default function PropertyDetailPage() {
                         className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
                         onClick={(e) => e.stopPropagation()}
                     />
-                    <p className="absolute bottom-6 text-white text-sm">
-                        {lightboxIndex + 1} / {images.length}
-                        {images[lightboxIndex].description && ` — ${images[lightboxIndex].description}`}
-                    </p>
+                    <div className="absolute bottom-6 flex items-center gap-4">
+                        <p className="text-white text-sm">
+                            {lightboxIndex + 1} / {images.length}
+                            {images[lightboxIndex].description && ` — ${images[lightboxIndex].description}`}
+                        </p>
+                        {isLandlord && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setLightboxIndex(null)
+                                    handleDeleteImage(images[lightboxIndex].id)
+                                }}
+                                className="text-red-400 hover:text-red-300 text-sm transition"
+                            >
+                                🗑 Delete
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -221,7 +269,8 @@ export default function PropertyDetailPage() {
                                             className={`${images.length === 1 ? 'col-span-4 row-span-2' : 'col-span-2 row-span-2'} cursor-pointer overflow-hidden rounded-xl`}
                                             onClick={() => setLightboxIndex(0)}
                                         >
-                                            <img src={images[0].image_url} alt={images[0].description || 'Property'}
+                                            <img src={images[0].image_url}
+                                                 alt={images[0].description || 'Property'}
                                                  className="w-full h-full object-cover hover:scale-105 transition duration-300"/>
                                         </div>
                                         {images.slice(1, 5).map((img, idx) => (
@@ -428,16 +477,19 @@ export default function PropertyDetailPage() {
                                         {/* Mobile cards */}
                                         <div className="sm:hidden space-y-2">
                                             {expenses.slice(0, 10).map((expense) => (
-                                                <div key={expense.id} className="p-3 border border-gray-100 rounded-xl">
+                                                <div key={expense.id}
+                                                     className="p-3 border border-gray-100 rounded-xl">
                                                     <div className="flex items-center justify-between">
                                                         <span
                                                             className="text-sm font-semibold text-black capitalize">{expense.type}</span>
                                                         <span
                                                             className="text-sm font-bold text-black">{formatCurrency(expense.amount)}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                                    <div
+                                                        className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                                                         <span>{formatDate(expense.expense_date)}</span>
-                                                        {expense.description && <span>· {expense.description}</span>}
+                                                        {expense.description &&
+                                                            <span>· {expense.description}</span>}
                                                     </div>
                                                 </div>
                                             ))}
@@ -474,7 +526,8 @@ export default function PropertyDetailPage() {
                                                 {item.purchase_date && <span
                                                     className="text-xs text-gray-400">{formatDate(item.purchase_date)}</span>}
                                             </div>
-                                            {item.note && <p className="text-xs text-gray-400 mt-1">{item.note}</p>}
+                                            {item.note &&
+                                                <p className="text-xs text-gray-400 mt-1">{item.note}</p>}
                                         </div>
                                     ))}
                                 </div>
@@ -500,6 +553,7 @@ export default function PropertyDetailPage() {
                                 <MeterCard
                                     key={meter.id}
                                     meter={meter}
+                                    canEdit={isLandlord || isAssignedManager}
                                     onUpdate={() => void loadManagementData()}
                                 />
                             ))
@@ -554,6 +608,7 @@ export default function PropertyDetailPage() {
                     void loadProperty()
                 }}
             />
+            {dialog}
         </div>
     )
 }

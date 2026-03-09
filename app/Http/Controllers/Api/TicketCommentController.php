@@ -28,10 +28,20 @@ class TicketCommentController extends Controller
     {
         $ticket = Ticket::query()->findOrFail($ticketId);
 
+        $attachmentPath = null;
+
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store(
+                'tickets/' . $ticket->id,
+                'public'
+            );
+        }
+
         $comment = TicketComment::query()->create([
-            ...$request->validated(),
+            'message' => $request->validated('message'),
             'ticket_id' => $ticket->id,
             'user_id' => $request->user()->id,
+            'attachment_path' => $attachmentPath,
         ]);
 
         $comment->load('user');

@@ -5,7 +5,7 @@ import {dashboardApi} from '../../api/dashboard'
 import {leasesApi} from '../../api/leases'
 import {paymentsApi} from '../../api/payments'
 import {ticketsApi} from '../../api/tickets'
-import type {DashboardStats, FinanceChartData, Lease, OccupancyChartData, Payment, Ticket} from '../../types'
+import type {DashboardStats, FinanceChartData, Lease, OccupancyChartData, Payment, Property, Ticket} from '../../types'
 import {formatCurrency, formatDate} from '../../utils/format'
 import StatCard from '../../components/ui/StatCard'
 import Badge from '../../components/ui/Badge'
@@ -22,6 +22,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts'
+import {propertiesApi} from "../../api/properties.ts";
 
 export default function DashboardPage() {
     const {isTenant, isManager} = useAuth()
@@ -249,34 +250,41 @@ function ManagerDashboard() {
 }
 
 function ManagerView() {
-    const [stats, setStats] = useState<DashboardStats | null>(null)
-    const [financeData, setFinanceData] = useState<FinanceChartData[]>([])
-    const [occupancyData, setOccupancyData] = useState<OccupancyChartData[]>([])
+    const {user} = useAuth()
+    const navigate = useNavigate()
+    const [properties, setProperties] = useState<Property[]>([])
+    const [tickets, setTickets] = useState<Ticket[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
-        const loadData = async () => {
+        const load = async () => {
             try {
-                const [statsRes, financeRes, occupancyRes] = await Promise.all([
-                    dashboardApi.getStats(),
-                    dashboardApi.getFinanceChart(),
-                    dashboardApi.getOccupancyChart(),
+                const [propsRes, ticketsRes] = await Promise.all([
+                    propertiesApi.getAll(),
+                    ticketsApi.getAll({sort: '-created_at'}),
                 ])
-                setStats(statsRes.data)
-                setFinanceData(financeRes.data)
-                setOccupancyData(occupancyRes.data)
+                const allProps = propsRes.data.data || []
+                // Filter out properties where user is tenant (has active lease)
+                const managed = allProps.filter((p) =>
+                    !p.leases?.some((l) => l.status === 'active' && l.tenant?.id === user?.id)
+                )
+                setProperties(managed)
+                setTickets(ticketsRes.data.data || [])
             } catch (error) {
                 console.error('Failed to load manager dashboard:', error)
             } finally {
                 setIsLoading(false)
             }
         }
-        void loadData()
-    }, [])
+        void load()
+    }, [user?.id])
 
     if (isLoading) return <Spinner/>
 
-    if (!stats) return (
+    const openTickets = tickets.filter((t) => t.status === 'new' || t.status === 'in_progress')
+    const occupiedCount = properties.filter((p) => p.status === 'occupied').length
+
+    if (properties.length === 0) return (
         <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
             <span className="text-3xl">📋</span>
             <p className="text-sm text-gray-500 mt-2">No managed properties yet. Ask your landlord to assign you.</p>
@@ -286,68 +294,88 @@ function ManagerView() {
     return (
         <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard label="Managed Properties" value={stats.properties.total}
-                          subtitle={`${stats.properties.occupied} occupied`}/>
-                <StatCard label="Active Leases" value={stats.leases.active}
-                          subtitle={`${stats.leases.expiring_soon} expiring soon`}
-                          accent={stats.leases.expiring_soon > 0 ? 'yellow' : 'default'}/>
-                <StatCard label="Open Tickets" value={stats.tickets.open}
-                          accent={stats.tickets.open > 0 ? 'red' : 'green'}/>
-                <StatCard label="Overdue Payments" value={stats.finance.overdue_payments}
-                          accent={stats.finance.overdue_payments > 0 ? 'red' : 'green'}/>
+                <StatCard label="Managed Properties" value={properties.length}
+                          subtitle={`${occupiedCount} occupied`}/>
+                <StatCard label="Open Tickets" value={openTickets.length}
+                          accent={openTickets.length > 0 ? 'red' : 'green'}/>
+                <StatCard label="New Tickets" value={tickets.filter((t) => t.status === 'new').length}
+                          accent={tickets.filter((t) => t.status === 'new').length > 0 ? 'yellow' : 'green'}/>
+                <StatCard label="Resolved" value={tickets.filter((t) => t.status === 'resolved').length}/>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm">
-                    <h2 className="text-lg font-bold text-black mb-4">Finance Overview</h2>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={financeData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                            <XAxis dataKey="label" tick={{fontSize: 12, fill: '#9ca3af'}} axisLine={false}
-                                   tickLine={false}/>
-                            <YAxis tick={{fontSize: 12, fill: '#9ca3af'}} axisLine={false} tickLine={false}
-                                   tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}/>
-                            <Tooltip formatter={(value?: number | string) => formatCurrency(Number(value ?? 0))}
-                                     contentStyle={{
-                                         borderRadius: '12px',
-                                         border: 'none',
-                                         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                         fontSize: '12px'
-                                     }}/>
-                            <Legend wrapperStyle={{fontSize: '12px'}}/>
-                            <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]}/>
-                            <Bar dataKey="expenses" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]}/>
-                        </BarChart>
-                    </ResponsiveContainer>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                {/* Properties overview */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold text-black">Managed Properties</h2>
+                        <button onClick={() => navigate('/properties')}
+                                className="text-sm text-gray-500 hover:text-black transition">View all →
+                        </button>
+                    </div>
+                    <div className="space-y-3">
+                        {properties.slice(0, 5).map((prop) => (
+                            <div
+                                key={prop.id}
+                                onClick={() => navigate('/properties/' + prop.id)}
+                                className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {prop.images && prop.images.length > 0 ? (
+                                        <img src={prop.images[0].image_url} alt=""
+                                             className="w-10 h-10 rounded-lg object-cover"/>
+                                    ) : (
+                                        <div
+                                            className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-lg">🏠
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="text-sm font-semibold text-black">{prop.address}</p>
+                                        <p className="text-xs text-gray-500">{prop.city || '—'}</p>
+                                    </div>
+                                </div>
+                                <Badge
+                                    variant={prop.status === 'occupied' ? 'green' : prop.status === 'available' ? 'gray' : 'yellow'}>
+                                    {prop.status}
+                                </Badge>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
+                {/* Recent tickets */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
-                    <h2 className="text-lg font-bold text-black mb-4">Occupancy</h2>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={occupancyData.map((entry, index) => ({
-                                    ...entry,
-                                    fill: ['#22c55e', '#e5e7eb', '#facc15'][index % 3],
-                                }))}
-                                dataKey="value"
-                                nameKey="label"
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={100}
-                                paddingAngle={4}
-                                strokeWidth={0}
-                            />
-                            <Tooltip contentStyle={{
-                                borderRadius: '12px',
-                                border: 'none',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                fontSize: '12px'
-                            }}/>
-                            <Legend wrapperStyle={{fontSize: '12px'}}/>
-                        </PieChart>
-                    </ResponsiveContainer>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold text-black">Recent Tickets</h2>
+                        <button onClick={() => navigate('/tickets')}
+                                className="text-sm text-gray-500 hover:text-black transition">View all →
+                        </button>
+                    </div>
+                    {tickets.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-6">No tickets yet</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {tickets.slice(0, 6).map((ticket) => (
+                                <div
+                                    key={ticket.id}
+                                    onClick={() => navigate('/tickets/' + ticket.id)}
+                                    className="p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition"
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-black truncate">{ticket.title}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                {ticket.property?.address?.split(',')[0] || '—'} · {formatDate(ticket.created_at)}
+                                            </p>
+                                        </div>
+                                        <Badge
+                                            variant={ticket.status === 'new' ? 'pink' : ticket.status === 'in_progress' ? 'yellow' : ticket.status === 'resolved' ? 'green' : 'red'}>
+                                            {ticket.status === 'in_progress' ? 'In Progress' : ticket.status}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </>

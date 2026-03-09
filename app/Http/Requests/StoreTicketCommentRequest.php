@@ -14,8 +14,8 @@ class StoreTicketCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'message' => ['required', 'string'],
-            'attachment_path' => ['nullable', 'string'],
+            'message' => ['required', 'string', 'min:1'],
+            'attachment' => ['sometimes', 'file', 'image', 'max:5120'], // max 5MB
         ];
     }
 

@@ -45,8 +45,19 @@ export const ticketsApi = {
     getComments: (ticketId: number) =>
         api.get<TicketComment[]>('/tickets/' + ticketId + '/comments'),
 
-    addComment: (ticketId: number, message: string) =>
-        api.post<TicketComment>('/tickets/' + ticketId + '/comments', {message}),
+    addComment: (ticketId: number, message: string, attachment?: File) => {
+        const formData = new FormData()
+
+        formData.append('message', message)
+
+        if (attachment) {
+            formData.append('attachment', attachment)
+        }
+        
+        return api.post<TicketComment>('/tickets/' + ticketId + '/comments', formData, {
+            headers: {'Content-Type': 'multipart/form-data'},
+        })
+    },
 
     deleteComment: (ticketId: number, commentId: number) =>
         api.delete('/tickets/' + ticketId + '/comments/' + commentId),

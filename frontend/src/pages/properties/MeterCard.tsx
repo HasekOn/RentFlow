@@ -5,7 +5,6 @@ import type {Meter} from '../../types'
 import {formatDate} from '../../utils/format'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
-import {useAuth} from '../../contexts/AuthContext'
 
 const meterIcons: Record<string, string> = {
     water: '💧',
@@ -23,20 +22,19 @@ const meterUnits: Record<string, string> = {
 
 interface Props {
     meter: Meter
+    canEdit: boolean
     onUpdate: () => void
 }
 
-export default function MeterCard({meter, onUpdate}: Props) {
+export default function MeterCard({meter, canEdit, onUpdate}: Props) {
     const [showForm, setShowForm] = useState(false)
     const [readingValue, setReadingValue] = useState('')
     const [readingDate, setReadingDate] = useState(new Date().toISOString().split('T')[0])
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState('')
-    const {isLandlord, isManager} = useAuth()
 
     const handleSubmit = async (e: React.FormEvent) => {
         setError('')
-
         e.preventDefault()
 
         if (!readingValue) {
@@ -117,7 +115,7 @@ export default function MeterCard({meter, onUpdate}: Props) {
                         </Button>
                     </div>
                 </form>
-            ) : (isLandlord || isManager) ? (
+            ) : canEdit ? (
                 <Button
                     variant="primary"
                     size="sm"

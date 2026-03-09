@@ -8,6 +8,9 @@ import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
+import Modal from '../../components/ui/Modal'
+import Input from '../../components/ui/Input'
+import Select from '../../components/ui/Select'
 import {useConfirm} from '../../hooks/useConfirm'
 
 const statusVariant = (status: string) => {
@@ -47,10 +50,14 @@ export default function TicketDetailPage() {
     const [ticket, setTicket] = useState<Ticket | null>(null)
     const [comments, setComments] = useState<TicketComment[]>([])
     const [newComment, setNewComment] = useState('')
+    const [attachment, setAttachment] = useState<File | null>(null)
+    const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isSending, setIsSending] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
-    const {confirm, dialog} = useConfirm()
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+    const [showEditModal, setShowEditModal] = useState(false)
+    const {confirm: showConfirm, dialog} = useConfirm()
 
     const loadTicket = async () => {
         try {
@@ -73,12 +80,14 @@ export default function TicketDetailPage() {
 
     const handleSendComment = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!newComment.trim()) return
+        if (!newComment.trim() && !attachment) return
         setIsSending(true)
 
         try {
-            await ticketsApi.addComment(Number(id), newComment.trim())
+            await ticketsApi.addComment(Number(id), newComment.trim(), attachment || undefined)
             setNewComment('')
+            setAttachment(null)
+            setAttachmentPreview(null)
             void loadTicket()
         } catch (error) {
             console.error('Failed to send comment:', error)
@@ -87,18 +96,27 @@ export default function TicketDetailPage() {
         }
     }
 
+    const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            setAttachment(file)
+            setAttachmentPreview(URL.createObjectURL(file))
+        }
+    }
+
+    const removeAttachment = () => {
+        setAttachment(null)
+        setAttachmentPreview(null)
+    }
+
     const handleDeleteComment = async (commentId: number) => {
-        const ok = await confirm({
+        const ok = await showConfirm({
             title: 'Delete Comment',
             message: 'Are you sure you want to delete this comment?',
             confirmLabel: 'Delete',
             variant: 'danger',
         })
-
-        if (!ok) {
-            return
-        }
-
+        if (!ok) return
         try {
             await ticketsApi.deleteComment(Number(id), commentId)
             void loadTicket()
@@ -108,6 +126,14 @@ export default function TicketDetailPage() {
     }
 
     const handleStatusChange = async (newStatus: string) => {
+        const ok = await showConfirm({
+            title: newStatus === 'resolved' ? 'Resolve Ticket' : newStatus === 'rejected' ? 'Reject Ticket' : 'Update Status',
+            message: `Are you sure you want to mark this ticket as "${newStatus.replace('_', ' ')}"?`,
+            confirmLabel: newStatus === 'resolved' ? 'Resolve' : newStatus === 'rejected' ? 'Reject' : 'Confirm',
+            variant: newStatus === 'rejected' ? 'danger' : 'primary',
+        })
+        if (!ok) return
+
         setIsUpdating(true)
         try {
             await ticketsApi.update(Number(id), {status: newStatus})
@@ -119,20 +145,66 @@ export default function TicketDetailPage() {
         }
     }
 
+    const handleDelete = async () => {
+        const ok = await showConfirm({
+            title: 'Delete Ticket',
+            message: 'Are you sure you want to delete this ticket? This cannot be undone.',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+        if (!ok) return
+        try {
+            await ticketsApi.delete(Number(id))
+            navigate('/tickets')
+        } catch (error) {
+            console.error('Failed to delete ticket:', error)
+        }
+    }
+
     if (isLoading) return <Spinner/>
     if (!ticket) return null
 
+    const isAuthor = ticket.tenant === user?.id
+    const canEdit = isLandlord || isManager || (isAuthor && ticket.status === 'new')
+
     return (
         <div>
+            {/* Lightbox */}
+            {lightboxUrl && (
+                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+                     onClick={() => setLightboxUrl(null)}>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setLightboxUrl(null)
+                        }}
+                        className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition"
+                    >✕
+                    </button>
+                    <img
+                        src={lightboxUrl}
+                        alt="Attachment"
+                        className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
+
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-                <button
-                    onClick={() => navigate('/tickets')}
-                    className="text-gray-400 hover:text-black transition text-lg"
-                >
-                    ←
-                </button>
-                <h1 className="text-4xl font-bold text-black">Ticket Detail</h1>
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/tickets')}
+                        className="text-gray-400 hover:text-black transition text-lg"
+                    >←
+                    </button>
+                    <h1 className="text-2xl sm:text-4xl font-bold text-black">Ticket Detail</h1>
+                </div>
+                {canEdit && (
+                    <Button variant="secondary" onClick={() => setShowEditModal(true)}>
+                        ✏️ Edit
+                    </Button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -178,6 +250,17 @@ export default function TicketDetailPage() {
                                                 <div
                                                     className={`rounded-2xl px-4 py-3 ${isOwn ? 'bg-black text-white' : 'bg-gray-100 text-gray-800'}`}>
                                                     <p className="text-sm">{comment.message}</p>
+                                                    {comment.attachment_url && (
+                                                        <img
+                                                            src={comment.attachment_url}
+                                                            alt="Attachment"
+                                                            className="mt-2 max-h-48 rounded-lg cursor-pointer hover:opacity-90 transition"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                setLightboxUrl(comment.attachment_url!)
+                                                            }}
+                                                        />
+                                                    )}
                                                 </div>
                                                 <div
                                                     className={`flex items-center gap-2 mt-1 ${isOwn ? 'justify-end' : ''}`}>
@@ -206,18 +289,47 @@ export default function TicketDetailPage() {
 
                         {/* New comment */}
                         {ticket.status !== 'resolved' && ticket.status !== 'rejected' && (
-                            <form onSubmit={handleSendComment} className="mt-6 flex gap-3">
-                                <input
-                                    type="text"
-                                    value={newComment}
-                                    onChange={(e) => setNewComment(e.target.value)}
-                                    placeholder="Write a comment..."
-                                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
-                                />
-                                <Button type="submit" disabled={isSending || !newComment.trim()}>
-                                    {isSending ? 'Sending...' : 'Send'}
-                                </Button>
-                            </form>
+                            <div className="mt-6">
+                                {/* Attachment preview */}
+                                {attachmentPreview && (
+                                    <div className="mb-3 relative inline-block">
+                                        <img src={attachmentPreview} alt="Preview"
+                                             className="h-20 rounded-lg object-cover border border-gray-200"/>
+                                        <button
+                                            onClick={removeAttachment}
+                                            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                                        >✕
+                                        </button>
+                                    </div>
+                                )}
+                                <form onSubmit={handleSendComment} className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => document.getElementById('comment-attachment')?.click()}
+                                        className="px-3 py-2.5 border border-gray-200 rounded-full text-sm hover:bg-gray-50 transition shrink-0"
+                                        title="Attach photo"
+                                    >📷
+                                    </button>
+                                    <input
+                                        id="comment-attachment"
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        onChange={handleAttachmentChange}
+                                        className="hidden"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        placeholder="Write a comment..."
+                                        className="flex-1 px-4 py-2.5 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+                                    />
+                                    <Button type="submit"
+                                            disabled={isSending || (!newComment.trim() && !attachment)}>
+                                        {isSending ? 'Sending...' : 'Send'}
+                                    </Button>
+                                </form>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -264,7 +376,7 @@ export default function TicketDetailPage() {
                         </div>
                     </div>
 
-                    {/* Actions — landlord only */}
+                    {/* Actions — landlord/manager */}
                     {(isLandlord || isManager) && ticket.status !== 'resolved' && ticket.status !== 'rejected' && (
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Actions</h2>
@@ -299,12 +411,184 @@ export default function TicketDetailPage() {
                                         </Button>
                                     </>
                                 )}
+                                {isLandlord && (
+                                    <Button variant="danger" className="w-full" onClick={handleDelete}>
+                                        Delete Ticket
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            {ticket && (
+                <EditTicketModal
+                    isOpen={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    ticket={ticket}
+                    isAuthor={isAuthor}
+                    isLandlordOrManager={isLandlord || isManager}
+                    onSuccess={() => {
+                        setShowEditModal(false)
+                        void loadTicket()
+                    }}
+                />
+            )}
             {dialog}
         </div>
+    )
+}
+
+// ─── Edit Ticket Modal ──────────────────────────
+interface EditTicketModalProps {
+    isOpen: boolean
+    onClose: () => void
+    ticket: Ticket
+    isAuthor: boolean
+    isLandlordOrManager: boolean
+    onSuccess: () => void
+}
+
+function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager, onSuccess}: EditTicketModalProps) {
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        priority: '',
+        category: '',
+    })
+    const [errors, setErrors] = useState<Record<string, string[]>>({})
+    const [isLoading, setIsLoading] = useState(false)
+
+    useEffect(() => {
+        if (ticket && isOpen) {
+            setFormData({
+                title: ticket.title || '',
+                description: ticket.description || '',
+                priority: ticket.priority || 'medium',
+                category: ticket.category || '',
+            })
+        }
+    }, [ticket, isOpen])
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setErrors({})
+        setIsLoading(true)
+
+        try {
+            const updateData: Record<string, unknown> = {}
+
+            // Author can edit title/description when status is new
+            if (isAuthor && ticket.status === 'new') {
+                updateData.title = formData.title
+                updateData.description = formData.description
+            }
+
+            // Landlord/manager can edit priority and category
+            if (isLandlordOrManager) {
+                updateData.priority = formData.priority
+                updateData.category = formData.category || undefined
+            }
+
+            await ticketsApi.update(ticket.id, updateData as any)
+            onSuccess()
+        } catch (err: any) {
+            setErrors(err.response?.data?.errors || {})
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const canEditContent = isAuthor && ticket.status === 'new'
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Edit Ticket" size="md">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Title & Description — only author when status=new */}
+                {canEditContent && (
+                    <>
+                        <Input
+                            label="Title"
+                            name="title"
+                            value={formData.title}
+                            onChange={handleChange}
+                            error={errors.title?.[0]}
+                            required
+                        />
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                            <textarea
+                                name="description"
+                                value={formData.description}
+                                onChange={handleChange}
+                                rows={4}
+                                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-gray-400 transition resize-none ${errors.description ? 'border-red-300' : 'border-gray-200'}`}
+                                required
+                            />
+                            {errors.description?.[0] && (
+                                <p className="mt-1 text-xs text-red-600">{errors.description[0]}</p>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {/* Priority & Category — landlord/manager */}
+                {isLandlordOrManager && (
+                    <div className="grid grid-cols-2 gap-4">
+                        <Select
+                            label="Priority"
+                            name="priority"
+                            value={formData.priority}
+                            onChange={handleChange}
+                            options={[
+                                {value: 'low', label: 'Low'},
+                                {value: 'medium', label: 'Medium'},
+                                {value: 'high', label: 'High'},
+                                {value: 'urgent', label: 'Urgent'},
+                            ]}
+                            error={errors.priority?.[0]}
+                        />
+                        <Select
+                            label="Category"
+                            name="category"
+                            value={formData.category}
+                            onChange={handleChange}
+                            placeholder="Select..."
+                            options={[
+                                {value: 'plumbing', label: 'Plumbing'},
+                                {value: 'electrical', label: 'Electrical'},
+                                {value: 'heating', label: 'Heating'},
+                                {value: 'structural', label: 'Structural'},
+                                {value: 'appliance', label: 'Appliance'},
+                                {value: 'other', label: 'Other'},
+                            ]}
+                            error={errors.category?.[0]}
+                        />
+                    </div>
+                )}
+
+                {/* Show info if nothing editable */}
+                {!canEditContent && !isLandlordOrManager && (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                        Tickets can only be edited while status is "New".
+                    </p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    {(canEditContent || isLandlordOrManager) && (
+                        <Button type="submit" disabled={isLoading}>
+                            {isLoading ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                    )}
+                </div>
+            </form>
+        </Modal>
     )
 }

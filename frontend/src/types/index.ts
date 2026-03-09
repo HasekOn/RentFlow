@@ -88,6 +88,7 @@ export interface TicketComment {
     id: number
     message: string
     attachment_path: string | null
+    attachment_url: string | null
     created_at: string
     user?: User
 }
