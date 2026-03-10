@@ -63,7 +63,7 @@ export default function RegisterPage() {
                                 <button
                                     type="button"
                                     onClick={() => setRole('landlord')}
-                                    className={`p-3 rounded-xl border-2 text-center transition ${
+                                    className={`p-3 rounded-xl border-2 text-center transition cursor-pointer ${
                                         role === 'landlord'
                                             ? 'border-black bg-gray-50'
                                             : 'border-gray-200 hover:border-gray-300'
@@ -76,7 +76,7 @@ export default function RegisterPage() {
                                 <button
                                     type="button"
                                     onClick={() => setRole('tenant')}
-                                    className={`p-3 rounded-xl border-2 text-center transition ${
+                                    className={`p-3 rounded-xl border-2 text-center transition cursor-pointer ${
                                         role === 'tenant'
                                             ? 'border-black bg-gray-50'
                                             : 'border-gray-200 hover:border-gray-300'

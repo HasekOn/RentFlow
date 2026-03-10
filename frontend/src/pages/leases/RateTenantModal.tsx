@@ -82,7 +82,7 @@ export default function RateTenantModal({isOpen, onClose, leaseId, existingCateg
                                     key={star}
                                     type="button"
                                     onClick={() => setScore(star)}
-                                    className={`text-2xl transition hover:scale-110 ${
+                                    className={`text-2xl transition hover:scale-110 cursor-pointer ${
                                         star <= score ? 'text-yellow-400' : 'text-gray-200'
                                     }`}
                                 >

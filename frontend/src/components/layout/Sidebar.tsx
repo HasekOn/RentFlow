@@ -154,7 +154,7 @@ export default function Sidebar({isOpen, onClose}: Props) {
             {/* Overlay */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+                    className="fixed inset-0 bg-black/40 z-40 lg:hidden cursor-pointer"
                     onClick={onClose}
                 />
             )}

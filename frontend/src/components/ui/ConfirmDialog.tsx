@@ -23,7 +23,7 @@ export default function ConfirmDialog({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="fixed inset-0 bg-black/40" onClick={onCancel}/>
+            <div className="fixed inset-0 bg-black/40 cursor-pointer" onClick={onCancel}/>
             <div className="relative bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4 animate-in">
                 <h3 className="text-lg font-bold text-black">{title}</h3>
                 <p className="text-sm text-gray-500 mt-2">{message}</p>

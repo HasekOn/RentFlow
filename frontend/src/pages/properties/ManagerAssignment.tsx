@@ -94,7 +94,7 @@ export default function ManagerAssignment({propertyId}: Props) {
                             </div>
                             <button
                                 onClick={() => handleRemove(manager.id)}
-                                className="text-xs text-red-500 hover:text-red-700 transition"
+                                className="text-xs text-red-500 hover:text-red-700 transition cursor-pointer"
                             >
                                 ✕
                             </button>

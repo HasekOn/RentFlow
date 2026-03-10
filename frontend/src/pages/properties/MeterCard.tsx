@@ -117,13 +117,13 @@ export default function MeterCard({meter, canEdit, isLandlord, onUpdate}: Props)
                                 setShowEditForm(!showEditForm)
                                 setShowForm(false)
                             }}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-600"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-600 cursor-pointer"
                             title="Edit meter"
                         >✏️
                         </button>
                         <button
                             onClick={handleDelete}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500 cursor-pointer"
                             title="Delete meter"
                         >🗑
                         </button>

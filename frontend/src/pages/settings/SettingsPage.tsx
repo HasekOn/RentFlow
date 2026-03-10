@@ -18,7 +18,7 @@ export default function SettingsPage() {
             <div className="flex gap-2 mt-6 mb-6">
                 <button
                     onClick={() => setActiveTab('profile')}
-                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition ${
+                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
                         activeTab === 'profile'
                             ? 'bg-black text-white'
                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -28,7 +28,7 @@ export default function SettingsPage() {
                 </button>
                 <button
                     onClick={() => setActiveTab('password')}
-                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition ${
+                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
                         activeTab === 'password'
                             ? 'bg-black text-white'
                             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'

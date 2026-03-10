@@ -7,6 +7,7 @@ import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
+import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
 import EmptyState from '../../components/ui/EmptyState'
 import PropertyFormModal from './PropertyFormModal'
@@ -24,6 +25,12 @@ const statusVariant = (status: string) => {
             return 'gray' as const
     }
 }
+
+const statusOptions = [
+    {value: 'occupied', label: 'Occupied'},
+    {value: 'available', label: 'Available'},
+    {value: 'renovation', label: 'Renovation'}
+];
 
 export default function PropertiesPage() {
     const {isLandlord} = useAuth()
@@ -117,16 +124,12 @@ export default function PropertiesPage() {
                             placeholder="Search properties..."
                             className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/10 w-full sm:w-56"
                         />
-                        <select
+                        <Select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                        >
-                            <option value="">All Status</option>
-                            <option value="occupied">Occupied</option>
-                            <option value="available">Available</option>
-                            <option value="renovation">Renovation</option>
-                        </select>
+                            options={statusOptions}
+                            placeholder="All Status"
+                        />
                     </div>
                 </div>
 

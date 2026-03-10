@@ -101,7 +101,7 @@ function TenantDashboard() {
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold text-black">Recent Payments</h2>
                         <button onClick={() => navigate('/payments')}
-                                className="text-sm text-gray-500 hover:text-black transition">
+                                className="text-sm text-gray-500 hover:text-black transition cursor-pointer">
                             View all →
                         </button>
                     </div>
@@ -131,7 +131,7 @@ function TenantDashboard() {
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold text-black">My Tickets</h2>
                         <button onClick={() => navigate('/tickets')}
-                                className="text-sm text-gray-500 hover:text-black transition">
+                                className="text-sm text-gray-500 hover:text-black transition cursor-pointer">
                             View all →
                         </button>
                     </div>
@@ -230,14 +230,14 @@ function ManagerDashboard() {
             <div className="flex gap-2 mt-6 mb-6">
                 <button
                     onClick={() => setActiveTab('manager')}
-                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition ${
+                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
                         activeTab === 'manager' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                     }`}
                 >Manager View
                 </button>
                 <button
                     onClick={() => setActiveTab('tenant')}
-                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition ${
+                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
                         activeTab === 'tenant' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                     }`}
                 >My Tenancy
@@ -309,7 +309,7 @@ function ManagerView() {
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold text-black">Managed Properties</h2>
                         <button onClick={() => navigate('/properties')}
-                                className="text-sm text-gray-500 hover:text-black transition">View all →
+                                className="text-sm text-gray-500 hover:text-black transition cursor-pointer">View all →
                         </button>
                     </div>
                     <div className="space-y-3">
@@ -347,7 +347,7 @@ function ManagerView() {
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold text-black">Recent Tickets</h2>
                         <button onClick={() => navigate('/tickets')}
-                                className="text-sm text-gray-500 hover:text-black transition">View all →
+                                className="text-sm text-gray-500 hover:text-black transition cursor-pointer">View all →
                         </button>
                     </div>
                     {tickets.length === 0 ? (
@@ -432,7 +432,7 @@ function TenantView() {
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-bold text-black">Recent Payments</h2>
                     <button onClick={() => navigate('/payments')}
-                            className="text-sm text-gray-500 hover:text-black transition">View all →
+                            className="text-sm text-gray-500 hover:text-black transition cursor-pointer">View all →
                     </button>
                 </div>
                 {payments.length === 0 ? (

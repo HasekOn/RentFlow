@@ -144,7 +144,7 @@ export default function LeaseDetailPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-4">
                     <button onClick={() => navigate('/leases')}
-                            className="text-gray-400 hover:text-black transition text-lg">←
+                            className="text-gray-400 hover:text-black transition text-lg cursor-pointer">←
                     </button>
                     <h1 className="text-2xl sm:text-4xl font-bold text-black">Lease Detail</h1>
                 </div>

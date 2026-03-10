@@ -4,6 +4,7 @@ import {ticketsApi} from '../../api/tickets'
 import type {PaginatedResponse, Ticket} from '../../types'
 import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
+import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
 import Pagination from '../../components/ui/Pagination'
@@ -40,6 +41,20 @@ const statusLabel = (status: string) => {
             return status
     }
 }
+
+const statusOptions = [
+    {value: 'new', label: 'New'},
+    {value: 'in_progress', label: 'In Progress'},
+    {value: 'resolved', label: 'Resolved'},
+    {value: 'rejected', label: 'Rejected'}
+];
+
+const priorityOptions = [
+    {value: 'low', label: 'Low'},
+    {value: 'medium', label: 'Medium'},
+    {value: 'high', label: 'High'},
+    {value: 'urgent', label: 'Urgent'}
+];
 
 const priorityLabel = (priority: string) => {
     return priority.charAt(0).toUpperCase() + priority.slice(1)
@@ -133,28 +148,20 @@ export default function TicketsPage() {
                             placeholder="Search tickets..."
                             className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/10 w-full sm:w-48"
                         />
-                        <select
+                        <Select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                        >
-                            <option value="">All Status</option>
-                            <option value="new">New</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
-                        <select
+                            options={statusOptions}
+                            placeholder="All Status"
+                            className="w-auto"
+                        />
+                        <Select
                             value={priorityFilter}
                             onChange={(e) => setPriorityFilter(e.target.value)}
-                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                        >
-                            <option value="">All Priority</option>
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                            <option value="urgent">Urgent</option>
-                        </select>
+                            options={priorityOptions}
+                            placeholder="All Priority"
+                            className="w-auto"
+                        />
                     </div>
                 </div>
 

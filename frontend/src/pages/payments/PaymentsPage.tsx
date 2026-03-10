@@ -5,6 +5,7 @@ import type {PaginatedResponse, Payment} from '../../types'
 import {formatCurrency, formatDate} from '../../utils/format'
 import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
+import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
 import Pagination from '../../components/ui/Pagination'
@@ -24,6 +25,19 @@ const statusVariant = (status: string) => {
             return 'gray' as const
     }
 }
+
+const statusOptions = [
+    {value: 'paid', label: 'Paid'},
+    {value: 'unpaid', label: 'Unpaid'},
+    {value: 'overdue', label: 'Overdue'}
+];
+
+const typeOptions = [
+    {value: 'rent', label: 'Rent'},
+    {value: 'utilities', label: 'Utilities'},
+    {value: 'deposit', label: 'Deposit'},
+    {value: 'other', label: 'Other'}
+];
 
 export default function PaymentsPage() {
     const {isLandlord} = useAuth()
@@ -182,7 +196,8 @@ export default function PaymentsPage() {
                             <Badge variant="yellow">{importResult.unmatched} unmatched</Badge>
                         )}
                     </div>
-                    <button onClick={() => setImportResult(null)} className="text-gray-400 hover:text-black text-sm">
+                    <button onClick={() => setImportResult(null)}
+                            className="text-gray-400 hover:text-black text-sm cursor-pointer">
                         Dismiss
                     </button>
                 </div>
@@ -215,27 +230,21 @@ export default function PaymentsPage() {
                     </div>
                     <div className="flex-1"/>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-                        <select
+                        <Select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                        >
-                            <option value="">All Status</option>
-                            <option value="paid">Paid</option>
-                            <option value="unpaid">Unpaid</option>
-                            <option value="overdue">Overdue</option>
-                        </select>
-                        <select
+                            options={statusOptions}
+                            placeholder="All Status"
+                            className="w-auto"
+                        />
+
+                        <Select
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
-                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                        >
-                            <option value="">All Types</option>
-                            <option value="rent">Rent</option>
-                            <option value="utilities">Utilities</option>
-                            <option value="deposit">Deposit</option>
-                            <option value="other">Other</option>
-                        </select>
+                            options={typeOptions}
+                            placeholder="All Types"
+                            className="w-auto"
+                        />
                     </div>
                 </div>
 

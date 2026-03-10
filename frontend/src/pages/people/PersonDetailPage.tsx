@@ -148,7 +148,7 @@ export default function PersonDetailPage() {
             <div className="flex items-center gap-4 mb-6">
                 <button
                     onClick={() => navigate(backPath)}
-                    className="text-gray-400 hover:text-black transition text-lg"
+                    className="text-gray-400 hover:text-black transition text-lg cursor-pointer"
                 >
                     ←
                 </button>

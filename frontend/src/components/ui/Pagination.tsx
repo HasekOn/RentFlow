@@ -21,7 +21,7 @@ export default function Pagination({currentPage, lastPage, total, perPage, onPag
                 <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage <= 1}
-                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition"
+                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
                 >
                     Previous
                 </button>
@@ -35,7 +35,7 @@ export default function Pagination({currentPage, lastPage, total, perPage, onPag
                 {showDots && <span className="px-1 text-gray-400">...</span>}
                                 <button
                                     onClick={() => onPageChange(page)}
-                                    className={`w-8 h-8 text-sm rounded-lg transition ${
+                                    className={`w-8 h-8 text-sm rounded-lg transition cursor-pointer ${
                                         page === currentPage
                                             ? 'bg-black text-white'
                                             : 'hover:bg-gray-50'
@@ -49,7 +49,7 @@ export default function Pagination({currentPage, lastPage, total, perPage, onPag
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage >= lastPage}
-                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition"
+                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white transition cursor-pointer"
                 >
                     Next
                 </button>

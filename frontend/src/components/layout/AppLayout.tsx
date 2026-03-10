@@ -14,7 +14,7 @@ export default function AppLayout() {
                 className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center px-4 z-30">
                 <button
                     onClick={() => setSidebarOpen(true)}
-                    className="text-xl text-gray-600 hover:text-black transition mr-3"
+                    className="text-xl text-gray-600 hover:text-black transition mr-3 cursor-pointer"
                 >
                     ☰
                 </button>

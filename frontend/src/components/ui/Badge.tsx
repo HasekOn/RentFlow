@@ -1,3 +1,5 @@
+import * as React from "react";
+
 interface Props {
     children: React.ReactNode
     variant?: 'green' | 'red' | 'yellow' | 'gray' | 'pink'

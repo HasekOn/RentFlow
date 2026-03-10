@@ -5,6 +5,7 @@ import type {Lease, PaginatedResponse} from '../../types'
 import {formatCurrency, formatDate} from '../../utils/format'
 import {useAuth} from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
+import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
 import Pagination from '../../components/ui/Pagination'
@@ -23,6 +24,12 @@ const statusVariant = (status: string) => {
             return 'gray' as const
     }
 }
+
+const statusOptions = [
+    {value: 'active', label: 'Active'},
+    {value: 'ended', label: 'Ended'},
+    {value: 'terminated', label: 'Terminated'}
+];
 
 function daysUntilEnd(endDate: string | null): number | null {
     if (!endDate) return null
@@ -94,16 +101,13 @@ export default function LeasesPage() {
                         <span>Total {meta?.total || 0}</span>
                     </div>
                     <div className="flex-1"/>
-                    <select
+                    <Select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white w-full sm:w-auto"
-                    >
-                        <option value="">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="ended">Ended</option>
-                        <option value="terminated">Terminated</option>
-                    </select>
+                        options={statusOptions}
+                        placeholder="All Status"
+                        className="sm:w-auto"
+                    />
                 </div>
 
                 {isLoading ? (

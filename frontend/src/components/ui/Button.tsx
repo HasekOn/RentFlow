@@ -20,7 +20,7 @@ const sizes = {
 export default function Button({variant = 'primary', size = 'md', className = '', children, ...props}: Props) {
     return (
         <button
-            className={`font-semibold rounded-full transition disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
+            className={`cursor-pointer disabled:cursor-not-allowed font-semibold rounded-full transition disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
             {...props}
         >
             {children}

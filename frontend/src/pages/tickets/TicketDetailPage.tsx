@@ -216,7 +216,7 @@ export default function TicketDetailPage() {
                             e.stopPropagation();
                             setLightboxUrl(null)
                         }}
-                        className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition"
+                        className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition cursor-pointer"
                     >✕
                     </button>
                     <img
@@ -237,7 +237,7 @@ export default function TicketDetailPage() {
                             e.stopPropagation();
                             setLightboxIndex(null)
                         }}
-                        className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition"
+                        className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition cursor-pointer"
                     >✕
                     </button>
                     {lightboxIndex > 0 && (
@@ -246,7 +246,7 @@ export default function TicketDetailPage() {
                                 e.stopPropagation();
                                 setLightboxIndex(lightboxIndex - 1)
                             }}
-                            className="absolute left-6 text-white text-4xl hover:opacity-70 transition"
+                            className="absolute left-6 text-white text-4xl hover:opacity-70 transition cursor-pointer"
                         >‹
                         </button>
                     )}
@@ -256,7 +256,7 @@ export default function TicketDetailPage() {
                                 e.stopPropagation();
                                 setLightboxIndex(lightboxIndex + 1)
                             }}
-                            className="absolute right-6 text-white text-4xl hover:opacity-70 transition"
+                            className="absolute right-6 text-white text-4xl hover:opacity-70 transition cursor-pointer"
                         >›
                         </button>
                     )}
@@ -279,7 +279,7 @@ export default function TicketDetailPage() {
                                     setLightboxIndex(null)
                                     handleDeleteTicketImage(imgId)
                                 }}
-                                className="text-red-400 hover:text-red-300 text-sm transition"
+                                className="text-red-400 hover:text-red-300 text-sm transition cursor-pointer"
                             >🗑 Delete
                             </button>
                         )}
@@ -292,7 +292,7 @@ export default function TicketDetailPage() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/tickets')}
-                        className="text-gray-400 hover:text-black transition text-lg"
+                        className="text-gray-400 hover:text-black transition text-lg cursor-pointer"
                     >←
                     </button>
                     <h1 className="text-2xl sm:text-4xl font-bold text-black">Ticket Detail</h1>
@@ -422,7 +422,7 @@ export default function TicketDetailPage() {
                                                             <span className="text-xs text-gray-300">·</span>
                                                             <button
                                                                 onClick={() => handleDeleteComment(comment.id)}
-                                                                className="text-xs text-red-400 hover:text-red-600 transition"
+                                                                className="text-xs text-red-400 hover:text-red-600 transition cursor-pointer"
                                                             >
                                                                 Delete
                                                             </button>
@@ -446,7 +446,7 @@ export default function TicketDetailPage() {
                                              className="h-20 rounded-lg object-cover border border-gray-200"/>
                                         <button
                                             onClick={removeAttachment}
-                                            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                                            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 cursor-pointer"
                                         >✕
                                         </button>
                                     </div>
@@ -455,7 +455,7 @@ export default function TicketDetailPage() {
                                     <button
                                         type="button"
                                         onClick={() => document.getElementById('comment-attachment')?.click()}
-                                        className="px-3 py-2.5 border border-gray-200 rounded-full text-sm hover:bg-gray-50 transition shrink-0"
+                                        className="px-3 py-2.5 border border-gray-200 rounded-full text-sm hover:bg-gray-50 transition shrink-0 cursor-pointer"
                                         title="Attach photo"
                                     >📷
                                     </button>
