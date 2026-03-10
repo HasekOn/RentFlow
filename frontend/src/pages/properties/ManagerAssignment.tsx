@@ -89,7 +89,7 @@ export default function ManagerAssignment({propertyId}: Props) {
                                 </div>
                                 <div>
                                     <p className="text-sm font-semibold text-black">{manager.name}</p>
-                                    <p className="text-xs text-gray-500">{manager.email}</p>
+                                    <p className="text-xs text-gray-500 truncate">{manager.email}</p>
                                 </div>
                             </div>
                             <button

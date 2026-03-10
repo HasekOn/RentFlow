@@ -290,7 +290,7 @@ export default function PropertyDetailPage() {
             )}
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-4">
                     <button onClick={() => navigate('/properties')}
                             className="text-gray-400 hover:text-black transition text-lg cursor-pointer">←
@@ -434,7 +434,7 @@ export default function PropertyDetailPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm font-semibold text-black">{activeLease.tenant.name}</p>
-                                        <p className="text-xs text-gray-500">{activeLease.tenant.email}</p>
+                                        <p className="text-xs text-gray-500 truncate">{activeLease.tenant.email}</p>
                                     </div>
                                 </div>
                             </div>

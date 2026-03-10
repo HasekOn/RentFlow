@@ -167,7 +167,7 @@ export default function PersonDetailPage() {
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold text-black">{person.name}</h2>
-                                <p className="text-sm text-gray-500">{person.email}</p>
+                                <p className="text-sm text-gray-500 truncate">{person.email}</p>
                                 <div className="mt-2">
                                     <TrustScoreBadge score={person.trust_score}/>
                                 </div>
@@ -185,7 +185,7 @@ export default function PersonDetailPage() {
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Email Address</p>
-                                <p className="text-sm text-gray-700 font-semibold">{person.email}</p>
+                                <p className="text-sm text-gray-700 font-semibold truncate">{person.email}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Phone</p>

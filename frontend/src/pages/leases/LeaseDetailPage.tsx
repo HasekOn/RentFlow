@@ -185,7 +185,7 @@ export default function LeaseDetailPage() {
                             <div>
                                 <p className="text-xs text-gray-400">Tenant</p>
                                 <p className="text-sm text-gray-700">{lease.tenant?.name || '—'}</p>
-                                <p className="text-xs text-gray-500">{lease.tenant?.email}</p>
+                                <p className="text-xs text-gray-500 truncate">{lease.tenant?.email}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Start Date</p>
@@ -336,7 +336,7 @@ export default function LeaseDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-sm font-semibold text-black">{lease.tenant.name}</p>
-                                    <p className="text-xs text-gray-500">{lease.tenant.email}</p>
+                                    <p className="text-xs text-gray-500 truncate">{lease.tenant.email}</p>
                                 </div>
                             </div>
                             {lease.tenant.trust_score !== undefined && (

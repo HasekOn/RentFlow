@@ -47,7 +47,7 @@ export default function PeoplePage() {
 
     return (
         <div>
-            <h1 className="text-4xl font-bold text-black">People</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold text-black">People</h1>
 
             {/* Search */}
             <div className="mt-6 flex items-center gap-4">
@@ -87,7 +87,7 @@ export default function PeoplePage() {
                                             <p className="text-sm font-bold text-black truncate">{tenant.name}</p>
                                             <TrustScoreBadge score={tenant.trust_score} size="sm"/>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-0.5">{tenant.email}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5 truncate">{tenant.email}</p>
                                         {tenant.phone && (
                                             <p className="text-xs text-gray-400 mt-0.5">{tenant.phone}</p>
                                         )}
@@ -121,7 +121,7 @@ export default function PeoplePage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-bold text-black truncate">{manager.name}</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{manager.email}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5 truncate">{manager.email}</p>
                                         {manager.phone && (
                                             <p className="text-xs text-gray-400 mt-0.5">{manager.phone}</p>
                                         )}

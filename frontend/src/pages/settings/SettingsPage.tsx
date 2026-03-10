@@ -12,7 +12,7 @@ export default function SettingsPage() {
 
     return (
         <div>
-            <h1 className="text-4xl font-bold text-black">Settings</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold text-black">Settings</h1>
 
             {/* Tabs */}
             <div className="flex gap-2 mt-6 mb-6">
@@ -101,7 +101,7 @@ function ProfileForm({user, onUpdate}: ProfileFormProps) {
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-black">{formData.name}</p>
-                        <p className="text-xs text-gray-500">{formData.email}</p>
+                        <p className="text-xs text-gray-500 truncate">{formData.email}</p>
                     </div>
                 </div>
 

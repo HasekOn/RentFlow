@@ -288,7 +288,7 @@ export default function TicketDetailPage() {
             )}
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/tickets')}

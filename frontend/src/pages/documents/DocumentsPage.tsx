@@ -112,7 +112,7 @@ export default function DocumentsPage() {
     return (
         <div>
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <h1 className="text-2xl sm:text-4xl font-bold text-black">Documents</h1>
                 {isLandlord && selectedPropertyId && (
                     <Button onClick={() => setShowUploadModal(true)}>
