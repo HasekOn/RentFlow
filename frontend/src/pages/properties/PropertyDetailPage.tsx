@@ -329,18 +329,29 @@ export default function PropertyDetailPage() {
                         <div className="bg-white rounded-2xl p-4 shadow-sm">
                             {images.length > 0 ? (
                                 <>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 grid-rows-2 gap-2 h-60 sm:h-80">
+                                    <div className="grid grid-cols-1 sm:grid-cols-4 sm:grid-rows-2 gap-2 h-60 sm:h-80">
+
                                         <div
-                                            className={`${images.length === 1 ? 'col-span-4 row-span-2' : 'col-span-2 row-span-2'} cursor-pointer overflow-hidden rounded-xl`}
+                                            className={`relative w-full h-full cursor-pointer overflow-hidden rounded-xl ${
+                                                images.length === 1 ? 'sm:col-span-4 sm:row-span-2' : 'sm:col-span-2 sm:row-span-2'
+                                            }`}
                                             onClick={() => setLightboxIndex(0)}
                                         >
                                             <img src={images[0].image_url}
                                                  alt={images[0].description || 'Property'}
                                                  className="w-full h-full object-cover hover:scale-105 transition duration-300"/>
+
+                                            {images.length > 1 && (
+                                                <div
+                                                    className="sm:hidden absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg">
+                                                    <span>📷</span> +{images.length - 1}
+                                                </div>
+                                            )}
                                         </div>
+
                                         {images.slice(1, 5).map((img, idx) => (
                                             <div key={img.id}
-                                                 className="cursor-pointer overflow-hidden rounded-xl relative"
+                                                 className="hidden sm:block cursor-pointer overflow-hidden rounded-xl relative"
                                                  onClick={() => setLightboxIndex(idx + 1)}>
                                                 <img src={img.image_url} alt={img.description || 'Property'}
                                                      className="w-full h-full object-cover hover:scale-105 transition duration-300"/>
@@ -673,46 +684,53 @@ export default function PropertyDetailPage() {
                             {documents.length === 0 ? (
                                 <p className="text-sm text-gray-400 text-center py-4">No documents uploaded</p>
                             ) : (
-                                <div className="space-y-2">
+                                <div
+                                    className="space-y-3">
                                     {documents.map((doc) => (
                                         <div key={doc.id}
-                                             className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition">
+                                             className="flex items-start sm:items-center justify-between p-3 sm:p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition gap-3">
                                             <div
-                                                className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                                                className="flex items-start sm:items-center gap-3 flex-1 min-w-0 cursor-pointer"
                                                 onClick={() => handleDownloadDocument(doc)}
                                             >
-                                                <span className="text-xl shrink-0">
-                                                    {(doc.name + doc.file_path).match(/\.pdf/i) ? '📄' :
-                                                        (doc.name + doc.file_path).match(/\.(jpg|jpeg|png|webp)/i) ? '🖼️' :
-                                                            (doc.name + doc.file_path).match(/\.(doc|docx)/i) ? '📝' :
-                                                                (doc.name + doc.file_path).match(/\.(xls|xlsx)/i) ? '📊' : '📎'}
-                                                </span>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-semibold text-black truncate">{doc.name}</p>
-                                                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                                                        <span className="capitalize">{doc.document_type}</span>
-                                                        <span>·</span>
-                                                        <span>{formatDate(doc.created_at)}</span>
+                        <span className="text-2xl sm:text-xl shrink-0 mt-0.5 sm:mt-0">
+                            {(doc.name + doc.file_path).match(/\.pdf/i) ? '📄' :
+                                (doc.name + doc.file_path).match(/\.(jpg|jpeg|png|webp)/i) ? '🖼️' :
+                                    (doc.name + doc.file_path).match(/\.(doc|docx)/i) ? '📝' :
+                                        (doc.name + doc.file_path).match(/\.(xls|xlsx)/i) ? '📊' : '📎'}
+                        </span>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-semibold text-black truncate leading-tight">{doc.name}</p>
+
+                                                    <div
+                                                        className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-gray-500 mt-1.5">
+                                                        <span
+                                                            className="capitalize bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 font-medium">
+                                    {doc.document_type}
+                                </span>
+                                                        <span
+                                                            className="whitespace-nowrap">{formatDate(doc.created_at)}</span>
                                                         {doc.uploaded_by && (
-                                                            <>
-                                                                <span>·</span>
-                                                                <span>{doc.uploaded_by.name}</span>
-                                                            </>
+                                                            <span
+                                                                className="truncate max-w-30 sm:max-w-none text-gray-400">
+                                        {doc.uploaded_by.name}
+                                    </span>
                                                         )}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-1 shrink-0 ml-2">
+
+                                            <div className="flex items-center gap-1.5 shrink-0 mt-1 sm:mt-0">
                                                 <button
                                                     onClick={() => handleDownloadDocument(doc)}
-                                                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-600 cursor-pointer"
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg transition hover:bg-gray-100 text-gray-500 hover:text-gray-700 cursor-pointer"
                                                     title="Download"
                                                 >⬇️
                                                 </button>
                                                 {isLandlord && (
                                                     <button
                                                         onClick={() => handleDeleteDocument(doc.id)}
-                                                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500 cursor-pointer"
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg transition hover:bg-red-50 text-red-400 hover:text-red-600 cursor-pointer"
                                                         title="Delete"
                                                     >🗑</button>
                                                 )}

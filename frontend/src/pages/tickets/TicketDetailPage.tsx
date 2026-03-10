@@ -451,11 +451,12 @@ export default function TicketDetailPage() {
                                         </button>
                                     </div>
                                 )}
-                                <form onSubmit={handleSendComment} className="flex gap-3">
+                                <form onSubmit={handleSendComment}
+                                      className="flex flex-row items-center gap-2 sm:gap-3">
                                     <button
                                         type="button"
                                         onClick={() => document.getElementById('comment-attachment')?.click()}
-                                        className="px-3 py-2.5 border border-gray-200 rounded-full text-sm hover:bg-gray-50 transition shrink-0 cursor-pointer"
+                                        className="px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-200 rounded-full text-sm hover:bg-gray-50 transition shrink-0 cursor-pointer flex items-center justify-center"
                                         title="Attach photo"
                                     >📷
                                     </button>
@@ -471,12 +472,17 @@ export default function TicketDetailPage() {
                                         value={newComment}
                                         onChange={(e) => setNewComment(e.target.value)}
                                         placeholder="Write a comment..."
-                                        className="flex-1 px-4 py-2.5 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+                                        className="flex-1 w-full min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
                                     />
-                                    <Button type="submit"
-                                            disabled={isSending || (!newComment.trim() && !attachment)}>
-                                        {isSending ? 'Sending...' : 'Send'}
-                                    </Button>
+                                    <div className="shrink-0">
+                                        <Button
+                                            type="submit"
+                                            disabled={isSending || (!newComment.trim() && !attachment)}
+                                            className="px-3 sm:px-4 py-2 sm:py-2.5 whitespace-nowrap"
+                                        >
+                                            {isSending ? '...' : 'Send'}
+                                        </Button>
+                                    </div>
                                 </form>
                             </div>
                         )}
