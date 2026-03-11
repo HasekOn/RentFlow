@@ -10,7 +10,7 @@ class LeaseFactory extends Factory
 {
     public function definition(): array
     {
-        $startDate = fake()->dateTimeBetween('-1 year', 'now');
+        $startDate = fake()->dateTimeBetween('-1 year');
 
         return [
             'property_id' => Property::factory(),
