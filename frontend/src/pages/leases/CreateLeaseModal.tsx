@@ -82,7 +82,11 @@ export default function CreateLeaseModal({ isOpen, onClose, onSuccess }: Props) 
             onSuccess()
         } catch (err) {
             const axiosError = err as AxiosError<ApiError>
-            setErrors(axiosError.response?.data?.errors || {})
+            if (axiosError.response?.data?.message) {
+                setErrors({ _general: [axiosError.response.data.message] })
+            } else {
+                setErrors(axiosError.response?.data?.errors || {})
+            }
         } finally {
             setIsLoading(false)
         }
@@ -91,6 +95,11 @@ export default function CreateLeaseModal({ isOpen, onClose, onSuccess }: Props) 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="New Lease" size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
+                {errors._general?.[0] && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="text-sm text-red-600">{errors._general[0]}</p>
+                    </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                     <Select
                         label="Property"

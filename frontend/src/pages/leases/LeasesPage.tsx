@@ -84,7 +84,7 @@ export default function LeasesPage() {
         <div>
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <h1 className="text-2xl sm:text-4xl font-bold text-black">Leases</h1>
+                <h1 className="text-2xl sm:text-4xl font-bold text-black">{isLandlord ? 'Leases' : 'My Leases'}</h1>
                 {isLandlord && <Button onClick={() => setShowCreateModal(true)}>+ New Lease</Button>}
             </div>
 
@@ -178,9 +178,11 @@ export default function LeasesPage() {
                                         <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase">
                                             Property
                                         </th>
-                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
-                                            Tenant
-                                        </th>
+                                        {isLandlord && (
+                                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                                Tenant
+                                            </th>
+                                        )}
                                         <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
                                             Period
                                         </th>
@@ -214,16 +216,18 @@ export default function LeasesPage() {
                                                     </p>
                                                     <p className="text-xs text-gray-500">{lease.property?.city}</p>
                                                 </td>
-                                                <td className="px-4 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-                                                            {lease.tenant?.name?.charAt(0)?.toUpperCase() || '?'}
+                                                {isLandlord && (
+                                                    <td className="px-4 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                                                                {lease.tenant?.name?.charAt(0)?.toUpperCase() || '?'}
+                                                            </div>
+                                                            <span className="text-sm text-gray-600">
+                                                                {lease.tenant?.name || '—'}
+                                                            </span>
                                                         </div>
-                                                        <span className="text-sm text-gray-600">
-                                                            {lease.tenant?.name || '—'}
-                                                        </span>
-                                                    </div>
-                                                </td>
+                                                    </td>
+                                                )}
                                                 <td className="px-4 py-4">
                                                     <p className="text-sm text-gray-600">
                                                         {formatDate(lease.start_date)}

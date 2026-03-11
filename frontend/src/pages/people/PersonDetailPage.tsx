@@ -16,7 +16,7 @@ import { useConfirm } from '../../hooks/useConfirm'
 export default function PersonDetailPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const { user: authUser, isLandlord } = useAuth()
+    const { user: authUser, isLandlord, isManager, isTenant } = useAuth()
     const [person, setPerson] = useState<User | null>(null)
     const [trustScore, setTrustScore] = useState<TrustScoreData | null>(null)
     const [leases, setLeases] = useState<Lease[]>([])
@@ -28,7 +28,10 @@ export default function PersonDetailPage() {
     const isOwnProfile = authUser?.id === personId
 
     const handlePromote = async () => {
-        if (!person) return
+        if (!person) {
+            return
+        }
+
         const ok = await showConfirm({
             title: 'Promote to Manager',
             message: `Promote ${person.name} to Manager?`,
@@ -56,10 +59,7 @@ export default function PersonDetailPage() {
             confirmLabel: 'Demote',
             variant: 'danger',
         })
-
-        if (!ok) {
-            return
-        }
+        if (!ok) return
 
         try {
             await managersApi.demote(person.id)
@@ -72,15 +72,29 @@ export default function PersonDetailPage() {
     useEffect(() => {
         const load = async () => {
             try {
+                // ─── ACCESS CONTROL ───
+                // Tenant can only see own profile
+                if (isTenant && !isOwnProfile) {
+                    navigate('/')
+                    return
+                }
+
                 // Resolve person data
                 let foundPerson: User | null
 
                 if (isOwnProfile && authUser) {
                     foundPerson = authUser
-                } else {
-                    // Lookup from all users
+                } else if (isLandlord) {
+                    // Landlord can see all users
                     const usersRes = await usersApi.getAll()
                     foundPerson = usersRes.data.find((u: User) => u.id === personId) || null
+                } else if (isManager) {
+                    // Manager can see all users (filtered in People page, but allow detail)
+                    const usersRes = await usersApi.getAll()
+                    foundPerson = usersRes.data.find((u: User) => u.id === personId) || null
+                } else {
+                    navigate('/')
+                    return
                 }
 
                 if (!foundPerson) {
@@ -90,27 +104,41 @@ export default function PersonDetailPage() {
 
                 setPerson(foundPerson)
 
-                // Load trust score + leases in parallel
-                const [trustRes, leasesRes] = await Promise.all([
-                    usersApi.getTrustScore(personId).catch(() => null),
-                    leasesApi.getByTenant(personId),
-                ])
+                // Only load tenant-specific data for tenant/manager roles
+                const isTenantOrManager = foundPerson.role === 'tenant' || foundPerson.role === 'manager'
 
-                if (trustRes) setTrustScore(trustRes.data)
-                setLeases(leasesRes.data.data || [])
+                const promises: Promise<any>[] = []
 
-                // Load ratings from all leases
-                const allRatings: Rating[] = []
-                for (const lease of leasesRes.data.data || []) {
-                    try {
-                        const ratingsRes = await ratingsApi.getByLease(lease.id)
-                        const ratingsData = Array.isArray(ratingsRes.data) ? ratingsRes.data : []
-                        allRatings.push(...ratingsData)
-                    } catch {
-                        // No ratings for this lease
-                    }
+                if (isTenantOrManager) {
+                    promises.push(
+                        usersApi.getTrustScore(personId).catch(() => null),
+                        leasesApi.getAll({ tenant_id: personId } as any),
+                    )
                 }
-                setRatings(allRatings)
+
+                const results = await Promise.all(promises)
+
+                if (isTenantOrManager && results.length >= 2) {
+                    if (results[0]) setTrustScore(results[0].data)
+
+                    const leasesData = results[1]?.data?.data || []
+                    setLeases(leasesData)
+
+                    // Load ratings from ended/terminated leases
+                    const allRatings: Rating[] = []
+                    for (const lease of leasesData) {
+                        if (lease.status === 'ended' || lease.status === 'terminated') {
+                            try {
+                                const ratingsRes = await ratingsApi.getByLease(lease.id)
+                                const ratingsArr = Array.isArray(ratingsRes.data) ? ratingsRes.data : []
+                                allRatings.push(...ratingsArr)
+                            } catch {
+                                // No ratings for this lease
+                            }
+                        }
+                    }
+                    setRatings(allRatings)
+                }
             } catch (error) {
                 console.error('Failed to load person:', error)
                 navigate(isLandlord ? '/people' : '/')
@@ -139,7 +167,8 @@ export default function PersonDetailPage() {
         }
     }
 
-    const pageTitle = isOwnProfile ? 'My Profile' : 'Tenant Detail'
+    const isTenantOrManager = person.role === 'tenant' || person.role === 'manager'
+    const pageTitle = isOwnProfile ? 'My Profile' : isTenantOrManager ? 'Tenant Detail' : 'User Detail'
     const backPath = isOwnProfile ? '/' : '/people'
 
     return (
@@ -167,8 +196,11 @@ export default function PersonDetailPage() {
                             <div>
                                 <h2 className="text-xl font-bold text-black">{person.name}</h2>
                                 <p className="text-sm text-gray-500 truncate">{person.email}</p>
-                                <div className="mt-2">
-                                    <TrustScoreBadge score={person.trust_score} />
+                                <div className="flex items-center gap-2 mt-2">
+                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full capitalize">
+                                        {person.role}
+                                    </span>
+                                    {isTenantOrManager && <TrustScoreBadge score={person.trust_score} />}
                                 </div>
                             </div>
                         </div>
@@ -201,71 +233,77 @@ export default function PersonDetailPage() {
                         </div>
                     </div>
 
-                    {/* Lease history */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-lg font-bold text-black mb-4">Lease History ({leases.length})</h2>
-                        {leases.length === 0 ? (
-                            <p className="text-sm text-gray-400 text-center py-4">No leases found</p>
-                        ) : (
-                            <div className="space-y-3">
-                                {leases.map((lease) => (
-                                    <div
-                                        key={lease.id}
-                                        onClick={() => navigate('/leases/' + lease.id)}
-                                        className="p-4 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            {lease.property?.images?.[0] ? (
-                                                <img
-                                                    src={lease.property.images[0].image_url}
-                                                    alt=""
-                                                    className="w-12 h-12 rounded-lg object-cover shrink-0"
-                                                />
-                                            ) : (
-                                                <div className="w-12 h-12 rounded-lg bg-gray-100 shrink-0" />
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-semibold text-black truncate">
-                                                            {lease.property?.address || 'Property'}
-                                                        </p>
-                                                        <p className="text-xs text-gray-500">{lease.property?.city}</p>
+                    {/* Lease history — only for tenants/managers */}
+                    {isTenantOrManager && (
+                        <div className="bg-white rounded-2xl p-6 shadow-sm">
+                            <h2 className="text-lg font-bold text-black mb-4">Lease History ({leases.length})</h2>
+                            {leases.length === 0 ? (
+                                <p className="text-sm text-gray-400 text-center py-4">No leases found</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {leases.map((lease) => (
+                                        <div
+                                            key={lease.id}
+                                            onClick={() => navigate('/leases/' + lease.id)}
+                                            className="p-4 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                {lease.property?.images?.[0] ? (
+                                                    <img
+                                                        src={lease.property.images[0].image_url}
+                                                        alt=""
+                                                        className="w-12 h-12 rounded-lg object-cover shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-lg shrink-0">
+                                                        🏠
                                                     </div>
-                                                    <Badge
-                                                        variant={
-                                                            lease.status === 'active'
-                                                                ? 'green'
-                                                                : lease.status === 'terminated'
-                                                                  ? 'red'
-                                                                  : 'gray'
-                                                        }
-                                                    >
-                                                        {lease.status}
-                                                    </Badge>
-                                                </div>
-                                                <div className="flex items-center justify-between mt-2">
-                                                    <p className="text-xs text-gray-400">
-                                                        {formatDate(lease.start_date)} →{' '}
-                                                        {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
-                                                    </p>
-                                                    <span className="text-sm font-semibold text-black">
-                                                        {formatCurrency(lease.rent_amount)}
-                                                    </span>
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-semibold text-black truncate">
+                                                                {lease.property?.address || 'Property'}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">
+                                                                {lease.property?.city}
+                                                            </p>
+                                                        </div>
+                                                        <Badge
+                                                            variant={
+                                                                lease.status === 'active'
+                                                                    ? 'green'
+                                                                    : lease.status === 'terminated'
+                                                                      ? 'red'
+                                                                      : 'gray'
+                                                            }
+                                                        >
+                                                            {lease.status}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="flex items-center justify-between mt-2">
+                                                        <p className="text-xs text-gray-400">
+                                                            {formatDate(lease.start_date)} →{' '}
+                                                            {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
+                                                        </p>
+                                                        <span className="text-sm font-semibold text-black">
+                                                            {formatCurrency(lease.rent_amount)}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-                    {/* Trust Score breakdown */}
-                    {trustScore && (
+                    {/* Trust Score breakdown — only for tenants/managers */}
+                    {isTenantOrManager && trustScore && (
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-4">Trust Score</h2>
                             <div className="text-center mb-4">
@@ -312,37 +350,39 @@ export default function PersonDetailPage() {
                         </div>
                     )}
 
-                    {/* Ratings */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-lg font-bold text-black mb-4">Ratings ({ratings.length})</h2>
-                        {ratings.length === 0 ? (
-                            <p className="text-sm text-gray-400 text-center py-4">No ratings yet</p>
-                        ) : (
-                            <div className="space-y-3">
-                                {ratings.map((rating) => (
-                                    <div key={rating.id} className="p-4 border border-gray-100 rounded-xl">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-sm font-semibold text-black">
-                                                {categoryLabel(rating.category)}
-                                            </p>
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-sm font-bold text-black">{rating.score}</span>
-                                                <span className="text-yellow-500">★</span>
+                    {/* Ratings — only for tenants/managers */}
+                    {isTenantOrManager && (
+                        <div className="bg-white rounded-2xl p-6 shadow-sm">
+                            <h2 className="text-lg font-bold text-black mb-4">Ratings ({ratings.length})</h2>
+                            {ratings.length === 0 ? (
+                                <p className="text-sm text-gray-400 text-center py-4">No ratings yet</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {ratings.map((rating) => (
+                                        <div key={rating.id} className="p-4 border border-gray-100 rounded-xl">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm font-semibold text-black">
+                                                    {categoryLabel(rating.category)}
+                                                </p>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-sm font-bold text-black">{rating.score}</span>
+                                                    <span className="text-yellow-500">★</span>
+                                                </div>
                                             </div>
+                                            {rating.comment && (
+                                                <p className="text-xs text-gray-500 mt-2">{rating.comment}</p>
+                                            )}
+                                            {rating.rated_by && (
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    by {rating.rated_by.name} · {formatDate(rating.created_at)}
+                                                </p>
+                                            )}
                                         </div>
-                                        {rating.comment && (
-                                            <p className="text-xs text-gray-500 mt-2">{rating.comment}</p>
-                                        )}
-                                        {rating.rated_by && (
-                                            <p className="text-xs text-gray-400 mt-1">
-                                                by {rating.rated_by.name} · {formatDate(rating.created_at)}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Quick actions */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -363,12 +403,20 @@ export default function PersonDetailPage() {
                                     Demote to Tenant
                                 </Button>
                             )}
-                            <Button variant="secondary" className="w-full" onClick={() => navigate('/leases')}>
-                                View Leases
-                            </Button>
-                            <Button variant="secondary" className="w-full" onClick={() => navigate('/payments')}>
-                                View Payments
-                            </Button>
+                            {isTenantOrManager && (
+                                <>
+                                    <Button variant="secondary" className="w-full" onClick={() => navigate('/leases')}>
+                                        View Leases
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        className="w-full"
+                                        onClick={() => navigate('/payments')}
+                                    >
+                                        View Payments
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
