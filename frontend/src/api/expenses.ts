@@ -1,5 +1,5 @@
 import api from './axios'
-import type {Expense, PaginatedResponse} from '../types'
+import type { Expense, PaginatedResponse } from '../types'
 
 interface ExpenseFilters {
     property_id?: number
@@ -17,12 +17,9 @@ interface CreateExpenseData {
 }
 
 export const expensesApi = {
-    getAll: (filters?: ExpenseFilters) =>
-        api.get<PaginatedResponse<Expense>>('/expenses', {params: filters}),
+    getAll: (filters?: ExpenseFilters) => api.get<PaginatedResponse<Expense>>('/expenses', { params: filters }),
 
-    create: (data: CreateExpenseData) =>
-        api.post<Expense>('/expenses', data),
+    create: (data: CreateExpenseData) => api.post<Expense>('/expenses', data),
 
-    delete: (id: number) =>
-        api.delete('/expenses/' + id),
+    delete: (id: number) => api.delete('/expenses/' + id),
 }

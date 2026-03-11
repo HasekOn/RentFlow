@@ -1,5 +1,5 @@
-import {useState} from 'react'
-import {useAuth} from '../../contexts/AuthContext'
+import { useState } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
 import api from '../../api/axios'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -7,7 +7,7 @@ import Input from '../../components/ui/Input'
 type Tab = 'profile' | 'password'
 
 export default function SettingsPage() {
-    const {user, setUser} = useAuth()
+    const { user, setUser } = useAuth()
     const [activeTab, setActiveTab] = useState<Tab>('profile')
 
     return (
@@ -38,13 +38,9 @@ export default function SettingsPage() {
                 </button>
             </div>
 
-            {activeTab === 'profile' && user && (
-                <ProfileForm user={user} onUpdate={setUser}/>
-            )}
+            {activeTab === 'profile' && user && <ProfileForm user={user} onUpdate={setUser} />}
 
-            {activeTab === 'password' && (
-                <PasswordForm/>
-            )}
+            {activeTab === 'password' && <PasswordForm />}
         </div>
     )
 }
@@ -55,7 +51,7 @@ interface ProfileFormProps {
     onUpdate: (user: any) => void
 }
 
-function ProfileForm({user, onUpdate}: ProfileFormProps) {
+function ProfileForm({ user, onUpdate }: ProfileFormProps) {
     const [formData, setFormData] = useState({
         name: user.name,
         email: user.email,
@@ -66,7 +62,7 @@ function ProfileForm({user, onUpdate}: ProfileFormProps) {
     const [success, setSuccess] = useState(false)
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
         setSuccess(false)
     }
 
@@ -95,8 +91,7 @@ function ProfileForm({user, onUpdate}: ProfileFormProps) {
 
                 {/* Avatar */}
                 <div className="flex items-center gap-4 mb-6">
-                    <div
-                        className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-600">
+                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-600">
                         {formData.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -136,9 +131,7 @@ function ProfileForm({user, onUpdate}: ProfileFormProps) {
                         <Button type="submit" disabled={isLoading}>
                             {isLoading ? 'Saving...' : 'Save Changes'}
                         </Button>
-                        {success && (
-                            <span className="text-sm text-green-600 font-semibold">Saved successfully!</span>
-                        )}
+                        {success && <span className="text-sm text-green-600 font-semibold">Saved successfully!</span>}
                     </div>
                 </form>
             </div>
@@ -158,7 +151,7 @@ function PasswordForm() {
     const [success, setSuccess] = useState(false)
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
         setSuccess(false)
     }
 
@@ -170,7 +163,7 @@ function PasswordForm() {
 
         try {
             await api.put('/profile/password', formData)
-            setFormData({current_password: '', password: '', password_confirmation: ''})
+            setFormData({ current_password: '', password: '', password_confirmation: '' })
             setSuccess(true)
         } catch (err: any) {
             setErrors(err.response?.data?.errors || {})
@@ -218,9 +211,7 @@ function PasswordForm() {
                         <Button type="submit" disabled={isLoading}>
                             {isLoading ? 'Changing...' : 'Change Password'}
                         </Button>
-                        {success && (
-                            <span className="text-sm text-green-600 font-semibold">Password changed!</span>
-                        )}
+                        {success && <span className="text-sm text-green-600 font-semibold">Password changed!</span>}
                     </div>
                 </form>
             </div>

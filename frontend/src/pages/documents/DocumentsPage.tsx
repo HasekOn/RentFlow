@@ -1,14 +1,14 @@
-import {useEffect, useState} from 'react'
-import {propertiesApi} from '../../api/properties'
-import {documentsApi} from '../../api/documents'
-import type {Document as PropertyDocument, Property} from '../../types'
-import {formatDate} from '../../utils/format'
-import {useAuth} from '../../contexts/AuthContext'
+import { useEffect, useState } from 'react'
+import { propertiesApi } from '../../api/properties'
+import { documentsApi } from '../../api/documents'
+import type { Document as PropertyDocument, Property } from '../../types'
+import { formatDate } from '../../utils/format'
+import { useAuth } from '../../contexts/AuthContext'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
 import UploadDocumentModal from './UploadDocumentModal'
-import {useConfirm} from '../../hooks/useConfirm'
+import { useConfirm } from '../../hooks/useConfirm'
 
 const fileIcon = (name: string, filePath?: string) => {
     const combined = name + (filePath || '')
@@ -20,14 +20,14 @@ const fileIcon = (name: string, filePath?: string) => {
 }
 
 export default function DocumentsPage() {
-    const {isLandlord} = useAuth()
+    const { isLandlord } = useAuth()
     const [properties, setProperties] = useState<Property[]>([])
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null)
     const [documents, setDocuments] = useState<PropertyDocument[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingDocs, setIsLoadingDocs] = useState(false)
     const [showUploadModal, setShowUploadModal] = useState(false)
-    const {confirm: showConfirm, dialog} = useConfirm()
+    const { confirm: showConfirm, dialog } = useConfirm()
 
     useEffect(() => {
         const load = async () => {
@@ -99,13 +99,16 @@ export default function DocumentsPage() {
 
     const reloadDocs = () => {
         if (selectedPropertyId) {
-            documentsApi.getByProperty(selectedPropertyId).then((res) => {
-                setDocuments(Array.isArray(res.data) ? res.data : [])
-            }).catch(console.error)
+            documentsApi
+                .getByProperty(selectedPropertyId)
+                .then((res) => {
+                    setDocuments(Array.isArray(res.data) ? res.data : [])
+                })
+                .catch(console.error)
         }
     }
 
-    if (isLoading) return <Spinner/>
+    if (isLoading) return <Spinner />
 
     const selectedProperty = properties.find((p) => p.id === selectedPropertyId)
 
@@ -114,11 +117,7 @@ export default function DocumentsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <h1 className="text-2xl sm:text-4xl font-bold text-black">Documents</h1>
-                {isLandlord && selectedPropertyId && (
-                    <Button onClick={() => setShowUploadModal(true)}>
-                        + Upload
-                    </Button>
-                )}
+                {isLandlord && selectedPropertyId && <Button onClick={() => setShowUploadModal(true)}>+ Upload</Button>}
             </div>
 
             {/* Property selector */}
@@ -149,14 +148,16 @@ export default function DocumentsPage() {
                 </div>
 
                 {isLoadingDocs ? (
-                    <Spinner/>
+                    <Spinner />
                 ) : documents.length === 0 ? (
                     <EmptyState
                         title="No documents"
                         description="No files have been uploaded for this property yet."
-                        action={isLandlord ? (
-                            <Button onClick={() => setShowUploadModal(true)}>+ Upload File</Button>
-                        ) : undefined}
+                        action={
+                            isLandlord ? (
+                                <Button onClick={() => setShowUploadModal(true)}>+ Upload File</Button>
+                            ) : undefined
+                        }
                     />
                 ) : (
                     <div className="divide-y divide-gray-50">
@@ -165,14 +166,16 @@ export default function DocumentsPage() {
                                 <div className="flex items-start gap-3">
                                     <span className="text-2xl mt-0.5">{fileIcon(doc.name)}</span>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-black truncate cursor-pointer hover:text-gray-700 transition"
-                                           onClick={() => handleDownload(doc)}
+                                        <p
+                                            className="text-sm font-semibold text-black truncate cursor-pointer hover:text-gray-700 transition"
+                                            onClick={() => handleDownload(doc)}
                                         >
                                             {doc.name}
                                         </p>
                                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
-                                            <span
-                                                className="text-xs text-gray-500 capitalize">{doc.document_type}</span>
+                                            <span className="text-xs text-gray-500 capitalize">
+                                                {doc.document_type}
+                                            </span>
                                             <span className="text-xs text-gray-400">{formatDate(doc.created_at)}</span>
                                             {doc.uploaded_by && (
                                                 <span className="text-xs text-gray-400 hidden sm:inline">
@@ -186,8 +189,11 @@ export default function DocumentsPage() {
                                                 Download
                                             </Button>
                                             {isLandlord && (
-                                                <Button variant="secondary" size="sm"
-                                                        onClick={() => handleDelete(doc.id)}>
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(doc.id)}
+                                                >
                                                     Delete
                                                 </Button>
                                             )}

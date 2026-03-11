@@ -1,9 +1,9 @@
-import {useCallback, useEffect, useState} from 'react'
-import {useNavigate} from 'react-router-dom'
-import {leasesApi} from '../../api/leases'
-import type {Lease, PaginatedResponse} from '../../types'
-import {formatCurrency, formatDate} from '../../utils/format'
-import {useAuth} from '../../contexts/AuthContext'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { leasesApi } from '../../api/leases'
+import type { Lease, PaginatedResponse } from '../../types'
+import { formatCurrency, formatDate } from '../../utils/format'
+import { useAuth } from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
@@ -26,10 +26,10 @@ const statusVariant = (status: string) => {
 }
 
 const statusOptions = [
-    {value: 'active', label: 'Active'},
-    {value: 'ended', label: 'Ended'},
-    {value: 'terminated', label: 'Terminated'}
-];
+    { value: 'active', label: 'Active' },
+    { value: 'ended', label: 'Ended' },
+    { value: 'terminated', label: 'Terminated' },
+]
 
 function daysUntilEnd(endDate: string | null): number | null {
     if (!endDate) return null
@@ -39,14 +39,14 @@ function daysUntilEnd(endDate: string | null): number | null {
 }
 
 function expiresLabel(days: number | null) {
-    if (days === null) return {text: '—', color: 'text-gray-400'}
-    if (days <= 0) return {text: 'Expired', color: 'text-red-600 font-semibold'}
-    if (days <= 30) return {text: `${days}d left`, color: 'text-yellow-600 font-semibold'}
-    return {text: `${days}d left`, color: 'text-gray-600'}
+    if (days === null) return { text: '—', color: 'text-gray-400' }
+    if (days <= 0) return { text: 'Expired', color: 'text-red-600 font-semibold' }
+    if (days <= 30) return { text: `${days}d left`, color: 'text-yellow-600 font-semibold' }
+    return { text: `${days}d left`, color: 'text-gray-600' }
 }
 
 export default function LeasesPage() {
-    const {isLandlord} = useAuth()
+    const { isLandlord } = useAuth()
     const navigate = useNavigate()
     const [leases, setLeases] = useState<Lease[]>([])
     const [meta, setMeta] = useState<PaginatedResponse<Lease>['meta'] | null>(null)
@@ -85,22 +85,17 @@ export default function LeasesPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <h1 className="text-2xl sm:text-4xl font-bold text-black">Leases</h1>
-                {isLandlord && (
-                    <Button onClick={() => setShowCreateModal(true)}>
-                        + New Lease
-                    </Button>
-                )}
+                {isLandlord && <Button onClick={() => setShowCreateModal(true)}>+ New Lease</Button>}
             </div>
 
             {/* Table */}
             <div className="bg-white rounded-2xl shadow-sm mt-6">
-                <div
-                    className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                         <span className="font-semibold text-black">Leases</span>
                         <span>Total {meta?.total || 0}</span>
                     </div>
-                    <div className="flex-1"/>
+                    <div className="flex-1" />
                     <Select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
@@ -111,14 +106,18 @@ export default function LeasesPage() {
                 </div>
 
                 {isLoading ? (
-                    <Spinner/>
+                    <Spinner />
                 ) : leases.length === 0 ? (
                     <EmptyState
                         title="No leases found"
-                        description={statusFilter ? 'Try adjusting your filter.' : 'Create your first lease to get started.'}
-                        action={isLandlord && !statusFilter ? (
-                            <Button onClick={() => setShowCreateModal(true)}>+ New Lease</Button>
-                        ) : undefined}
+                        description={
+                            statusFilter ? 'Try adjusting your filter.' : 'Create your first lease to get started.'
+                        }
+                        action={
+                            isLandlord && !statusFilter ? (
+                                <Button onClick={() => setShowCreateModal(true)}>+ New Lease</Button>
+                            ) : undefined
+                        }
                     />
                 ) : (
                     <>
@@ -132,25 +131,30 @@ export default function LeasesPage() {
                                     <div key={lease.id} className="p-4 hover:bg-gray-50/50 transition">
                                         <div className="flex items-start justify-between gap-2 mb-2">
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-black">{lease.property?.address || '—'}</p>
+                                                <p className="text-sm font-semibold text-black">
+                                                    {lease.property?.address || '—'}
+                                                </p>
                                                 <p className="text-xs text-gray-500">{lease.property?.city}</p>
                                             </div>
                                             <Badge variant={statusVariant(lease.status)}>{lease.status}</Badge>
                                         </div>
                                         <div className="flex items-center gap-2 mb-2">
-                                            <div
-                                                className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-semibold text-gray-600">
+                                            <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-semibold text-gray-600">
                                                 {lease.tenant?.name?.charAt(0)?.toUpperCase() || '?'}
                                             </div>
                                             <span className="text-sm text-gray-600">{lease.tenant?.name || '—'}</span>
                                         </div>
                                         <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
-                                            <span>{formatDate(lease.start_date)} → {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}</span>
+                                            <span>
+                                                {formatDate(lease.start_date)} →{' '}
+                                                {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <span
-                                                    className="text-sm font-semibold text-black">{formatCurrency(lease.rent_amount)}</span>
+                                                <span className="text-sm font-semibold text-black">
+                                                    {formatCurrency(lease.rent_amount)}
+                                                </span>
                                                 <span className={`text-xs ${expires.color}`}>{expires.text}</span>
                                             </div>
                                             <Button
@@ -170,74 +174,99 @@ export default function LeasesPage() {
                         <div className="hidden lg:block">
                             <table className="w-full">
                                 <thead>
-                                <tr className="border-b border-gray-100">
-                                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Property</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Tenant</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Period</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Rent</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Status</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Expires</th>
-                                    <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Action</th>
-                                </tr>
+                                    <tr className="border-b border-gray-100">
+                                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Property
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Tenant
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Period
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Rent
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Status
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Expires
+                                        </th>
+                                        <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Action
+                                        </th>
+                                    </tr>
                                 </thead>
                                 <tbody>
-                                {leases.map((lease) => {
-                                    const days = daysUntilEnd(lease.end_date)
-                                    const isExpiring = days !== null && days > 0 && days <= 30
+                                    {leases.map((lease) => {
+                                        const days = daysUntilEnd(lease.end_date)
+                                        const isExpiring = days !== null && days > 0 && days <= 30
 
-                                    return (
-                                        <tr key={lease.id}
-                                            className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                                            <td className="px-6 py-4">
-                                                <p className="text-sm font-semibold text-black">{lease.property?.address || '—'}</p>
-                                                <p className="text-xs text-gray-500">{lease.property?.city}</p>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div
-                                                        className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-                                                        {lease.tenant?.name?.charAt(0)?.toUpperCase() || '?'}
+                                        return (
+                                            <tr
+                                                key={lease.id}
+                                                className="border-b border-gray-50 hover:bg-gray-50/50 transition"
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <p className="text-sm font-semibold text-black">
+                                                        {lease.property?.address || '—'}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">{lease.property?.city}</p>
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                                                            {lease.tenant?.name?.charAt(0)?.toUpperCase() || '?'}
+                                                        </div>
+                                                        <span className="text-sm text-gray-600">
+                                                            {lease.tenant?.name || '—'}
+                                                        </span>
                                                     </div>
-                                                    <span
-                                                        className="text-sm text-gray-600">{lease.tenant?.name || '—'}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <p className="text-sm text-gray-600">{formatDate(lease.start_date)}</p>
-                                                <p className="text-xs text-gray-400">{lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}</p>
-                                            </td>
-                                            <td className="px-4 py-4 text-sm text-gray-600">
-                                                {formatCurrency(lease.rent_amount)}
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <Badge variant={statusVariant(lease.status)}>{lease.status}</Badge>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                {days === null ? (
-                                                    <span className="text-sm text-gray-400">—</span>
-                                                ) : days <= 0 ? (
-                                                    <span className="text-sm text-red-600 font-semibold">Expired</span>
-                                                ) : (
-                                                    <span
-                                                        className={`text-sm font-semibold ${isExpiring ? 'text-yellow-600' : 'text-gray-600'}`}>
-                              {days} days
-                            </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Button
-                                                        variant="success"
-                                                        size="sm"
-                                                        onClick={() => navigate('/leases/' + lease.id)}
-                                                    >
-                                                        View
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <p className="text-sm text-gray-600">
+                                                        {formatDate(lease.start_date)}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400">
+                                                        {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
+                                                    </p>
+                                                </td>
+                                                <td className="px-4 py-4 text-sm text-gray-600">
+                                                    {formatCurrency(lease.rent_amount)}
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <Badge variant={statusVariant(lease.status)}>{lease.status}</Badge>
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    {days === null ? (
+                                                        <span className="text-sm text-gray-400">—</span>
+                                                    ) : days <= 0 ? (
+                                                        <span className="text-sm text-red-600 font-semibold">
+                                                            Expired
+                                                        </span>
+                                                    ) : (
+                                                        <span
+                                                            className={`text-sm font-semibold ${isExpiring ? 'text-yellow-600' : 'text-gray-600'}`}
+                                                        >
+                                                            {days} days
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Button
+                                                            variant="success"
+                                                            size="sm"
+                                                            onClick={() => navigate('/leases/' + lease.id)}
+                                                        >
+                                                            View
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>

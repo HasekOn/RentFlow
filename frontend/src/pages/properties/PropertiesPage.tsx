@@ -1,9 +1,9 @@
-import {useCallback, useEffect, useState} from 'react'
-import {useNavigate} from 'react-router-dom'
-import {propertiesApi} from '../../api/properties'
-import type {PaginatedResponse, Property} from '../../types'
-import {formatCurrency} from '../../utils/format'
-import {useAuth} from '../../contexts/AuthContext'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { propertiesApi } from '../../api/properties'
+import type { PaginatedResponse, Property } from '../../types'
+import { formatCurrency } from '../../utils/format'
+import { useAuth } from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
@@ -11,7 +11,7 @@ import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
 import EmptyState from '../../components/ui/EmptyState'
 import PropertyFormModal from './PropertyFormModal'
-import {useConfirm} from '../../hooks/useConfirm'
+import { useConfirm } from '../../hooks/useConfirm'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -27,13 +27,13 @@ const statusVariant = (status: string) => {
 }
 
 const statusOptions = [
-    {value: 'occupied', label: 'Occupied'},
-    {value: 'available', label: 'Available'},
-    {value: 'renovation', label: 'Renovation'}
-];
+    { value: 'occupied', label: 'Occupied' },
+    { value: 'available', label: 'Available' },
+    { value: 'renovation', label: 'Renovation' },
+]
 
 export default function PropertiesPage() {
-    const {isLandlord} = useAuth()
+    const { isLandlord } = useAuth()
     const navigate = useNavigate()
     const [properties, setProperties] = useState<Property[]>([])
     const [meta, setMeta] = useState<PaginatedResponse<Property>['meta'] | null>(null)
@@ -42,7 +42,7 @@ export default function PropertiesPage() {
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
     const [page, setPage] = useState(1)
-    const {confirm, dialog} = useConfirm()
+    const { confirm, dialog } = useConfirm()
 
     const loadProperties = useCallback(async () => {
         setIsLoading(true)
@@ -100,22 +100,17 @@ export default function PropertiesPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <h1 className="text-2xl sm:text-4xl font-bold text-black">Portfolio</h1>
-                {isLandlord && (
-                    <Button onClick={() => setShowCreateModal(true)}>
-                        + Add Property
-                    </Button>
-                )}
+                {isLandlord && <Button onClick={() => setShowCreateModal(true)}>+ Add Property</Button>}
             </div>
 
             {/* Filters */}
             <div className="bg-white rounded-2xl shadow-sm mt-6">
-                <div
-                    className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                         <span className="font-semibold text-black">Unit</span>
                         <span>Total {meta?.total || 0}</span>
                     </div>
-                    <div className="flex-1"/>
+                    <div className="flex-1" />
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                         <input
                             type="text"
@@ -134,24 +129,27 @@ export default function PropertiesPage() {
                 </div>
 
                 {isLoading ? (
-                    <Spinner/>
+                    <Spinner />
                 ) : properties.length === 0 ? (
                     <EmptyState
                         title="No properties found"
-                        description={search || statusFilter ? 'Try adjusting your filters.' : 'Add your first property to get started.'}
-                        action={isLandlord && !search && !statusFilter ? (
-                            <Button onClick={() => setShowCreateModal(true)}>+ Add Property</Button>
-                        ) : undefined}
+                        description={
+                            search || statusFilter
+                                ? 'Try adjusting your filters.'
+                                : 'Add your first property to get started.'
+                        }
+                        action={
+                            isLandlord && !search && !statusFilter ? (
+                                <Button onClick={() => setShowCreateModal(true)}>+ Add Property</Button>
+                            ) : undefined
+                        }
                     />
                 ) : (
                     <>
                         {/* ── Mobile Cards ── */}
                         <div className="lg:hidden divide-y divide-gray-50">
                             {properties.map((property) => (
-                                <div
-                                    key={property.id}
-                                    className="p-4 hover:bg-gray-50/50 transition"
-                                >
+                                <div key={property.id} className="p-4 hover:bg-gray-50/50 transition">
                                     <div className="flex items-start gap-3">
                                         {property.images && property.images[0] ? (
                                             <img
@@ -160,16 +158,19 @@ export default function PropertiesPage() {
                                                 className="w-16 h-16 rounded-xl object-cover shrink-0"
                                             />
                                         ) : (
-                                            <div className="w-16 h-16 rounded-xl bg-gray-100 shrink-0"/>
+                                            <div className="w-16 h-16 rounded-xl bg-gray-100 shrink-0" />
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between gap-2">
                                                 <div>
-                                                    <p className="text-sm font-semibold text-black">{property.address}</p>
+                                                    <p className="text-sm font-semibold text-black">
+                                                        {property.address}
+                                                    </p>
                                                     <p className="text-xs text-gray-500">{property.city}</p>
                                                 </div>
-                                                <Badge
-                                                    variant={statusVariant(property.status)}>{property.status}</Badge>
+                                                <Badge variant={statusVariant(property.status)}>
+                                                    {property.status}
+                                                </Badge>
                                             </div>
                                             <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                                                 {property.disposition && <span>{property.disposition}</span>}
@@ -204,58 +205,86 @@ export default function PropertiesPage() {
                         <div className="hidden lg:block">
                             <table className="w-full">
                                 <thead>
-                                <tr className="border-b border-gray-100">
-                                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Property</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Disposition</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Size</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Status</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Rent</th>
-                                    <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Action</th>
-                                </tr>
+                                    <tr className="border-b border-gray-100">
+                                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Property
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Disposition
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Size
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Status
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Rent
+                                        </th>
+                                        <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Action
+                                        </th>
+                                    </tr>
                                 </thead>
                                 <tbody>
-                                {properties.map((property) => (
-                                    <tr key={property.id}
-                                        className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                {property.images && property.images[0] ? (
-                                                    <img
-                                                        src={property.images[0].image_url}
-                                                        alt=""
-                                                        className="w-12 h-12 rounded-lg object-cover shrink-0"
-                                                    />
-                                                ) : (
-                                                    <div className="w-12 h-12 rounded-lg bg-gray-100 shrink-0"/>
-                                                )}
-                                                <div>
-                                                    <p className="text-sm font-semibold text-black">{property.address}</p>
-                                                    <p className="text-xs text-gray-500">{property.city}</p>
+                                    {properties.map((property) => (
+                                        <tr
+                                            key={property.id}
+                                            className="border-b border-gray-50 hover:bg-gray-50/50 transition"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    {property.images && property.images[0] ? (
+                                                        <img
+                                                            src={property.images[0].image_url}
+                                                            alt=""
+                                                            className="w-12 h-12 rounded-lg object-cover shrink-0"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-12 h-12 rounded-lg bg-gray-100 shrink-0" />
+                                                    )}
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-black">
+                                                            {property.address}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">{property.city}</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4 text-sm text-gray-600">{property.disposition || '—'}</td>
-                                        <td className="px-4 py-4 text-sm text-gray-600">{property.size ? `${property.size} m²` : '—'}</td>
-                                        <td className="px-4 py-4">
-                                            <Badge variant={statusVariant(property.status)}>{property.status}</Badge>
-                                        </td>
-                                        <td className="px-4 py-4 text-sm text-gray-600">{getRent(property)}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Button variant="success" size="sm"
-                                                        onClick={() => navigate('/properties/' + property.id)}>
-                                                    View
-                                                </Button>
-                                                {isLandlord && (
-                                                    <Button variant="secondary" size="sm"
-                                                            onClick={() => handleDelete(property.id)}>
-                                                        Delete
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-gray-600">
+                                                {property.disposition || '—'}
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-gray-600">
+                                                {property.size ? `${property.size} m²` : '—'}
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <Badge variant={statusVariant(property.status)}>
+                                                    {property.status}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-gray-600">{getRent(property)}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Button
+                                                        variant="success"
+                                                        size="sm"
+                                                        onClick={() => navigate('/properties/' + property.id)}
+                                                    >
+                                                        View
                                                     </Button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                                    {isLandlord && (
+                                                        <Button
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            onClick={() => handleDelete(property.id)}
+                                                        >
+                                                            Delete
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>

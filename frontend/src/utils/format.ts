@@ -1,10 +1,12 @@
 export function formatCurrency(amount: number | string): string {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount
-    return new Intl.NumberFormat('cs-CZ', {
-        style: 'decimal',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(num) + ' Kč'
+    return (
+        new Intl.NumberFormat('cs-CZ', {
+            style: 'decimal',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(num) + ' Kč'
+    )
 }
 
 export function formatDate(date: string | null | undefined): string {

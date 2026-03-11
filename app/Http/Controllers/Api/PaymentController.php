@@ -145,6 +145,67 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function generateMonthly(Request $request): JsonResponse
+    {
+        $this->authorize('create', Payment::class);
+
+        $user = $request->user();
+        $propertyIds = $user->ownedProperties()->pluck('id');
+        $activeLeases = Lease::query()->whereIn('property_id', $propertyIds)
+            ->where('status', 'active')
+            ->get();
+
+        $created = 0;
+        $dueDate = now()->startOfMonth()->addDays(14);
+
+        foreach ($activeLeases as $lease) {
+            $existingRent = Payment::query()
+                ->where('lease_id', $lease->id)
+                ->where('type', 'rent')
+                ->whereYear('due_date', now()->year)
+                ->whereMonth('due_date', now()->month)
+                ->exists();
+
+            if (! $existingRent) {
+                Payment::create([
+                    'lease_id' => $lease->id,
+                    'type' => 'rent',
+                    'amount' => $lease->rent_amount,
+                    'due_date' => $dueDate,
+                    'variable_symbol' => $lease->variable_symbol,
+                    'status' => 'unpaid',
+                ]);
+                $created++;
+            }
+
+            if ($lease->utility_advances > 0) {
+                $existingUtility = Payment::query()
+                    ->where('lease_id', $lease->id)
+                    ->where('type', 'utilities')
+                    ->whereYear('due_date', now()->year)
+                    ->whereMonth('due_date', now()->month)
+                    ->exists();
+
+                if (! $existingUtility) {
+                    Payment::create([
+                        'lease_id' => $lease->id,
+                        'type' => 'utilities',
+                        'amount' => $lease->utility_advances,
+                        'due_date' => $dueDate,
+                        'variable_symbol' => $lease->variable_symbol ? $lease->variable_symbol.'1' : null,
+                        'status' => 'unpaid',
+                    ]);
+                    $created++;
+                }
+            }
+        }
+
+        return response()->json([
+            'message' => "Generated {$created} payments for current month.",
+            'created' => $created,
+        ]);
+    }
+
     protected function getDateField(): string
     {
         return 'due_date';

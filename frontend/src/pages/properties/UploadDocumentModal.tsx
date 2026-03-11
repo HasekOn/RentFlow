@@ -1,6 +1,6 @@
 import * as React from 'react'
-import {useState} from 'react'
-import {documentsApi} from '../../api/documents'
+import { useState } from 'react'
+import { documentsApi } from '../../api/documents'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -13,7 +13,7 @@ interface Props {
     onSuccess: () => void
 }
 
-export default function UploadDocumentModal({isOpen, onClose, propertyId, onSuccess}: Props) {
+export default function UploadDocumentModal({ isOpen, onClose, propertyId, onSuccess }: Props) {
     const [file, setFile] = useState<File | null>(null)
     const [name, setName] = useState('')
     const [documentType, setDocumentType] = useState('contract')
@@ -106,21 +106,23 @@ export default function UploadDocumentModal({isOpen, onClose, propertyId, onSucc
                     value={documentType}
                     onChange={(e) => setDocumentType(e.target.value)}
                     options={[
-                        {value: 'contract', label: 'Contract'},
-                        {value: 'insurance', label: 'Insurance'},
-                        {value: 'inspection', label: 'Inspection / Revision'},
-                        {value: 'energy_certificate', label: 'Energy Certificate'},
-                        {value: 'tax', label: 'Tax Document'},
-                        {value: 'protocol', label: 'Handover Protocol'},
-                        {value: 'invoice', label: 'Invoice'},
-                        {value: 'other', label: 'Other'},
+                        { value: 'contract', label: 'Contract' },
+                        { value: 'insurance', label: 'Insurance' },
+                        { value: 'inspection', label: 'Inspection / Revision' },
+                        { value: 'energy_certificate', label: 'Energy Certificate' },
+                        { value: 'tax', label: 'Tax Document' },
+                        { value: 'protocol', label: 'Handover Protocol' },
+                        { value: 'invoice', label: 'Invoice' },
+                        { value: 'other', label: 'Other' },
                     ]}
                 />
 
                 {error && <p className="text-sm text-red-600">{error}</p>}
 
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={handleClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={handleClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading || !file}>
                         {isLoading ? 'Uploading...' : 'Upload'}
                     </Button>

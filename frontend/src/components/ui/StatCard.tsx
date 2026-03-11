@@ -12,16 +12,12 @@ const accentColors = {
     default: 'text-black',
 }
 
-export default function StatCard({label, value, subtitle, accent = 'default'}: Props) {
+export default function StatCard({ label, value, subtitle, accent = 'default' }: Props) {
     return (
         <div className="bg-white rounded-2xl p-6 shadow-sm">
             <p className="text-sm text-gray-500">{label}</p>
-            <p className={`text-2xl font-bold mt-1 ${accentColors[accent]}`}>
-                {value}
-            </p>
-            {subtitle && (
-                <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
-            )}
+            <p className={`text-2xl font-bold mt-1 ${accentColors[accent]}`}>{value}</p>
+            {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
         </div>
     )
 }

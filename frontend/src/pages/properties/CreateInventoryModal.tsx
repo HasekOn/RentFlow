@@ -1,6 +1,6 @@
 import * as React from 'react'
-import {useState} from 'react'
-import {inventoryApi} from '../../api/inventory'
+import { useState } from 'react'
+import { inventoryApi } from '../../api/inventory'
 import Modal from '../../components/ui/Modal'
 import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
@@ -13,7 +13,7 @@ interface Props {
     onSuccess: () => void
 }
 
-export default function CreateInventoryModal({isOpen, onClose, propertyId, onSuccess}: Props) {
+export default function CreateInventoryModal({ isOpen, onClose, propertyId, onSuccess }: Props) {
     const [formData, setFormData] = useState({
         name: '',
         category: '',
@@ -26,7 +26,7 @@ export default function CreateInventoryModal({isOpen, onClose, propertyId, onSuc
     const [isLoading, setIsLoading] = useState(false)
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -43,7 +43,7 @@ export default function CreateInventoryModal({isOpen, onClose, propertyId, onSuc
                 purchase_price: formData.purchase_price ? Number(formData.purchase_price) : undefined,
                 note: formData.note || undefined,
             })
-            setFormData({name: '', category: '', condition: 'good', purchase_date: '', purchase_price: '', note: ''})
+            setFormData({ name: '', category: '', condition: 'good', purchase_date: '', purchase_price: '', note: '' })
             onSuccess()
         } catch (err: any) {
             setErrors(err.response?.data?.errors || {})
@@ -79,11 +79,11 @@ export default function CreateInventoryModal({isOpen, onClose, propertyId, onSuc
                         value={formData.condition}
                         onChange={handleChange}
                         options={[
-                            {value: 'new', label: 'New'},
-                            {value: 'good', label: 'Good'},
-                            {value: 'fair', label: 'Fair'},
-                            {value: 'poor', label: 'Poor'},
-                            {value: 'broken', label: 'Broken'},
+                            { value: 'new', label: 'New' },
+                            { value: 'good', label: 'Good' },
+                            { value: 'fair', label: 'Fair' },
+                            { value: 'poor', label: 'Poor' },
+                            { value: 'broken', label: 'Broken' },
                         ]}
                         error={errors.condition?.[0]}
                     />
@@ -119,7 +119,9 @@ export default function CreateInventoryModal({isOpen, onClose, propertyId, onSuc
                     />
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={onClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading}>
                         {isLoading ? 'Creating...' : 'Add Item'}
                     </Button>

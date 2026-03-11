@@ -1,28 +1,28 @@
-import {useEffect, useState} from 'react'
-import {useNavigate, useParams} from 'react-router-dom'
-import {useAuth} from '../../contexts/AuthContext'
-import {usersApi} from '../../api/users'
-import {leasesApi} from '../../api/leases'
-import {ratingsApi} from '../../api/ratings'
-import type {Lease, Rating, TrustScoreData, User} from '../../types'
-import {formatCurrency, formatDate} from '../../utils/format'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import { usersApi } from '../../api/users'
+import { leasesApi } from '../../api/leases'
+import { ratingsApi } from '../../api/ratings'
+import type { Lease, Rating, TrustScoreData, User } from '../../types'
+import { formatCurrency, formatDate } from '../../utils/format'
 import Spinner from '../../components/ui/Spinner'
 import TrustScoreBadge from '../../components/ui/TrustScoreBadge'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
-import {managersApi} from '../../api/managers'
-import {useConfirm} from '../../hooks/useConfirm'
+import { managersApi } from '../../api/managers'
+import { useConfirm } from '../../hooks/useConfirm'
 
 export default function PersonDetailPage() {
-    const {id} = useParams<{ id: string }>()
+    const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const {user: authUser, isLandlord} = useAuth()
+    const { user: authUser, isLandlord } = useAuth()
     const [person, setPerson] = useState<User | null>(null)
     const [trustScore, setTrustScore] = useState<TrustScoreData | null>(null)
     const [leases, setLeases] = useState<Lease[]>([])
     const [ratings, setRatings] = useState<Rating[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const {confirm: showConfirm, dialog} = useConfirm()
+    const { confirm: showConfirm, dialog } = useConfirm()
 
     const personId = Number(id)
     const isOwnProfile = authUser?.id === personId
@@ -42,7 +42,7 @@ export default function PersonDetailPage() {
 
         try {
             await managersApi.promote(person.id)
-            setPerson({...person, role: 'manager'})
+            setPerson({ ...person, role: 'manager' })
         } catch (err: any) {
             alert(err.response?.data?.message || 'Failed to promote')
         }
@@ -63,7 +63,7 @@ export default function PersonDetailPage() {
 
         try {
             await managersApi.demote(person.id)
-            setPerson({...person, role: 'tenant'})
+            setPerson({ ...person, role: 'tenant' })
         } catch (err: any) {
             alert(err.response?.data?.message || 'Failed to demote')
         }
@@ -101,7 +101,7 @@ export default function PersonDetailPage() {
 
                 // Load ratings from all leases
                 const allRatings: Rating[] = []
-                for (const lease of (leasesRes.data.data || [])) {
+                for (const lease of leasesRes.data.data || []) {
                     try {
                         const ratingsRes = await ratingsApi.getByLease(lease.id)
                         const ratingsData = Array.isArray(ratingsRes.data) ? ratingsRes.data : []
@@ -121,7 +121,7 @@ export default function PersonDetailPage() {
         void load()
     }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (isLoading) return <Spinner/>
+    if (isLoading) return <Spinner />
     if (!person) return null
 
     const categoryLabel = (cat: string) => {
@@ -161,15 +161,14 @@ export default function PersonDetailPage() {
                     {/* Profile card */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <div className="flex items-center gap-5">
-                            <div
-                                className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-600">
+                            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-600">
                                 {person.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold text-black">{person.name}</h2>
                                 <p className="text-sm text-gray-500 truncate">{person.email}</p>
                                 <div className="mt-2">
-                                    <TrustScoreBadge score={person.trust_score}/>
+                                    <TrustScoreBadge score={person.trust_score} />
                                 </div>
                             </div>
                         </div>
@@ -204,9 +203,7 @@ export default function PersonDetailPage() {
 
                     {/* Lease history */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-lg font-bold text-black mb-4">
-                            Lease History ({leases.length})
-                        </h2>
+                        <h2 className="text-lg font-bold text-black mb-4">Lease History ({leases.length})</h2>
                         {leases.length === 0 ? (
                             <p className="text-sm text-gray-400 text-center py-4">No leases found</p>
                         ) : (
@@ -225,7 +222,7 @@ export default function PersonDetailPage() {
                                                     className="w-12 h-12 rounded-lg object-cover shrink-0"
                                                 />
                                             ) : (
-                                                <div className="w-12 h-12 rounded-lg bg-gray-100 shrink-0"/>
+                                                <div className="w-12 h-12 rounded-lg bg-gray-100 shrink-0" />
                                             )}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between gap-2">
@@ -236,17 +233,25 @@ export default function PersonDetailPage() {
                                                         <p className="text-xs text-gray-500">{lease.property?.city}</p>
                                                     </div>
                                                     <Badge
-                                                        variant={lease.status === 'active' ? 'green' : lease.status === 'terminated' ? 'red' : 'gray'}>
+                                                        variant={
+                                                            lease.status === 'active'
+                                                                ? 'green'
+                                                                : lease.status === 'terminated'
+                                                                  ? 'red'
+                                                                  : 'gray'
+                                                        }
+                                                    >
                                                         {lease.status}
                                                     </Badge>
                                                 </div>
                                                 <div className="flex items-center justify-between mt-2">
                                                     <p className="text-xs text-gray-400">
-                                                        {formatDate(lease.start_date)} → {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
+                                                        {formatDate(lease.start_date)} →{' '}
+                                                        {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
                                                     </p>
                                                     <span className="text-sm font-semibold text-black">
-                            {formatCurrency(lease.rent_amount)}
-                          </span>
+                                                        {formatCurrency(lease.rent_amount)}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -264,10 +269,10 @@ export default function PersonDetailPage() {
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-4">Trust Score</h2>
                             <div className="text-center mb-4">
-                                <div
-                                    className="inline-flex items-center justify-center w-20 h-20 rounded-full border-4 border-green-200">
-                                    <span
-                                        className="text-2xl font-bold text-black">{Math.round(trustScore.trust_score)}</span>
+                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full border-4 border-green-200">
+                                    <span className="text-2xl font-bold text-black">
+                                        {Math.round(trustScore.trust_score)}
+                                    </span>
                                 </div>
                             </div>
                             <div className="space-y-3">
@@ -277,8 +282,9 @@ export default function PersonDetailPage() {
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-sm text-gray-500">On Time</span>
-                                    <span
-                                        className="text-sm font-semibold">{trustScore.breakdown.on_time_payments}</span>
+                                    <span className="text-sm font-semibold">
+                                        {trustScore.breakdown.on_time_payments}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-sm text-gray-500">Payment Ratio</span>
@@ -293,10 +299,13 @@ export default function PersonDetailPage() {
                                 <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full rounded-full transition-all ${
-                                            trustScore.trust_score >= 70 ? 'bg-green-500' :
-                                                trustScore.trust_score >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                                            trustScore.trust_score >= 70
+                                                ? 'bg-green-500'
+                                                : trustScore.trust_score >= 40
+                                                  ? 'bg-yellow-500'
+                                                  : 'bg-red-500'
                                         }`}
-                                        style={{width: `${trustScore.trust_score}%`}}
+                                        style={{ width: `${trustScore.trust_score}%` }}
                                     />
                                 </div>
                             </div>
@@ -305,9 +314,7 @@ export default function PersonDetailPage() {
 
                     {/* Ratings */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-lg font-bold text-black mb-4">
-                            Ratings ({ratings.length})
-                        </h2>
+                        <h2 className="text-lg font-bold text-black mb-4">Ratings ({ratings.length})</h2>
                         {ratings.length === 0 ? (
                             <p className="text-sm text-gray-400 text-center py-4">No ratings yet</p>
                         ) : (
@@ -315,14 +322,17 @@ export default function PersonDetailPage() {
                                 {ratings.map((rating) => (
                                     <div key={rating.id} className="p-4 border border-gray-100 rounded-xl">
                                         <div className="flex items-center justify-between">
-                                            <p className="text-sm font-semibold text-black">{categoryLabel(rating.category)}</p>
+                                            <p className="text-sm font-semibold text-black">
+                                                {categoryLabel(rating.category)}
+                                            </p>
                                             <div className="flex items-center gap-1">
                                                 <span className="text-sm font-bold text-black">{rating.score}</span>
                                                 <span className="text-yellow-500">★</span>
                                             </div>
                                         </div>
-                                        {rating.comment &&
-                                            <p className="text-xs text-gray-500 mt-2">{rating.comment}</p>}
+                                        {rating.comment && (
+                                            <p className="text-xs text-gray-500 mt-2">{rating.comment}</p>
+                                        )}
                                         {rating.rated_by && (
                                             <p className="text-xs text-gray-400 mt-1">
                                                 by {rating.rated_by.name} · {formatDate(rating.created_at)}
@@ -344,20 +354,12 @@ export default function PersonDetailPage() {
                                 </Button>
                             )}
                             {isLandlord && !isOwnProfile && person.role === 'tenant' && (
-                                <Button
-                                    variant="primary"
-                                    className="w-full"
-                                    onClick={handlePromote}
-                                >
+                                <Button variant="primary" className="w-full" onClick={handlePromote}>
                                     👑 Promote to Manager
                                 </Button>
                             )}
                             {isLandlord && !isOwnProfile && person.role === 'manager' && (
-                                <Button
-                                    variant="danger"
-                                    className="w-full"
-                                    onClick={handleDemote}
-                                >
+                                <Button variant="danger" className="w-full" onClick={handleDemote}>
                                     Demote to Tenant
                                 </Button>
                             )}

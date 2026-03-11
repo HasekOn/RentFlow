@@ -1,18 +1,18 @@
 import * as React from 'react'
-import {useEffect, useState} from 'react'
-import {useNavigate, useParams} from 'react-router-dom'
-import {ticketsApi} from '../../api/tickets'
-import type {Ticket, TicketComment, TicketImage} from '../../types'
-import {formatDate} from '../../utils/format'
-import {useAuth} from '../../contexts/AuthContext'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ticketsApi } from '../../api/tickets'
+import type { Ticket, TicketComment, TicketImage } from '../../types'
+import { formatDate } from '../../utils/format'
+import { useAuth } from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
-import {useConfirm} from '../../hooks/useConfirm'
-import {usersApi} from '../../api/users'
+import { useConfirm } from '../../hooks/useConfirm'
+import { usersApi } from '../../api/users'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -45,9 +45,9 @@ const statusLabel = (status: string) => {
 }
 
 export default function TicketDetailPage() {
-    const {id} = useParams<{ id: string }>()
+    const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const {user, isLandlord, isManager} = useAuth()
+    const { user, isLandlord, isManager } = useAuth()
     const [ticket, setTicket] = useState<Ticket | null>(null)
     const [comments, setComments] = useState<TicketComment[]>([])
     const [ticketImages, setTicketImages] = useState<TicketImage[]>([])
@@ -61,7 +61,7 @@ export default function TicketDetailPage() {
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
     const [showEditModal, setShowEditModal] = useState(false)
-    const {confirm: showConfirm, dialog} = useConfirm()
+    const { confirm: showConfirm, dialog } = useConfirm()
 
     const loadTicket = async () => {
         try {
@@ -132,7 +132,12 @@ export default function TicketDetailPage() {
 
     const handleStatusChange = async (newStatus: string) => {
         const ok = await showConfirm({
-            title: newStatus === 'resolved' ? 'Resolve Ticket' : newStatus === 'rejected' ? 'Reject Ticket' : 'Update Status',
+            title:
+                newStatus === 'resolved'
+                    ? 'Resolve Ticket'
+                    : newStatus === 'rejected'
+                      ? 'Reject Ticket'
+                      : 'Update Status',
             message: `Are you sure you want to mark this ticket as "${newStatus.replace('_', ' ')}"?`,
             confirmLabel: newStatus === 'resolved' ? 'Resolve' : newStatus === 'rejected' ? 'Reject' : 'Confirm',
             variant: newStatus === 'rejected' ? 'danger' : 'primary',
@@ -141,7 +146,7 @@ export default function TicketDetailPage() {
 
         setIsUpdating(true)
         try {
-            await ticketsApi.update(Number(id), {status: newStatus})
+            await ticketsApi.update(Number(id), { status: newStatus })
             void loadTicket()
         } catch (error) {
             console.error('Failed to update status:', error)
@@ -199,7 +204,7 @@ export default function TicketDetailPage() {
         }
     }
 
-    if (isLoading) return <Spinner/>
+    if (isLoading) return <Spinner />
     if (!ticket) return null
 
     const isAuthor = ticket.tenant?.id === user?.id
@@ -209,15 +214,18 @@ export default function TicketDetailPage() {
         <div>
             {/* Comment attachment lightbox */}
             {lightboxUrl && (
-                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-                     onClick={() => setLightboxUrl(null)}>
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+                    onClick={() => setLightboxUrl(null)}
+                >
                     <button
                         onClick={(e) => {
-                            e.stopPropagation();
+                            e.stopPropagation()
                             setLightboxUrl(null)
                         }}
                         className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition cursor-pointer"
-                    >✕
+                    >
+                        ✕
                     </button>
                     <img
                         src={lightboxUrl}
@@ -230,34 +238,39 @@ export default function TicketDetailPage() {
 
             {/* Ticket images lightbox with navigation */}
             {lightboxIndex !== null && ticketImages.length > 0 && (
-                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-                     onClick={() => setLightboxIndex(null)}>
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+                    onClick={() => setLightboxIndex(null)}
+                >
                     <button
                         onClick={(e) => {
-                            e.stopPropagation();
+                            e.stopPropagation()
                             setLightboxIndex(null)
                         }}
                         className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition cursor-pointer"
-                    >✕
+                    >
+                        ✕
                     </button>
                     {lightboxIndex > 0 && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation();
+                                e.stopPropagation()
                                 setLightboxIndex(lightboxIndex - 1)
                             }}
                             className="absolute left-6 text-white text-4xl hover:opacity-70 transition cursor-pointer"
-                        >‹
+                        >
+                            ‹
                         </button>
                     )}
                     {lightboxIndex < ticketImages.length - 1 && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation();
+                                e.stopPropagation()
                                 setLightboxIndex(lightboxIndex + 1)
                             }}
                             className="absolute right-6 text-white text-4xl hover:opacity-70 transition cursor-pointer"
-                        >›
+                        >
+                            ›
                         </button>
                     )}
                     <img
@@ -280,7 +293,8 @@ export default function TicketDetailPage() {
                                     handleDeleteTicketImage(imgId)
                                 }}
                                 className="text-red-400 hover:text-red-300 text-sm transition cursor-pointer"
-                            >🗑 Delete
+                            >
+                                🗑 Delete
                             </button>
                         )}
                     </div>
@@ -293,7 +307,8 @@ export default function TicketDetailPage() {
                     <button
                         onClick={() => navigate('/tickets')}
                         className="text-gray-400 hover:text-black transition text-lg cursor-pointer"
-                    >←
+                    >
+                        ←
                     </button>
                     <h1 className="text-2xl sm:text-4xl font-bold text-black">Ticket Detail</h1>
                 </div>
@@ -314,21 +329,15 @@ export default function TicketDetailPage() {
                                 <h2 className="text-xl font-bold text-black">{ticket.title}</h2>
                                 <p className="text-sm text-gray-500 mt-1">{ticket.property?.address}</p>
                             </div>
-                            <Badge variant={statusVariant(ticket.status)}>
-                                {statusLabel(ticket.status)}
-                            </Badge>
+                            <Badge variant={statusVariant(ticket.status)}>{statusLabel(ticket.status)}</Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mt-4 leading-relaxed">
-                            {ticket.description}
-                        </p>
+                        <p className="text-sm text-gray-600 mt-4 leading-relaxed">{ticket.description}</p>
                     </div>
 
                     {/* Photos */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-black">
-                                Photos ({ticketImages.length})
-                            </h2>
+                            <h2 className="text-lg font-bold text-black">Photos ({ticketImages.length})</h2>
                             {ticket.status !== 'resolved' && ticket.status !== 'rejected' && (
                                 <>
                                     <Button
@@ -364,8 +373,7 @@ export default function TicketDetailPage() {
                                             alt={img.description || 'Ticket photo'}
                                             className="w-full h-full object-cover hover:scale-105 transition duration-300"
                                         />
-                                        <div
-                                            className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/50 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition">
+                                        <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/50 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition">
                                             <p className="text-white text-xs truncate">{img.uploader?.name}</p>
                                         </div>
                                     </div>
@@ -376,9 +384,7 @@ export default function TicketDetailPage() {
 
                     {/* Comments */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-lg font-bold text-black mb-4">
-                            Comments ({comments.length})
-                        </h2>
+                        <h2 className="text-lg font-bold text-black mb-4">Comments ({comments.length})</h2>
 
                         {comments.length === 0 ? (
                             <p className="text-sm text-gray-400 text-center py-6">No comments yet</p>
@@ -388,15 +394,17 @@ export default function TicketDetailPage() {
                                     const isOwn = comment.user?.id === user?.id
 
                                     return (
-                                        <div key={comment.id}
-                                             className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                                            <div
-                                                className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600 shrink-0">
+                                        <div
+                                            key={comment.id}
+                                            className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : ''}`}
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600 shrink-0">
                                                 {comment.user?.name?.charAt(0)?.toUpperCase() || '?'}
                                             </div>
                                             <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''}`}>
                                                 <div
-                                                    className={`rounded-2xl px-4 py-3 ${isOwn ? 'bg-black text-white' : 'bg-gray-100 text-gray-800'}`}>
+                                                    className={`rounded-2xl px-4 py-3 ${isOwn ? 'bg-black text-white' : 'bg-gray-100 text-gray-800'}`}
+                                                >
                                                     <p className="text-sm">{comment.message}</p>
                                                     {comment.attachment_url && (
                                                         <img
@@ -411,12 +419,13 @@ export default function TicketDetailPage() {
                                                     )}
                                                 </div>
                                                 <div
-                                                    className={`flex items-center gap-2 mt-1 ${isOwn ? 'justify-end' : ''}`}>
-                                                    <span
-                                                        className="text-xs text-gray-400">{comment.user?.name}</span>
+                                                    className={`flex items-center gap-2 mt-1 ${isOwn ? 'justify-end' : ''}`}
+                                                >
+                                                    <span className="text-xs text-gray-400">{comment.user?.name}</span>
                                                     <span className="text-xs text-gray-300">·</span>
-                                                    <span
-                                                        className="text-xs text-gray-400">{formatDate(comment.created_at)}</span>
+                                                    <span className="text-xs text-gray-400">
+                                                        {formatDate(comment.created_at)}
+                                                    </span>
                                                     {isOwn && (
                                                         <>
                                                             <span className="text-xs text-gray-300">·</span>
@@ -442,23 +451,30 @@ export default function TicketDetailPage() {
                                 {/* Attachment preview */}
                                 {attachmentPreview && (
                                     <div className="mb-3 relative inline-block">
-                                        <img src={attachmentPreview} alt="Preview"
-                                             className="h-20 rounded-lg object-cover border border-gray-200"/>
+                                        <img
+                                            src={attachmentPreview}
+                                            alt="Preview"
+                                            className="h-20 rounded-lg object-cover border border-gray-200"
+                                        />
                                         <button
                                             onClick={removeAttachment}
                                             className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600 cursor-pointer"
-                                        >✕
+                                        >
+                                            ✕
                                         </button>
                                     </div>
                                 )}
-                                <form onSubmit={handleSendComment}
-                                      className="flex flex-row items-center gap-2 sm:gap-3">
+                                <form
+                                    onSubmit={handleSendComment}
+                                    className="flex flex-row items-center gap-2 sm:gap-3"
+                                >
                                     <button
                                         type="button"
                                         onClick={() => document.getElementById('comment-attachment')?.click()}
                                         className="px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-200 rounded-full text-sm hover:bg-gray-50 transition shrink-0 cursor-pointer flex items-center justify-center"
                                         title="Attach photo"
-                                    >📷
+                                    >
+                                        📷
                                     </button>
                                     <input
                                         id="comment-attachment"
@@ -501,8 +517,7 @@ export default function TicketDetailPage() {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Category</span>
-                                <span
-                                    className="text-sm font-semibold capitalize">{ticket.category || '—'}</span>
+                                <span className="text-sm font-semibold capitalize">{ticket.category || '—'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Created</span>
@@ -510,26 +525,24 @@ export default function TicketDetailPage() {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Reporter</span>
-                                <span
-                                    className="text-sm font-semibold">{ticket.tenant?.name || '—'}</span>
+                                <span className="text-sm font-semibold">{ticket.tenant?.name || '—'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Assigned to</span>
-                                <span
-                                    className="text-sm font-semibold">{ticket.assigned_user?.name || 'Unassigned'}</span>
+                                <span className="text-sm font-semibold">
+                                    {ticket.assigned_user?.name || 'Unassigned'}
+                                </span>
                             </div>
                             {ticket.resolved_at && (
                                 <div className="flex justify-between">
                                     <span className="text-sm text-gray-500">Resolved</span>
-                                    <span
-                                        className="text-sm font-semibold">{formatDate(ticket.resolved_at)}</span>
+                                    <span className="text-sm font-semibold">{formatDate(ticket.resolved_at)}</span>
                                 </div>
                             )}
                             {ticket.resolution_time && (
                                 <div className="flex justify-between">
                                     <span className="text-sm text-gray-500">Resolution time</span>
-                                    <span
-                                        className="text-sm font-semibold">{ticket.resolution_time}h</span>
+                                    <span className="text-sm font-semibold">{ticket.resolution_time}h</span>
                                 </div>
                             )}
                         </div>
@@ -610,7 +623,7 @@ interface EditTicketModalProps {
     onSuccess: () => void
 }
 
-function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager, onSuccess}: EditTicketModalProps) {
+function EditTicketModal({ isOpen, onClose, ticket, isAuthor, isLandlordOrManager, onSuccess }: EditTicketModalProps) {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -634,15 +647,18 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
 
             // Load managers for assignment
             if (isLandlordOrManager) {
-                usersApi.getManagers().then((res) => {
-                    setManagers(res.data)
-                }).catch(console.error)
+                usersApi
+                    .getManagers()
+                    .then((res) => {
+                        setManagers(res.data)
+                    })
+                    .catch(console.error)
             }
         }
     }, [ticket, isOpen, isLandlordOrManager])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -714,10 +730,10 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
                                 value={formData.priority}
                                 onChange={handleChange}
                                 options={[
-                                    {value: 'low', label: 'Low'},
-                                    {value: 'medium', label: 'Medium'},
-                                    {value: 'high', label: 'High'},
-                                    {value: 'urgent', label: 'Urgent'},
+                                    { value: 'low', label: 'Low' },
+                                    { value: 'medium', label: 'Medium' },
+                                    { value: 'high', label: 'High' },
+                                    { value: 'urgent', label: 'Urgent' },
                                 ]}
                                 error={errors.priority?.[0]}
                             />
@@ -728,12 +744,12 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
                                 onChange={handleChange}
                                 placeholder="Select..."
                                 options={[
-                                    {value: 'plumbing', label: 'Plumbing'},
-                                    {value: 'electrical', label: 'Electrical'},
-                                    {value: 'heating', label: 'Heating'},
-                                    {value: 'structural', label: 'Structural'},
-                                    {value: 'appliance', label: 'Appliance'},
-                                    {value: 'other', label: 'Other'},
+                                    { value: 'plumbing', label: 'Plumbing' },
+                                    { value: 'electrical', label: 'Electrical' },
+                                    { value: 'heating', label: 'Heating' },
+                                    { value: 'structural', label: 'Structural' },
+                                    { value: 'appliance', label: 'Appliance' },
+                                    { value: 'other', label: 'Other' },
                                 ]}
                                 error={errors.category?.[0]}
                             />
@@ -760,7 +776,9 @@ function EditTicketModal({isOpen, onClose, ticket, isAuthor, isLandlordOrManager
                 )}
 
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={onClose}>
+                        Cancel
+                    </Button>
                     {(canEditContent || isLandlordOrManager) && (
                         <Button type="submit" disabled={isLoading}>
                             {isLoading ? 'Saving...' : 'Save Changes'}

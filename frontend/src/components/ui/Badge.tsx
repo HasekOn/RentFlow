@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react'
 
 interface Props {
     children: React.ReactNode
@@ -13,12 +13,13 @@ const variants = {
     pink: 'bg-pink-100 text-pink-700',
 }
 
-export default function Badge({children, variant = 'gray'}: Props) {
+export default function Badge({ children, variant = 'gray' }: Props) {
     return (
         <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${variants[variant]}`}>
-      <span className="w-1.5 h-1.5 rounded-full bg-current"/>
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${variants[variant]}`}
+        >
+            <span className="w-1.5 h-1.5 rounded-full bg-current" />
             {children}
-    </span>
+        </span>
     )
 }

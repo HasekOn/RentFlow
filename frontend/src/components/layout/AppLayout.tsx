@@ -1,5 +1,5 @@
-import {useState} from 'react'
-import {Outlet} from 'react-router-dom'
+import { useState } from 'react'
+import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 
 export default function AppLayout() {
@@ -7,11 +7,10 @@ export default function AppLayout() {
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}/>
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
             {/* Mobile header */}
-            <div
-                className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center px-4 z-30">
+            <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center px-4 z-30">
                 <button
                     onClick={() => setSidebarOpen(true)}
                     className="text-xl text-gray-600 hover:text-black transition mr-3 cursor-pointer"
@@ -23,7 +22,7 @@ export default function AppLayout() {
 
             {/* Main content */}
             <main className="lg:ml-62.5 p-4 sm:p-6 lg:p-8 pt-18 lg:pt-8">
-                <Outlet/>
+                <Outlet />
             </main>
         </div>
     )

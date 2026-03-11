@@ -1,9 +1,9 @@
-import {useEffect, useState} from 'react'
-import {leasesApi} from '../../api/leases'
-import {propertiesApi} from '../../api/properties'
-import {usersApi} from '../../api/users'
-import type {ApiError, Property, User} from '../../types'
-import {AxiosError} from 'axios'
+import { useEffect, useState } from 'react'
+import { leasesApi } from '../../api/leases'
+import { propertiesApi } from '../../api/properties'
+import { usersApi } from '../../api/users'
+import type { ApiError, Property, User } from '../../types'
+import { AxiosError } from 'axios'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -15,7 +15,7 @@ interface Props {
     onSuccess: () => void
 }
 
-export default function CreateLeaseModal({isOpen, onClose, onSuccess}: Props) {
+export default function CreateLeaseModal({ isOpen, onClose, onSuccess }: Props) {
     const [properties, setProperties] = useState<Property[]>([])
     const [tenants, setTenants] = useState<User[]>([])
     const [formData, setFormData] = useState({
@@ -33,22 +33,24 @@ export default function CreateLeaseModal({isOpen, onClose, onSuccess}: Props) {
 
     useEffect(() => {
         if (isOpen) {
-            propertiesApi.getAll().then((res) => setProperties(res.data.data)).catch(console.error)
+            propertiesApi
+                .getAll()
+                .then((res) => setProperties(res.data.data))
+                .catch(console.error)
             // Load tenants + managers (managers can also be tenants)
-            Promise.all([
-                usersApi.getTenants(),
-                usersApi.getManagers(),
-            ]).then(([tenantsRes, managersRes]) => {
-                const all = [...tenantsRes.data, ...managersRes.data]
-                // Deduplicate by id
-                const unique = all.filter((u, i, arr) => arr.findIndex((x) => x.id === u.id) === i)
-                setTenants(unique)
-            }).catch(console.error)
+            Promise.all([usersApi.getTenants(), usersApi.getManagers()])
+                .then(([tenantsRes, managersRes]) => {
+                    const all = [...tenantsRes.data, ...managersRes.data]
+                    // Deduplicate by id
+                    const unique = all.filter((u, i, arr) => arr.findIndex((x) => x.id === u.id) === i)
+                    setTenants(unique)
+                })
+                .catch(console.error)
         }
     }, [isOpen])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -68,8 +70,14 @@ export default function CreateLeaseModal({isOpen, onClose, onSuccess}: Props) {
                 variable_symbol: formData.variable_symbol || undefined,
             })
             setFormData({
-                property_id: '', tenant_id: '', start_date: '', end_date: '',
-                rent_amount: '', deposit_amount: '', utility_advances: '', variable_symbol: '',
+                property_id: '',
+                tenant_id: '',
+                start_date: '',
+                end_date: '',
+                rent_amount: '',
+                deposit_amount: '',
+                utility_advances: '',
+                variable_symbol: '',
             })
             onSuccess()
         } catch (err) {
@@ -90,7 +98,7 @@ export default function CreateLeaseModal({isOpen, onClose, onSuccess}: Props) {
                         value={formData.property_id}
                         onChange={handleChange}
                         placeholder="Select property..."
-                        options={properties.map((p) => ({value: String(p.id), label: p.address}))}
+                        options={properties.map((p) => ({ value: String(p.id), label: p.address }))}
                         error={errors.property_id?.[0]}
                     />
                     <Select
@@ -99,7 +107,7 @@ export default function CreateLeaseModal({isOpen, onClose, onSuccess}: Props) {
                         value={formData.tenant_id}
                         onChange={handleChange}
                         placeholder="Select tenant..."
-                        options={tenants.map((t) => ({value: String(t.id), label: `${t.name} (${t.email})`}))}
+                        options={tenants.map((t) => ({ value: String(t.id), label: `${t.name} (${t.email})` }))}
                         error={errors.tenant_id?.[0]}
                     />
                 </div>
@@ -165,7 +173,9 @@ export default function CreateLeaseModal({isOpen, onClose, onSuccess}: Props) {
                 />
 
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={onClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading}>
                         {isLoading ? 'Creating...' : 'Create Lease'}
                     </Button>

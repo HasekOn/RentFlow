@@ -1,9 +1,9 @@
 import * as React from 'react'
-import {useState} from 'react'
-import {Link, useNavigate} from 'react-router-dom'
-import {useAuth} from '../../contexts/AuthContext'
-import type {ApiError} from '../../types'
-import {AxiosError} from 'axios'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import type { ApiError } from '../../types'
+import { AxiosError } from 'axios'
 
 export default function RegisterPage() {
     const [name, setName] = useState('')
@@ -14,7 +14,7 @@ export default function RegisterPage() {
     const [error, setError] = useState('')
     const [errors, setErrors] = useState<Record<string, string[]>>({})
     const [isLoading, setIsLoading] = useState(false)
-    const {register} = useAuth()
+    const { register } = useAuth()
     const navigate = useNavigate()
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -36,9 +36,7 @@ export default function RegisterPage() {
     }
 
     const fieldError = (field: string) =>
-        errors[field]?.[0] ? (
-            <p className="mt-1 text-xs text-red-600">{errors[field][0]}</p>
-        ) : null
+        errors[field]?.[0] ? <p className="mt-1 text-xs text-red-600">{errors[field][0]}</p> : null
 
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">

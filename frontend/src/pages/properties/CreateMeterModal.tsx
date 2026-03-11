@@ -1,6 +1,6 @@
 import * as React from 'react'
-import {useState} from 'react'
-import {metersApi} from '../../api/meters'
+import { useState } from 'react'
+import { metersApi } from '../../api/meters'
 import Modal from '../../components/ui/Modal'
 import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
@@ -13,7 +13,7 @@ interface Props {
     onSuccess: () => void
 }
 
-export default function CreateMeterModal({isOpen, onClose, propertyId, onSuccess}: Props) {
+export default function CreateMeterModal({ isOpen, onClose, propertyId, onSuccess }: Props) {
     const [formData, setFormData] = useState({
         meter_type: 'water',
         serial_number: '',
@@ -23,7 +23,7 @@ export default function CreateMeterModal({isOpen, onClose, propertyId, onSuccess
     const [isLoading, setIsLoading] = useState(false)
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +33,7 @@ export default function CreateMeterModal({isOpen, onClose, propertyId, onSuccess
 
         try {
             await metersApi.create(propertyId, formData)
-            setFormData({meter_type: 'water', serial_number: '', location: ''})
+            setFormData({ meter_type: 'water', serial_number: '', location: '' })
             onSuccess()
         } catch (err: any) {
             setErrors(err.response?.data?.errors || {})
@@ -51,10 +51,10 @@ export default function CreateMeterModal({isOpen, onClose, propertyId, onSuccess
                     value={formData.meter_type}
                     onChange={handleChange}
                     options={[
-                        {value: 'water', label: '💧 Water'},
-                        {value: 'electricity', label: '⚡ Electricity'},
-                        {value: 'gas', label: '🔥 Gas'},
-                        {value: 'heat', label: '🌡️ Heat'},
+                        { value: 'water', label: '💧 Water' },
+                        { value: 'electricity', label: '⚡ Electricity' },
+                        { value: 'gas', label: '🔥 Gas' },
+                        { value: 'heat', label: '🌡️ Heat' },
                     ]}
                     error={errors.meter_type?.[0]}
                 />
@@ -75,7 +75,9 @@ export default function CreateMeterModal({isOpen, onClose, propertyId, onSuccess
                     error={errors.location?.[0]}
                 />
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={onClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading}>
                         {isLoading ? 'Creating...' : 'Add Meter'}
                     </Button>

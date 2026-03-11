@@ -1,4 +1,4 @@
-import {useCallback, useState} from 'react'
+import { useCallback, useState } from 'react'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 
 interface ConfirmOptions {
@@ -16,7 +16,7 @@ export function useConfirm() {
 
     const confirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
         return new Promise((resolve) => {
-            setState({options, resolve})
+            setState({ options, resolve })
         })
     }, [])
 
@@ -42,5 +42,5 @@ export function useConfirm() {
         />
     ) : null
 
-    return {confirm, dialog}
+    return { confirm, dialog }
 }

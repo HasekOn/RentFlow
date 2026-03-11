@@ -1,6 +1,6 @@
 import * as React from 'react'
-import {useState} from 'react'
-import {noticesApi} from '../../api/notices'
+import { useState } from 'react'
+import { noticesApi } from '../../api/notices'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
@@ -12,7 +12,7 @@ interface Props {
     onSuccess: () => void
 }
 
-export default function CreateNoticeModal({isOpen, onClose, propertyId, onSuccess}: Props) {
+export default function CreateNoticeModal({ isOpen, onClose, propertyId, onSuccess }: Props) {
     const [title, setTitle] = useState('')
     const [content, setContent] = useState('')
     const [isLoading, setIsLoading] = useState(false)
@@ -26,7 +26,7 @@ export default function CreateNoticeModal({isOpen, onClose, propertyId, onSucces
         setIsLoading(true)
 
         try {
-            await noticesApi.create(propertyId, {title: title.trim(), content: content.trim()})
+            await noticesApi.create(propertyId, { title: title.trim(), content: content.trim() })
             setTitle('')
             setContent('')
             onSuccess()
@@ -70,7 +70,9 @@ export default function CreateNoticeModal({isOpen, onClose, propertyId, onSucces
                 {error && <p className="text-sm text-red-600">{error}</p>}
 
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={handleClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={handleClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading || !title.trim() || !content.trim()}>
                         {isLoading ? 'Creating...' : 'Post Notice'}
                     </Button>

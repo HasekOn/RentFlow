@@ -1,5 +1,5 @@
-import {BrowserRouter, Navigate, Route, Routes} from 'react-router-dom'
-import {AuthProvider} from './contexts/AuthContext'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
 import LoginPage from './pages/auth/LoginPage'
@@ -23,31 +23,33 @@ export default function App() {
             <AuthProvider>
                 <Routes>
                     {/* Public */}
-                    <Route path="/login" element={<LoginPage/>}/>
-                    <Route path="/register" element={<RegisterPage/>}/>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
 
                     {/* Protected */}
-                    <Route element={
-                        <ProtectedRoute>
-                            <AppLayout/>
-                        </ProtectedRoute>
-                    }>
-                        <Route path="/" element={<DashboardPage/>}/>
-                        <Route path="/properties" element={<PropertiesPage/>}/>
-                        <Route path="/properties/:id" element={<PropertyDetailPage/>}/>
-                        <Route path="/tickets" element={<TicketsPage/>}/>
-                        <Route path="/tickets/:id" element={<TicketDetailPage/>}/>
-                        <Route path="/leases" element={<LeasesPage/>}/>
-                        <Route path="/leases/:id" element={<LeaseDetailPage/>}/>
-                        <Route path="/payments" element={<PaymentsPage/>}/>
-                        <Route path="/people" element={<PeoplePage/>}/>
-                        <Route path="/people/:id" element={<PersonDetailPage/>}/>
-                        <Route path="/documents" element={<DocumentsPage/>}/>
-                        <Route path="/settings" element={<SettingsPage/>}/>
+                    <Route
+                        element={
+                            <ProtectedRoute>
+                                <AppLayout />
+                            </ProtectedRoute>
+                        }
+                    >
+                        <Route path="/" element={<DashboardPage />} />
+                        <Route path="/properties" element={<PropertiesPage />} />
+                        <Route path="/properties/:id" element={<PropertyDetailPage />} />
+                        <Route path="/tickets" element={<TicketsPage />} />
+                        <Route path="/tickets/:id" element={<TicketDetailPage />} />
+                        <Route path="/leases" element={<LeasesPage />} />
+                        <Route path="/leases/:id" element={<LeaseDetailPage />} />
+                        <Route path="/payments" element={<PaymentsPage />} />
+                        <Route path="/people" element={<PeoplePage />} />
+                        <Route path="/people/:id" element={<PersonDetailPage />} />
+                        <Route path="/documents" element={<DocumentsPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
                     </Route>
 
                     {/* Fallback */}
-                    <Route path="*" element={<Navigate to="/" replace/>}/>
+                    <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </AuthProvider>
         </BrowserRouter>

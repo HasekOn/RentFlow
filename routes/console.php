@@ -2,8 +2,8 @@
 
 use Illuminate\Support\Facades\Schedule;
 
-// Every day at 8:00 AM — check expiring leases
-Schedule::command('rentflow:check-expiring-leases')->dailyAt('08:00');
+Schedule::command('rentflow:generate-payments')->monthlyOn(1, '01:00');
 
-// Every day at 9:00 AM — check overdue payments
-Schedule::command('rentflow:check-overdue-payments')->dailyAt('09:00');
+Schedule::command('rentflow:check-overdue-payments')->dailyAt('02:00');
+
+Schedule::command('rentflow:check-expiring-leases')->dailyAt('03:00');

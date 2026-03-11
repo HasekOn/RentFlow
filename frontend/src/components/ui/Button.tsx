@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react'
 
 interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary' | 'danger' | 'success'
@@ -17,7 +17,7 @@ const sizes = {
     md: 'px-5 py-2.5 text-sm',
 }
 
-export default function Button({variant = 'primary', size = 'md', className = '', children, ...props}: Props) {
+export default function Button({ variant = 'primary', size = 'md', className = '', children, ...props }: Props) {
     return (
         <button
             className={`cursor-pointer disabled:cursor-not-allowed font-semibold rounded-full transition disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}

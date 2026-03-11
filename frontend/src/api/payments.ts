@@ -1,5 +1,5 @@
 import api from './axios'
-import type {PaginatedResponse, Payment} from '../types'
+import type { PaginatedResponse, Payment } from '../types'
 
 interface PaymentFilters {
     status?: string
@@ -22,29 +22,25 @@ interface CreatePaymentData {
 }
 
 export const paymentsApi = {
-    getAll: (filters?: PaymentFilters) =>
-        api.get<PaginatedResponse<Payment>>('/payments', {params: filters}),
+    getAll: (filters?: PaymentFilters) => api.get<PaginatedResponse<Payment>>('/payments', { params: filters }),
 
-    getOne: (id: number) =>
-        api.get<Payment>('/payments/' + id),
+    getOne: (id: number) => api.get<Payment>('/payments/' + id),
 
-    create: (data: CreatePaymentData) =>
-        api.post<Payment>('/payments', data),
+    create: (data: CreatePaymentData) => api.post<Payment>('/payments', data),
 
-    update: (id: number, data: Partial<CreatePaymentData>) =>
-        api.put<Payment>('/payments/' + id, data),
+    update: (id: number, data: Partial<CreatePaymentData>) => api.put<Payment>('/payments/' + id, data),
 
-    delete: (id: number) =>
-        api.delete('/payments/' + id),
+    delete: (id: number) => api.delete('/payments/' + id),
 
-    markPaid: (id: number) =>
-        api.put('/payments/' + id + '/mark-paid'),
+    markPaid: (id: number) => api.put('/payments/' + id + '/mark-paid'),
 
     importCsv: (file: File) => {
         const formData = new FormData()
         formData.append('file', file)
         return api.post('/payments/import-csv', formData, {
-            headers: {'Content-Type': 'multipart/form-data'},
+            headers: { 'Content-Type': 'multipart/form-data' },
         })
     },
+
+    generateMonthly: () => api.post('/payments/generate-monthly'),
 }

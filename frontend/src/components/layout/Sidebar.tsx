@@ -1,22 +1,20 @@
-import {useEffect, useRef, useState} from 'react'
-import {NavLink, useLocation, useNavigate} from 'react-router-dom'
-import {useAuth} from '../../contexts/AuthContext'
-import {notificationsApi} from '../../api/notifications'
-import type {Notification} from '../../types'
+import { useEffect, useRef, useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import { notificationsApi } from '../../api/notifications'
+import type { Notification } from '../../types'
 
 const allMenuItems = [
-    {label: 'Overview', path: '/', icon: '📊', roles: ['landlord', 'tenant', 'manager']},
-    {label: 'Portfolio', path: '/properties', icon: '🏠', roles: ['landlord', 'tenant', 'manager']},
-    {label: 'Leases', path: '/leases', icon: '📋', roles: ['landlord', 'tenant', 'manager']},
-    {label: 'Payments', path: '/payments', icon: '💰', roles: ['landlord', 'tenant', 'manager']},
-    {label: 'Helpdesk', path: '/tickets', icon: '🎫', roles: ['landlord', 'tenant', 'manager']},
-    {label: 'People', path: '/people', icon: '👥', roles: ['landlord', 'manager']},
-    {label: 'Documents', path: '/documents', icon: '📄', roles: ['landlord', 'tenant', 'manager']},
+    { label: 'Overview', path: '/', icon: '📊', roles: ['landlord', 'tenant', 'manager'] },
+    { label: 'Portfolio', path: '/properties', icon: '🏠', roles: ['landlord', 'tenant', 'manager'] },
+    { label: 'Leases', path: '/leases', icon: '📋', roles: ['landlord', 'tenant', 'manager'] },
+    { label: 'Payments', path: '/payments', icon: '💰', roles: ['landlord', 'tenant', 'manager'] },
+    { label: 'Helpdesk', path: '/tickets', icon: '🎫', roles: ['landlord', 'tenant', 'manager'] },
+    { label: 'People', path: '/people', icon: '👥', roles: ['landlord', 'manager'] },
+    { label: 'Documents', path: '/documents', icon: '📄', roles: ['landlord', 'tenant', 'manager'] },
 ]
 
-const supportItems = [
-    {label: 'Settings', path: '/settings', icon: '⚙️'},
-]
+const supportItems = [{ label: 'Settings', path: '/settings', icon: '⚙️' }]
 
 interface Props {
     isOpen: boolean
@@ -70,8 +68,8 @@ const getNotificationText = (notification: Notification): { title: string; body:
     }
 }
 
-export default function Sidebar({isOpen, onClose}: Props) {
-    const {user, logout} = useAuth()
+export default function Sidebar({ isOpen, onClose }: Props) {
+    const { user, logout } = useAuth()
     const navigate = useNavigate()
     useLocation()
 
@@ -116,15 +114,13 @@ export default function Sidebar({isOpen, onClose}: Props) {
         if (!notification.read) {
             try {
                 await notificationsApi.markRead(notification.id)
-                setNotifications((prev) =>
-                    prev.map((n) => n.id === notification.id ? {...n, read: true} : n)
-                )
+                setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)))
             } catch {
                 // silently fail
             }
         }
 
-        const {link} = getNotificationText(notification)
+        const { link } = getNotificationText(notification)
         if (link) {
             navigate(link)
             setShowNotifications(false)
@@ -136,7 +132,7 @@ export default function Sidebar({isOpen, onClose}: Props) {
         const unread = notifications.filter((n) => !n.read)
         try {
             await Promise.all(unread.map((n) => notificationsApi.markRead(n.id)))
-            setNotifications((prev) => prev.map((n) => ({...n, read: true})))
+            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
         } catch {
             // silently fail
         }
@@ -152,12 +148,7 @@ export default function Sidebar({isOpen, onClose}: Props) {
     return (
         <>
             {/* Overlay */}
-            {isOpen && (
-                <div
-                    className="fixed inset-0 bg-black/40 z-40 lg:hidden cursor-pointer"
-                    onClick={onClose}
-                />
-            )}
+            {isOpen && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden cursor-pointer" onClick={onClose} />}
 
             {/* Sidebar */}
             <aside
@@ -178,8 +169,7 @@ export default function Sidebar({isOpen, onClose}: Props) {
                             >
                                 <span className="text-lg">🔔</span>
                                 {unreadCount > 0 && (
-                                    <span
-                                        className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                                         {unreadCount > 9 ? '9+' : unreadCount}
                                     </span>
                                 )}
@@ -187,8 +177,7 @@ export default function Sidebar({isOpen, onClose}: Props) {
 
                             {/* Dropdown */}
                             {showNotifications && (
-                                <div
-                                    className="absolute left-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                                <div className="absolute left-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                                     <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                                         <h3 className="text-sm font-bold text-black">Notifications</h3>
                                         {unreadCount > 0 && (
@@ -208,7 +197,7 @@ export default function Sidebar({isOpen, onClose}: Props) {
                                             </div>
                                         ) : (
                                             notifications.map((notification) => {
-                                                const {title, body} = getNotificationText(notification)
+                                                const { title, body } = getNotificationText(notification)
                                                 return (
                                                     <div
                                                         key={notification.id}
@@ -219,13 +208,18 @@ export default function Sidebar({isOpen, onClose}: Props) {
                                                     >
                                                         <div className="flex items-start gap-2">
                                                             {!notification.read && (
-                                                                <span
-                                                                    className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0"/>
+                                                                <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0" />
                                                             )}
                                                             <div className="flex-1 min-w-0">
-                                                                <p className="text-sm font-semibold text-black">{title}</p>
-                                                                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{body}</p>
-                                                                <p className="text-xs text-gray-400 mt-1">{formatTimeAgo(notification.created_at)}</p>
+                                                                <p className="text-sm font-semibold text-black">
+                                                                    {title}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                                                    {body}
+                                                                </p>
+                                                                <p className="text-xs text-gray-400 mt-1">
+                                                                    {formatTimeAgo(notification.created_at)}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -255,7 +249,7 @@ export default function Sidebar({isOpen, onClose}: Props) {
                             to={item.path}
                             onClick={handleNavClick}
                             end={item.path === '/'}
-                            className={({isActive}) =>
+                            className={({ isActive }) =>
                                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition mb-0.5 cursor-pointer ${
                                     isActive
                                         ? 'bg-gray-100 text-black'
@@ -269,14 +263,15 @@ export default function Sidebar({isOpen, onClose}: Props) {
                     ))}
 
                     <div className="mt-8">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">Help &
-                            Support</p>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">
+                            Help & Support
+                        </p>
                         {supportItems.map((item) => (
                             <NavLink
                                 key={item.path}
                                 to={item.path}
                                 onClick={handleNavClick}
-                                className={({isActive}) =>
+                                className={({ isActive }) =>
                                     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition mb-0.5 cursor-pointer ${
                                         isActive
                                             ? 'bg-gray-100 text-black'
@@ -297,13 +292,12 @@ export default function Sidebar({isOpen, onClose}: Props) {
                         <div className="flex items-center gap-3">
                             <div
                                 onClick={() => {
-                                    navigate('/people/' + user.id);
+                                    navigate('/people/' + user.id)
                                     handleNavClick()
                                 }}
                                 className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition"
                             >
-                                <div
-                                    className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                                <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
                                     {user.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -313,7 +307,7 @@ export default function Sidebar({isOpen, onClose}: Props) {
                             </div>
                             <button
                                 onClick={() => {
-                                    logout();
+                                    logout()
                                     handleNavClick()
                                 }}
                                 className="text-gray-400 hover:text-black transition cursor-pointer"

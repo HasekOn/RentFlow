@@ -1,17 +1,17 @@
-import {useEffect, useState} from 'react'
-import {useNavigate, useParams} from 'react-router-dom'
-import {leasesApi} from '../../api/leases'
-import type {Lease} from '../../types'
-import {formatCurrency, formatDate} from '../../utils/format'
-import {useAuth} from '../../contexts/AuthContext'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { leasesApi } from '../../api/leases'
+import type { Lease } from '../../types'
+import { formatCurrency, formatDate } from '../../utils/format'
+import { useAuth } from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import RateTenantModal from './RateTenantModal'
-import {useConfirm} from "../../hooks/useConfirm.tsx";
-import {paymentsApi} from "../../api/payments.ts";
+import { useConfirm } from '../../hooks/useConfirm.tsx'
+import { paymentsApi } from '../../api/payments.ts'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -27,16 +27,16 @@ const statusVariant = (status: string) => {
 }
 
 export default function LeaseDetailPage() {
-    const {id} = useParams<{ id: string }>()
+    const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const {isLandlord} = useAuth()
+    const { isLandlord } = useAuth()
     const [lease, setLease] = useState<Lease | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isDownloading, setIsDownloading] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
     const [showRatingModal, setShowRatingModal] = useState(false)
-    const {confirm: showConfirm, dialog} = useConfirm()
+    const { confirm: showConfirm, dialog } = useConfirm()
 
     const loadLease = async () => {
         try {
@@ -57,7 +57,7 @@ export default function LeaseDetailPage() {
         setIsDownloading(true)
         try {
             const res = await leasesApi.downloadPdf(Number(id))
-            const blob = new Blob([res.data], {type: 'application/pdf'})
+            const blob = new Blob([res.data], { type: 'application/pdf' })
             const url = window.URL.createObjectURL(blob)
             const link = document.createElement('a')
             link.href = url
@@ -86,7 +86,7 @@ export default function LeaseDetailPage() {
         setIsUpdating(true)
 
         try {
-            await leasesApi.update(Number(id), {status: newStatus})
+            await leasesApi.update(Number(id), { status: newStatus })
             void loadLease()
         } catch (error) {
             console.error('Failed to update lease:', error)
@@ -98,7 +98,7 @@ export default function LeaseDetailPage() {
     const handleMarkPaid = async (paymentId: number) => {
         const ok = await showConfirm({
             title: 'Mark as Paid',
-            message: 'Mark this payment as paid with today\'s date?',
+            message: "Mark this payment as paid with today's date?",
             confirmLabel: 'Mark Paid',
             variant: 'primary',
         })
@@ -131,7 +131,7 @@ export default function LeaseDetailPage() {
         }
     }
 
-    if (isLoading) return <Spinner/>
+    if (isLoading) return <Spinner />
     if (!lease) return null
 
     const daysLeft = lease.end_date
@@ -143,8 +143,11 @@ export default function LeaseDetailPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/leases')}
-                            className="text-gray-400 hover:text-black transition text-lg cursor-pointer">←
+                    <button
+                        onClick={() => navigate('/leases')}
+                        className="text-gray-400 hover:text-black transition text-lg cursor-pointer"
+                    >
+                        ←
                     </button>
                     <h1 className="text-2xl sm:text-4xl font-bold text-black">Lease Detail</h1>
                 </div>
@@ -193,15 +196,21 @@ export default function LeaseDetailPage() {
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">End Date</p>
-                                <p className="text-sm text-gray-700">{lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}</p>
+                                <p className="text-sm text-gray-700">
+                                    {lease.end_date ? formatDate(lease.end_date) : 'Indefinite'}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Deposit</p>
-                                <p className="text-sm text-gray-700">{lease.deposit_amount ? formatCurrency(lease.deposit_amount) : '—'}</p>
+                                <p className="text-sm text-gray-700">
+                                    {lease.deposit_amount ? formatCurrency(lease.deposit_amount) : '—'}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Utility Advances</p>
-                                <p className="text-sm text-gray-700">{lease.utility_advances ? formatCurrency(lease.utility_advances) : '—'}</p>
+                                <p className="text-sm text-gray-700">
+                                    {lease.utility_advances ? formatCurrency(lease.utility_advances) : '—'}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-400">Variable Symbol</p>
@@ -222,42 +231,59 @@ export default function LeaseDetailPage() {
                             <div className="hidden sm:block">
                                 <table className="w-full">
                                     <thead>
-                                    <tr className="border-b border-gray-100">
-                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Due
-                                            Date
-                                        </th>
-                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Amount</th>
-                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Status</th>
-                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Paid
-                                            Date
-                                        </th>
-                                    </tr>
+                                        <tr className="border-b border-gray-100">
+                                            <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">
+                                                Due Date
+                                            </th>
+                                            <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">
+                                                Amount
+                                            </th>
+                                            <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">
+                                                Status
+                                            </th>
+                                            <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">
+                                                Paid Date
+                                            </th>
+                                        </tr>
                                     </thead>
                                     <tbody>
-                                    {lease.payments.map((payment) => (
-                                        <tr key={payment.id} className="border-b border-gray-50">
-                                            <td className="py-3 text-sm text-gray-600">{formatDate(payment.due_date)}</td>
-                                            <td className="py-3 text-sm text-gray-600">{formatCurrency(payment.amount)}</td>
-                                            <td className="py-3">
-                                                <Badge
-                                                    variant={payment.status === 'paid' ? 'green' : payment.status === 'overdue' ? 'red' : 'yellow'}>
-                                                    {payment.status}
-                                                </Badge>
-                                            </td>
-                                            <td className="py-3 text-sm text-gray-600">
-                                                {payment.paid_date ? formatDate(payment.paid_date) : (
-                                                    isLandlord && payment.status !== 'paid' ? (
+                                        {lease.payments.map((payment) => (
+                                            <tr key={payment.id} className="border-b border-gray-50">
+                                                <td className="py-3 text-sm text-gray-600">
+                                                    {formatDate(payment.due_date)}
+                                                </td>
+                                                <td className="py-3 text-sm text-gray-600">
+                                                    {formatCurrency(payment.amount)}
+                                                </td>
+                                                <td className="py-3">
+                                                    <Badge
+                                                        variant={
+                                                            payment.status === 'paid'
+                                                                ? 'green'
+                                                                : payment.status === 'overdue'
+                                                                  ? 'red'
+                                                                  : 'yellow'
+                                                        }
+                                                    >
+                                                        {payment.status}
+                                                    </Badge>
+                                                </td>
+                                                <td className="py-3 text-sm text-gray-600">
+                                                    {payment.paid_date ? (
+                                                        formatDate(payment.paid_date)
+                                                    ) : isLandlord && payment.status !== 'paid' ? (
                                                         <button
                                                             onClick={() => handleMarkPaid(payment.id)}
                                                             className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1 hover:bg-green-100 cursor-pointer transition"
                                                         >
                                                             ✓ Mark Paid
                                                         </button>
-                                                    ) : '—'
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                    ) : (
+                                                        '—'
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
@@ -266,10 +292,18 @@ export default function LeaseDetailPage() {
                                 {lease.payments.map((payment) => (
                                     <div key={payment.id} className="p-3 border border-gray-100 rounded-xl">
                                         <div className="flex items-center justify-between">
-                                            <span
-                                                className="text-sm font-semibold text-black">{formatCurrency(payment.amount)}</span>
+                                            <span className="text-sm font-semibold text-black">
+                                                {formatCurrency(payment.amount)}
+                                            </span>
                                             <Badge
-                                                variant={payment.status === 'paid' ? 'green' : payment.status === 'overdue' ? 'red' : 'yellow'}>
+                                                variant={
+                                                    payment.status === 'paid'
+                                                        ? 'green'
+                                                        : payment.status === 'overdue'
+                                                          ? 'red'
+                                                          : 'yellow'
+                                                }
+                                            >
                                                 {payment.status}
                                             </Badge>
                                         </div>
@@ -306,16 +340,17 @@ export default function LeaseDetailPage() {
                             <div className="flex justify-between">
                                 <span className="text-sm text-gray-500">Monthly total</span>
                                 <span className="text-sm font-semibold">
-                  {formatCurrency(Number(lease.rent_amount) + Number(lease.utility_advances || 0))}
-                </span>
+                                    {formatCurrency(Number(lease.rent_amount) + Number(lease.utility_advances || 0))}
+                                </span>
                             </div>
                             {daysLeft !== null && (
                                 <div className="flex justify-between">
                                     <span className="text-sm text-gray-500">Expires in</span>
                                     <span
-                                        className={`text-sm font-semibold ${daysLeft <= 0 ? 'text-red-600' : daysLeft <= 30 ? 'text-yellow-600' : 'text-gray-700'}`}>
-                    {daysLeft <= 0 ? 'Expired' : `${daysLeft} days`}
-                  </span>
+                                        className={`text-sm font-semibold ${daysLeft <= 0 ? 'text-red-600' : daysLeft <= 30 ? 'text-yellow-600' : 'text-gray-700'}`}
+                                    >
+                                        {daysLeft <= 0 ? 'Expired' : `${daysLeft} days`}
+                                    </span>
                                 </div>
                             )}
                             <div className="flex justify-between">
@@ -330,8 +365,7 @@ export default function LeaseDetailPage() {
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Tenant</h2>
                             <div className="flex items-center gap-3">
-                                <div
-                                    className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
                                     {lease.tenant.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
@@ -348,10 +382,13 @@ export default function LeaseDetailPage() {
                                     <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                                         <div
                                             className={`h-full rounded-full transition-all ${
-                                                lease.tenant.trust_score >= 70 ? 'bg-green-500' :
-                                                    lease.tenant.trust_score >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                                                lease.tenant.trust_score >= 70
+                                                    ? 'bg-green-500'
+                                                    : lease.tenant.trust_score >= 40
+                                                      ? 'bg-yellow-500'
+                                                      : 'bg-red-500'
                                             }`}
-                                            style={{width: `${lease.tenant.trust_score}%`}}
+                                            style={{ width: `${lease.tenant.trust_score}%` }}
                                         />
                                     </div>
                                 </div>
@@ -366,12 +403,20 @@ export default function LeaseDetailPage() {
                             <div className="space-y-2">
                                 {lease.status === 'active' && (
                                     <>
-                                        <Button variant="secondary" className="w-full"
-                                                onClick={() => handleStatusChange('ended')} disabled={isUpdating}>
+                                        <Button
+                                            variant="secondary"
+                                            className="w-full"
+                                            onClick={() => handleStatusChange('ended')}
+                                            disabled={isUpdating}
+                                        >
                                             End Lease
                                         </Button>
-                                        <Button variant="danger" className="w-full"
-                                                onClick={() => handleStatusChange('terminated')} disabled={isUpdating}>
+                                        <Button
+                                            variant="danger"
+                                            className="w-full"
+                                            onClick={() => handleStatusChange('terminated')}
+                                            disabled={isUpdating}
+                                        >
                                             Terminate Lease
                                         </Button>
                                     </>
@@ -429,7 +474,7 @@ interface EditLeaseModalProps {
     onSuccess: () => void
 }
 
-function EditLeaseModal({isOpen, onClose, lease, onSuccess}: EditLeaseModalProps) {
+function EditLeaseModal({ isOpen, onClose, lease, onSuccess }: EditLeaseModalProps) {
     const [formData, setFormData] = useState({
         rent_amount: '',
         deposit_amount: '',
@@ -453,7 +498,7 @@ function EditLeaseModal({isOpen, onClose, lease, onSuccess}: EditLeaseModalProps
     }, [lease, isOpen])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -523,7 +568,9 @@ function EditLeaseModal({isOpen, onClose, lease, onSuccess}: EditLeaseModalProps
                     error={errors.end_date?.[0]}
                 />
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={onClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading}>
                         {isLoading ? 'Saving...' : 'Save Changes'}
                     </Button>

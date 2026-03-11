@@ -53,6 +53,12 @@ class LeaseController extends Controller
         // Verify the property belongs to the logged-in landlord
         $property = Property::query()->findOrFail($request->validated('property_id'));
 
+        if ($property->status === 'renovation') {
+            return response()->json([
+                'message' => 'Cannot create lease for a property under renovation.',
+            ], 422);
+        }
+
         if ($property->landlord_id !== $request->user()->id) {
             return response()->json([
                 'message' => 'You can only create leases for your own properties.',
@@ -65,7 +71,23 @@ class LeaseController extends Controller
         // Send invitation to tenant
         LeaseCreated::dispatch($lease);
 
+        // Auto-set property status to occupied
+        if ($property->status === 'available') {
+            $property->update(['status' => 'occupied']);
+        }
+
         return response()->json(new LeaseResource($lease), 201);
+    }
+
+    public function update(UpdateLeaseRequest $request, string $id): JsonResponse
+    {
+        $lease = Lease::query()->findOrFail($id);
+
+        $this->authorize('update', $lease);
+
+        $lease->update($request->validated());
+
+        return response()->json(new LeaseResource($lease));
     }
 
     public function show(Request $request, string $id): JsonResponse
@@ -128,17 +150,6 @@ class LeaseController extends Controller
         $lease->update(['contract_path' => $path]);
 
         return $pdf->download($filename);
-    }
-
-    public function update(UpdateLeaseRequest $request, string $id): JsonResponse
-    {
-        $lease = Lease::query()->findOrFail($id);
-
-        $this->authorize('update', $lease);
-
-        $lease->update($request->validated());
-
-        return response()->json(new LeaseResource($lease));
     }
 
     protected function getDateField(): string

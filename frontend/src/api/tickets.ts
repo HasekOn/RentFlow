@@ -1,5 +1,5 @@
 import api from './axios'
-import type {PaginatedResponse, Ticket, TicketComment, TicketImage} from '../types'
+import type { PaginatedResponse, Ticket, TicketComment, TicketImage } from '../types'
 
 interface TicketFilters {
     status?: string
@@ -26,24 +26,18 @@ interface UpdateTicketData {
 }
 
 export const ticketsApi = {
-    getAll: (filters?: TicketFilters) =>
-        api.get<PaginatedResponse<Ticket>>('/tickets', {params: filters}),
+    getAll: (filters?: TicketFilters) => api.get<PaginatedResponse<Ticket>>('/tickets', { params: filters }),
 
-    getOne: (id: number) =>
-        api.get<Ticket>('/tickets/' + id),
+    getOne: (id: number) => api.get<Ticket>('/tickets/' + id),
 
-    create: (data: CreateTicketData) =>
-        api.post<Ticket>('/tickets', data),
+    create: (data: CreateTicketData) => api.post<Ticket>('/tickets', data),
 
-    update: (id: number, data: UpdateTicketData) =>
-        api.put<Ticket>('/tickets/' + id, data),
+    update: (id: number, data: UpdateTicketData) => api.put<Ticket>('/tickets/' + id, data),
 
-    delete: (id: number) =>
-        api.delete('/tickets/' + id),
+    delete: (id: number) => api.delete('/tickets/' + id),
 
     // Comments
-    getComments: (ticketId: number) =>
-        api.get<TicketComment[]>('/tickets/' + ticketId + '/comments'),
+    getComments: (ticketId: number) => api.get<TicketComment[]>('/tickets/' + ticketId + '/comments'),
 
     addComment: (ticketId: number, message: string, attachment?: File) => {
         const formData = new FormData()
@@ -55,7 +49,7 @@ export const ticketsApi = {
         }
 
         return api.post<TicketComment>('/tickets/' + ticketId + '/comments', formData, {
-            headers: {'Content-Type': 'multipart/form-data'},
+            headers: { 'Content-Type': 'multipart/form-data' },
         })
     },
 
@@ -63,12 +57,9 @@ export const ticketsApi = {
         api.delete('/tickets/' + ticketId + '/comments/' + commentId),
 
     // Images
-    getImages: (ticketId: number) =>
-        api.get<TicketImage[]>('/tickets/' + ticketId + '/images'),
+    getImages: (ticketId: number) => api.get<TicketImage[]>('/tickets/' + ticketId + '/images'),
 
-    uploadImage: (ticketId: number, formData: FormData) =>
-        api.post('/tickets/' + ticketId + '/images', formData),
+    uploadImage: (ticketId: number, formData: FormData) => api.post('/tickets/' + ticketId + '/images', formData),
 
-    deleteImage: (ticketId: number, imageId: number) =>
-        api.delete('/tickets/' + ticketId + '/images/' + imageId),
+    deleteImage: (ticketId: number, imageId: number) => api.delete('/tickets/' + ticketId + '/images/' + imageId),
 }

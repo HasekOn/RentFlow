@@ -1,5 +1,5 @@
 import api from './axios'
-import type {Lease, PaginatedResponse} from '../types'
+import type { Lease, PaginatedResponse } from '../types'
 
 interface LeaseFilters {
     status?: string
@@ -23,24 +23,18 @@ interface CreateLeaseData {
 }
 
 export const leasesApi = {
-    getAll: (filters?: LeaseFilters) =>
-        api.get<PaginatedResponse<Lease>>('/leases', {params: filters}),
+    getAll: (filters?: LeaseFilters) => api.get<PaginatedResponse<Lease>>('/leases', { params: filters }),
 
-    getOne: (id: number) =>
-        api.get<Lease>('/leases/' + id),
+    getOne: (id: number) => api.get<Lease>('/leases/' + id),
 
-    create: (data: CreateLeaseData) =>
-        api.post<Lease>('/leases', data),
+    create: (data: CreateLeaseData) => api.post<Lease>('/leases', data),
 
-    update: (id: number, data: Partial<CreateLeaseData>) =>
-        api.put<Lease>('/leases/' + id, data),
+    update: (id: number, data: Partial<CreateLeaseData>) => api.put<Lease>('/leases/' + id, data),
 
-    delete: (id: number) =>
-        api.delete('/leases/' + id),
+    delete: (id: number) => api.delete('/leases/' + id),
 
-    downloadPdf: (id: number) =>
-        api.get('/leases/' + id + '/generate-pdf', {responseType: 'blob'}),
+    downloadPdf: (id: number) => api.get('/leases/' + id + '/generate-pdf', { responseType: 'blob' }),
 
     getByTenant: (tenantId: number) =>
-        api.get<PaginatedResponse<Lease>>('/leases', {params: {tenant_id: tenantId}}),
+        api.get<PaginatedResponse<Lease>>('/leases', { params: { tenant_id: tenantId } }),
 }

@@ -61,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Payments
     Route::post('payments/import-csv', [PaymentController::class, 'importCsv']);
     Route::put('payments/{payment}/mark-paid', [PaymentController::class, 'markPaid']);
+    Route::post('payments/generate-monthly', [PaymentController::class, 'generateMonthly']);
     Route::apiResource('payments', PaymentController::class);
 
     // Tickets

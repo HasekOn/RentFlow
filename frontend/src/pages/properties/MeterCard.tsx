@@ -1,11 +1,11 @@
 import * as React from 'react'
-import {useState} from 'react'
-import {metersApi} from '../../api/meters'
-import type {Meter} from '../../types'
-import {formatDate} from '../../utils/format'
+import { useState } from 'react'
+import { metersApi } from '../../api/meters'
+import type { Meter } from '../../types'
+import { formatDate } from '../../utils/format'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
-import {useConfirm} from '../../hooks/useConfirm'
+import { useConfirm } from '../../hooks/useConfirm'
 
 const meterIcons: Record<string, string> = {
     water: '💧',
@@ -28,7 +28,7 @@ interface Props {
     onUpdate: () => void
 }
 
-export default function MeterCard({meter, canEdit, isLandlord, onUpdate}: Props) {
+export default function MeterCard({ meter, canEdit, isLandlord, onUpdate }: Props) {
     const [showForm, setShowForm] = useState(false)
     const [showEditForm, setShowEditForm] = useState(false)
     const [readingValue, setReadingValue] = useState('')
@@ -37,7 +37,7 @@ export default function MeterCard({meter, canEdit, isLandlord, onUpdate}: Props)
     const [location, setLocation] = useState(meter.location || '')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState('')
-    const {confirm: showConfirm, dialog} = useConfirm()
+    const { confirm: showConfirm, dialog } = useConfirm()
 
     const handleSubmitReading = async (e: React.FormEvent) => {
         setError('')
@@ -119,13 +119,15 @@ export default function MeterCard({meter, canEdit, isLandlord, onUpdate}: Props)
                             }}
                             className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-600 cursor-pointer"
                             title="Edit meter"
-                        >✏️
+                        >
+                            ✏️
                         </button>
                         <button
                             onClick={handleDelete}
                             className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500 cursor-pointer"
                             title="Delete meter"
-                        >🗑
+                        >
+                            🗑
                         </button>
                     </div>
                 )}
@@ -140,9 +142,7 @@ export default function MeterCard({meter, canEdit, isLandlord, onUpdate}: Props)
                         <p className="text-2xl font-bold text-black">
                             {Number(latestReading.value).toLocaleString('cs-CZ')} {unit}
                         </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                            Last reading: {formatDate(latestReading.date)}
-                        </p>
+                        <p className="text-xs text-gray-400 mt-1">Last reading: {formatDate(latestReading.date)}</p>
                     </div>
                 ) : (
                     <div className="text-center mb-3">
@@ -151,15 +151,9 @@ export default function MeterCard({meter, canEdit, isLandlord, onUpdate}: Props)
                 )}
 
                 {meter.serial_number && (
-                    <p className="text-xs text-gray-400 text-center mb-1">
-                        S/N: {meter.serial_number}
-                    </p>
+                    <p className="text-xs text-gray-400 text-center mb-1">S/N: {meter.serial_number}</p>
                 )}
-                {meter.location && (
-                    <p className="text-xs text-gray-400 text-center mb-3">
-                        📍 {meter.location}
-                    </p>
-                )}
+                {meter.location && <p className="text-xs text-gray-400 text-center mb-3">📍 {meter.location}</p>}
 
                 {/* Edit meter form — landlord only */}
                 {showEditForm && isLandlord && (
@@ -181,8 +175,7 @@ export default function MeterCard({meter, canEdit, isLandlord, onUpdate}: Props)
                             <Button type="submit" size="sm" className="flex-1" disabled={isSubmitting}>
                                 {isSubmitting ? 'Saving...' : 'Save'}
                             </Button>
-                            <Button type="button" variant="secondary" size="sm"
-                                    onClick={() => setShowEditForm(false)}>
+                            <Button type="button" variant="secondary" size="sm" onClick={() => setShowEditForm(false)}>
                                 Cancel
                             </Button>
                         </div>
@@ -216,12 +209,7 @@ export default function MeterCard({meter, canEdit, isLandlord, onUpdate}: Props)
                         </div>
                     </form>
                 ) : canEdit && !showEditForm ? (
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        className="w-full mt-2"
-                        onClick={() => setShowForm(true)}
-                    >
+                    <Button variant="primary" size="sm" className="w-full mt-2" onClick={() => setShowForm(true)}>
                         Log Reading
                     </Button>
                 ) : null}

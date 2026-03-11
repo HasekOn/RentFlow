@@ -1,6 +1,6 @@
 import * as React from 'react'
-import {useState} from 'react'
-import {propertiesApi} from '../../api/properties'
+import { useState } from 'react'
+import { propertiesApi } from '../../api/properties'
 import Modal from '../../components/ui/Modal'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
@@ -12,7 +12,7 @@ interface Props {
     onSuccess: () => void
 }
 
-export default function ImageUploadModal({isOpen, onClose, propertyId, onSuccess}: Props) {
+export default function ImageUploadModal({ isOpen, onClose, propertyId, onSuccess }: Props) {
     const [file, setFile] = useState<File | null>(null)
     const [preview, setPreview] = useState<string | null>(null)
     const [type, setType] = useState('marketing')
@@ -70,7 +70,7 @@ export default function ImageUploadModal({isOpen, onClose, propertyId, onSuccess
                     onClick={() => document.getElementById('image-input')?.click()}
                 >
                     {preview ? (
-                        <img src={preview} alt="Preview" className="max-h-48 mx-auto rounded-lg object-contain"/>
+                        <img src={preview} alt="Preview" className="max-h-48 mx-auto rounded-lg object-contain" />
                     ) : (
                         <div className="py-4">
                             <span className="text-3xl">📷</span>
@@ -93,9 +93,9 @@ export default function ImageUploadModal({isOpen, onClose, propertyId, onSuccess
                     value={type}
                     onChange={(e) => setType(e.target.value)}
                     options={[
-                        {value: 'marketing', label: 'Marketing photo'},
-                        {value: 'defect', label: 'Defect / Issue'},
-                        {value: 'document', label: 'Document scan'},
+                        { value: 'marketing', label: 'Marketing photo' },
+                        { value: 'defect', label: 'Defect / Issue' },
+                        { value: 'document', label: 'Document scan' },
                     ]}
                 />
 
@@ -113,7 +113,9 @@ export default function ImageUploadModal({isOpen, onClose, propertyId, onSuccess
                 {error && <p className="text-sm text-red-600">{error}</p>}
 
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={handleClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={handleClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading || !file}>
                         {isLoading ? 'Uploading...' : 'Upload'}
                     </Button>

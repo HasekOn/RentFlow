@@ -1,6 +1,6 @@
 import * as React from 'react'
-import {useState} from 'react'
-import {ratingsApi} from '../../api/ratings'
+import { useState } from 'react'
+import { ratingsApi } from '../../api/ratings'
 import Modal from '../../components/ui/Modal'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
@@ -14,13 +14,13 @@ interface Props {
 }
 
 const categories = [
-    {value: 'overall', label: 'Overall'},
-    {value: 'apartment_condition', label: 'Apartment Condition'},
-    {value: 'communication', label: 'Communication'},
-    {value: 'rules', label: 'Rules Compliance'},
+    { value: 'overall', label: 'Overall' },
+    { value: 'apartment_condition', label: 'Apartment Condition' },
+    { value: 'communication', label: 'Communication' },
+    { value: 'rules', label: 'Rules Compliance' },
 ]
 
-export default function RateTenantModal({isOpen, onClose, leaseId, existingCategories, onSuccess}: Props) {
+export default function RateTenantModal({ isOpen, onClose, leaseId, existingCategories, onSuccess }: Props) {
     const [category, setCategory] = useState('')
     const [score, setScore] = useState(5)
     const [comment, setComment] = useState('')
@@ -67,10 +67,7 @@ export default function RateTenantModal({isOpen, onClose, leaseId, existingCateg
                         name="category"
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
-                        options={[
-                            {value: '', label: 'Select category...'},
-                            ...availableCategories,
-                        ]}
+                        options={[{ value: '', label: 'Select category...' }, ...availableCategories]}
                     />
 
                     {/* Star rating */}
@@ -107,7 +104,9 @@ export default function RateTenantModal({isOpen, onClose, leaseId, existingCateg
                     {error && <p className="text-sm text-red-600">{error}</p>}
 
                     <div className="flex justify-end gap-3 pt-2">
-                        <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                        <Button variant="secondary" type="button" onClick={onClose}>
+                            Cancel
+                        </Button>
                         <Button type="submit" disabled={isLoading || !category}>
                             {isLoading ? 'Submitting...' : 'Submit Rating'}
                         </Button>

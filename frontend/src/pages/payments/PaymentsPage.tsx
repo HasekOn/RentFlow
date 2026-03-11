@@ -1,9 +1,9 @@
 import * as React from 'react'
-import {useCallback, useEffect, useRef, useState} from 'react'
-import {paymentsApi} from '../../api/payments'
-import type {PaginatedResponse, Payment} from '../../types'
-import {formatCurrency, formatDate} from '../../utils/format'
-import {useAuth} from '../../contexts/AuthContext'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { paymentsApi } from '../../api/payments'
+import type { PaginatedResponse, Payment } from '../../types'
+import { formatCurrency, formatDate } from '../../utils/format'
+import { useAuth } from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Select from '../../components/ui/Select'
 import Button from '../../components/ui/Button'
@@ -11,7 +11,7 @@ import Spinner from '../../components/ui/Spinner'
 import Pagination from '../../components/ui/Pagination'
 import EmptyState from '../../components/ui/EmptyState'
 import CreatePaymentModal from './CreatePaymentModal'
-import {useConfirm} from "../../hooks/useConfirm.tsx";
+import { useConfirm } from '../../hooks/useConfirm.tsx'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -27,20 +27,20 @@ const statusVariant = (status: string) => {
 }
 
 const statusOptions = [
-    {value: 'paid', label: 'Paid'},
-    {value: 'unpaid', label: 'Unpaid'},
-    {value: 'overdue', label: 'Overdue'}
-];
+    { value: 'paid', label: 'Paid' },
+    { value: 'unpaid', label: 'Unpaid' },
+    { value: 'overdue', label: 'Overdue' },
+]
 
 const typeOptions = [
-    {value: 'rent', label: 'Rent'},
-    {value: 'utilities', label: 'Utilities'},
-    {value: 'deposit', label: 'Deposit'},
-    {value: 'other', label: 'Other'}
-];
+    { value: 'rent', label: 'Rent' },
+    { value: 'utilities', label: 'Utilities' },
+    { value: 'deposit', label: 'Deposit' },
+    { value: 'other', label: 'Other' },
+]
 
 export default function PaymentsPage() {
-    const {isLandlord} = useAuth()
+    const { isLandlord } = useAuth()
     const [payments, setPayments] = useState<Payment[]>([])
     const [meta, setMeta] = useState<PaginatedResponse<Payment>['meta'] | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -51,7 +51,8 @@ export default function PaymentsPage() {
     const [isImporting, setIsImporting] = useState(false)
     const [importResult, setImportResult] = useState<{ matched: number; unmatched: number } | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const {confirm, dialog} = useConfirm()
+    const { confirm, dialog } = useConfirm()
+    const [generateResult, setGenerateResult] = useState<string | null>(null)
 
     const loadPayments = useCallback(async () => {
         setIsLoading(true)
@@ -82,7 +83,7 @@ export default function PaymentsPage() {
     const handleMarkPaid = async (id: number) => {
         const ok = await confirm({
             title: 'Mark as Paid',
-            message: 'Mark this payment as paid with today\'s date?',
+            message: "Mark this payment as paid with today's date?",
             confirmLabel: 'Mark Paid',
             variant: 'primary',
         })
@@ -118,6 +119,32 @@ export default function PaymentsPage() {
         }
     }
 
+    const handleGenerateMonthly = async () => {
+        const ok = await confirm({
+            title: 'Generate Monthly Payments',
+            message: 'Generate rent and utility payments for all active leases this month?',
+            confirmLabel: 'Generate',
+            variant: 'primary',
+        })
+
+        if (!ok) {
+            return
+        }
+
+        try {
+            const res = await paymentsApi.generateMonthly()
+            const created = (res.data as any)?.created || 0
+            setGenerateResult(
+                created > 0
+                    ? `${created} payments generated for this month.`
+                    : 'All payments for this month already exist.',
+            )
+            void loadPayments()
+        } catch (error) {
+            console.error('Failed to generate payments:', error)
+        }
+    }
+
     const handleImportCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
@@ -146,7 +173,7 @@ export default function PaymentsPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <h1 className="text-2xl sm:text-4xl font-bold text-black">Payments</h1>
                 {isLandlord && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -158,11 +185,12 @@ export default function PaymentsPage() {
                             variant="secondary"
                             onClick={() => {
                                 const BOM = '\uFEFF'
-                                const csv = BOM +
+                                const csv =
+                                    BOM +
                                     'variable_symbol;amount;date;note\r\n' +
                                     '1234567890;15000;2025-03-01;Rent March\r\n' +
                                     '1234567890;2500;2025-03-01;Utilities March\r\n'
-                                const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'})
+                                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
                                 const url = window.URL.createObjectURL(blob)
                                 const link = document.createElement('a')
                                 link.href = url
@@ -180,9 +208,10 @@ export default function PaymentsPage() {
                         >
                             {isImporting ? 'Importing...' : '📥 CSV'}
                         </Button>
-                        <Button onClick={() => setShowCreateModal(true)}>
-                            + Add Payment
+                        <Button variant="secondary" onClick={handleGenerateMonthly}>
+                            🔄 Generate Monthly
                         </Button>
+                        <Button onClick={() => setShowCreateModal(true)}>+ Add Payment</Button>
                     </div>
                 )}
             </div>
@@ -196,8 +225,25 @@ export default function PaymentsPage() {
                             <Badge variant="yellow">{importResult.unmatched} unmatched</Badge>
                         )}
                     </div>
-                    <button onClick={() => setImportResult(null)}
-                            className="text-gray-400 hover:text-black text-sm cursor-pointer">
+                    <button
+                        onClick={() => setImportResult(null)}
+                        className="text-gray-400 hover:text-black text-sm cursor-pointer"
+                    >
+                        Dismiss
+                    </button>
+                </div>
+            )}
+
+            {generateResult && (
+                <div className="mt-4 bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="text-lg">🔄</span>
+                        <p className="text-sm font-semibold text-black">{generateResult}</p>
+                    </div>
+                    <button
+                        onClick={() => setGenerateResult(null)}
+                        className="text-gray-400 hover:text-black text-sm cursor-pointer"
+                    >
                         Dismiss
                     </button>
                 </div>
@@ -207,8 +253,7 @@ export default function PaymentsPage() {
             {(totalUnpaid > 0 || totalOverdue > 0) && (
                 <div className="flex gap-3 mt-4 flex-wrap">
                     {totalUnpaid > 0 && (
-                        <div
-                            className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-2 text-sm text-yellow-700">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-2 text-sm text-yellow-700">
                             <span className="font-semibold">{totalUnpaid}</span> unpaid
                         </div>
                     )}
@@ -222,13 +267,12 @@ export default function PaymentsPage() {
 
             {/* Table */}
             <div className="bg-white rounded-2xl shadow-sm mt-6">
-                <div
-                    className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                         <span className="font-semibold text-black">Payments</span>
                         <span>Total {meta?.total || 0}</span>
                     </div>
-                    <div className="flex-1"/>
+                    <div className="flex-1" />
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                         <Select
                             value={statusFilter}
@@ -249,11 +293,15 @@ export default function PaymentsPage() {
                 </div>
 
                 {isLoading ? (
-                    <Spinner/>
+                    <Spinner />
                 ) : payments.length === 0 ? (
                     <EmptyState
                         title="No payments found"
-                        description={statusFilter || typeFilter ? 'Try adjusting your filters.' : 'No payments have been recorded yet.'}
+                        description={
+                            statusFilter || typeFilter
+                                ? 'Try adjusting your filters.'
+                                : 'No payments have been recorded yet.'
+                        }
                     />
                 ) : (
                     <>
@@ -284,8 +332,9 @@ export default function PaymentsPage() {
                                         )}
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span
-                                            className="text-sm font-bold text-black">{formatCurrency(payment.amount)}</span>
+                                        <span className="text-sm font-bold text-black">
+                                            {formatCurrency(payment.amount)}
+                                        </span>
                                         <div className="flex items-center gap-2">
                                             {isLandlord && payment.status !== 'paid' && (
                                                 <Button
@@ -315,74 +364,85 @@ export default function PaymentsPage() {
                         <div className="hidden lg:block">
                             <table className="w-full">
                                 <thead>
-                                <tr className="border-b border-gray-100">
-                                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Tenant
-                                        / Property
-                                    </th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Type</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Amount</th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Due
-                                        Date
-                                    </th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Paid
-                                        Date
-                                    </th>
-                                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">Status</th>
-                                    <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase">Action</th>
-                                </tr>
+                                    <tr className="border-b border-gray-100">
+                                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Tenant / Property
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Type
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Amount
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Due Date
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Paid Date
+                                        </th>
+                                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Status
+                                        </th>
+                                        <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase">
+                                            Action
+                                        </th>
+                                    </tr>
                                 </thead>
                                 <tbody>
-                                {payments.map((payment) => (
-                                    <tr key={payment.id}
-                                        className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                                        <td className="px-6 py-4">
-                                            <p className="text-sm font-semibold text-black">
-                                                {payment.lease?.tenant?.name || '—'}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                {payment.lease?.property?.address || '—'}
-                                            </p>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <span className="text-sm text-gray-600 capitalize">{payment.type}</span>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <span
-                                                className="text-sm font-semibold text-black">{formatCurrency(payment.amount)}</span>
-                                        </td>
-                                        <td className="px-4 py-4 text-sm text-gray-600">
-                                            {formatDate(payment.due_date)}
-                                        </td>
-                                        <td className="px-4 py-4 text-sm text-gray-600">
-                                            {payment.paid_date ? formatDate(payment.paid_date) : '—'}
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <Badge variant={statusVariant(payment.status)}>{payment.status}</Badge>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {isLandlord && payment.status !== 'paid' && (
-                                                    <Button
-                                                        variant="success"
-                                                        size="sm"
-                                                        onClick={() => handleMarkPaid(payment.id)}
-                                                    >
-                                                        Mark Paid
-                                                    </Button>
-                                                )}
-                                                {isLandlord && (
-                                                    <Button
-                                                        variant="secondary"
-                                                        size="sm"
-                                                        onClick={() => handleDelete(payment.id)}
-                                                    >
-                                                        Delete
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                    {payments.map((payment) => (
+                                        <tr
+                                            key={payment.id}
+                                            className="border-b border-gray-50 hover:bg-gray-50/50 transition"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <p className="text-sm font-semibold text-black">
+                                                    {payment.lease?.tenant?.name || '—'}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {payment.lease?.property?.address || '—'}
+                                                </p>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className="text-sm text-gray-600 capitalize">{payment.type}</span>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <span className="text-sm font-semibold text-black">
+                                                    {formatCurrency(payment.amount)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-gray-600">
+                                                {formatDate(payment.due_date)}
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-gray-600">
+                                                {payment.paid_date ? formatDate(payment.paid_date) : '—'}
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <Badge variant={statusVariant(payment.status)}>{payment.status}</Badge>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {isLandlord && payment.status !== 'paid' && (
+                                                        <Button
+                                                            variant="success"
+                                                            size="sm"
+                                                            onClick={() => handleMarkPaid(payment.id)}
+                                                        >
+                                                            Mark Paid
+                                                        </Button>
+                                                    )}
+                                                    {isLandlord && (
+                                                        <Button
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            onClick={() => handleDelete(payment.id)}
+                                                        >
+                                                            Delete
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>

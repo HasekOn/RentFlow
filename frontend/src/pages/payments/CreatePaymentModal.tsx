@@ -1,9 +1,9 @@
 import * as React from 'react'
-import {useEffect, useState} from 'react'
-import {paymentsApi} from '../../api/payments'
-import {leasesApi} from '../../api/leases'
-import type {ApiError, Lease} from '../../types'
-import {AxiosError} from 'axios'
+import { useEffect, useState } from 'react'
+import { paymentsApi } from '../../api/payments'
+import { leasesApi } from '../../api/leases'
+import type { ApiError, Lease } from '../../types'
+import { AxiosError } from 'axios'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -15,7 +15,7 @@ interface Props {
     onSuccess: () => void
 }
 
-export default function CreatePaymentModal({isOpen, onClose, onSuccess}: Props) {
+export default function CreatePaymentModal({ isOpen, onClose, onSuccess }: Props) {
     const [leases, setLeases] = useState<Lease[]>([])
     const [formData, setFormData] = useState({
         lease_id: '',
@@ -31,16 +31,19 @@ export default function CreatePaymentModal({isOpen, onClose, onSuccess}: Props) 
 
     useEffect(() => {
         if (isOpen) {
-            leasesApi.getAll({status: 'active'}).then((res) => {
-                setLeases(res.data.data)
-            }).catch(console.error)
+            leasesApi
+                .getAll({ status: 'active' })
+                .then((res) => {
+                    setLeases(res.data.data)
+                })
+                .catch(console.error)
         }
     }, [isOpen])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const {name, value} = e.target
+        const { name, value } = e.target
         setFormData((prev) => {
-            const updated = {...prev, [name]: value}
+            const updated = { ...prev, [name]: value }
             // Autofill amount and VS when lease selected
             if (name === 'lease_id') {
                 const lease = leases.find((l) => l.id === Number(value))
@@ -69,8 +72,13 @@ export default function CreatePaymentModal({isOpen, onClose, onSuccess}: Props) 
                 note: formData.note || undefined,
             })
             setFormData({
-                lease_id: '', type: 'rent', amount: '', due_date: '',
-                paid_date: '', variable_symbol: '', note: '',
+                lease_id: '',
+                type: 'rent',
+                amount: '',
+                due_date: '',
+                paid_date: '',
+                variable_symbol: '',
+                note: '',
             })
             onSuccess()
         } catch (err) {
@@ -104,10 +112,10 @@ export default function CreatePaymentModal({isOpen, onClose, onSuccess}: Props) 
                         value={formData.type}
                         onChange={handleChange}
                         options={[
-                            {value: 'rent', label: 'Rent'},
-                            {value: 'utilities', label: 'Utilities'},
-                            {value: 'deposit', label: 'Deposit'},
-                            {value: 'other', label: 'Other'},
+                            { value: 'rent', label: 'Rent' },
+                            { value: 'utilities', label: 'Utilities' },
+                            { value: 'deposit', label: 'Deposit' },
+                            { value: 'other', label: 'Other' },
                         ]}
                         error={errors.type?.[0]}
                     />
@@ -165,7 +173,9 @@ export default function CreatePaymentModal({isOpen, onClose, onSuccess}: Props) 
                 </div>
 
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={onClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading}>
                         {isLoading ? 'Creating...' : 'Create Payment'}
                     </Button>

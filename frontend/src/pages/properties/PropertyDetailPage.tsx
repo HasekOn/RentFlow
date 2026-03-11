@@ -1,16 +1,16 @@
-import {useEffect, useState} from 'react'
-import {useNavigate, useParams} from 'react-router-dom'
-import {propertiesApi} from '../../api/properties'
-import {metersApi} from '../../api/meters'
-import {expensesApi} from '../../api/expenses'
-import {inventoryApi} from '../../api/inventory'
-import {ticketsApi} from '../../api/tickets'
-import {managersApi} from '../../api/managers'
-import {documentsApi} from '../../api/documents'
-import {noticesApi} from '../../api/notices'
-import type {Document as PropertyDocument, Expense, InventoryItem, Meter, Notice, Property, Ticket} from '../../types'
-import {formatCurrency, formatDate} from '../../utils/format'
-import {useAuth} from '../../contexts/AuthContext'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { propertiesApi } from '../../api/properties'
+import { metersApi } from '../../api/meters'
+import { expensesApi } from '../../api/expenses'
+import { inventoryApi } from '../../api/inventory'
+import { ticketsApi } from '../../api/tickets'
+import { managersApi } from '../../api/managers'
+import { documentsApi } from '../../api/documents'
+import { noticesApi } from '../../api/notices'
+import type { Document as PropertyDocument, Expense, InventoryItem, Meter, Notice, Property, Ticket } from '../../types'
+import { formatCurrency, formatDate } from '../../utils/format'
+import { useAuth } from '../../contexts/AuthContext'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
@@ -24,7 +24,7 @@ import ImageUploadModal from './ImageUploadModal'
 import ManagerAssignment from './ManagerAssignment'
 import UploadDocumentModal from './UploadDocumentModal'
 import CreateNoticeModal from './CreateNoticeModal'
-import {useConfirm} from '../../hooks/useConfirm'
+import { useConfirm } from '../../hooks/useConfirm'
 
 const statusVariant = (status: string) => {
     switch (status) {
@@ -72,9 +72,9 @@ const conditionVariant = (condition: string) => {
 type Tab = 'overview' | 'management'
 
 export default function PropertyDetailPage() {
-    const {id} = useParams<{ id: string }>()
+    const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const {isLandlord, isManager, user} = useAuth()
+    const { isLandlord, isManager, user } = useAuth()
     const [property, setProperty] = useState<Property | null>(null)
     const [meters, setMeters] = useState<Meter[]>([])
     const [expenses, setExpenses] = useState<Expense[]>([])
@@ -97,7 +97,7 @@ export default function PropertyDetailPage() {
     const [showNoticeModal, setShowNoticeModal] = useState(false)
 
     const propertyId = Number(id)
-    const {confirm: showConfirm, dialog} = useConfirm()
+    const { confirm: showConfirm, dialog } = useConfirm()
 
     const loadProperty = async () => {
         try {
@@ -114,9 +114,9 @@ export default function PropertyDetailPage() {
         try {
             const [metersRes, expensesRes, inventoryRes, ticketsRes, documentsRes, noticesRes] = await Promise.all([
                 metersApi.getByProperty(propertyId),
-                expensesApi.getAll({property_id: propertyId, sort: '-expense_date'}),
+                expensesApi.getAll({ property_id: propertyId, sort: '-expense_date' }),
                 inventoryApi.getByProperty(propertyId),
-                ticketsApi.getAll({property_id: propertyId, sort: '-created_at'}),
+                ticketsApi.getAll({ property_id: propertyId, sort: '-created_at' }),
                 documentsApi.getByProperty(propertyId),
                 noticesApi.getByProperty(propertyId),
             ])
@@ -182,7 +182,7 @@ export default function PropertyDetailPage() {
 
     const handleToggleNotice = async (notice: Notice) => {
         try {
-            await noticesApi.update(notice.id, {is_active: !notice.is_active})
+            await noticesApi.update(notice.id, { is_active: !notice.is_active })
             void loadManagementData()
         } catch (error) {
             console.error('Failed to toggle notice:', error)
@@ -211,10 +211,13 @@ export default function PropertyDetailPage() {
 
     useEffect(() => {
         if (isManager && propertyId) {
-            managersApi.getByProperty(propertyId).then((res) => {
-                const managers = Array.isArray(res.data) ? res.data : []
-                setIsAssignedManager(managers.some((m) => m.id === user?.id))
-            }).catch(() => setIsAssignedManager(false))
+            managersApi
+                .getByProperty(propertyId)
+                .then((res) => {
+                    const managers = Array.isArray(res.data) ? res.data : []
+                    setIsAssignedManager(managers.some((m) => m.id === user?.id))
+                })
+                .catch(() => setIsAssignedManager(false))
         }
     }, [isManager, propertyId, user?.id])
 
@@ -224,7 +227,7 @@ export default function PropertyDetailPage() {
         }
     }, [activeTab, id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (isLoading) return <Spinner/>
+    if (isLoading) return <Spinner />
     if (!property) return null
 
     const activeLease = property.leases?.find((l) => l.status === 'active')
@@ -234,33 +237,40 @@ export default function PropertyDetailPage() {
         <div>
             {/* Lightbox */}
             {lightboxIndex !== null && images.length > 0 && (
-                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-                     onClick={() => setLightboxIndex(null)}>
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+                    onClick={() => setLightboxIndex(null)}
+                >
                     <button
                         onClick={(e) => {
-                            e.stopPropagation();
+                            e.stopPropagation()
                             setLightboxIndex(null)
                         }}
                         className="absolute top-6 right-6 text-white text-3xl hover:opacity-70 transition cursor-pointer"
-                    >✕
+                    >
+                        ✕
                     </button>
                     {lightboxIndex > 0 && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation();
+                                e.stopPropagation()
                                 setLightboxIndex(lightboxIndex - 1)
                             }}
                             className="absolute left-6 text-white text-4xl hover:opacity-70 transition cursor-pointer"
-                        >‹</button>
+                        >
+                            ‹
+                        </button>
                     )}
                     {lightboxIndex < images.length - 1 && (
                         <button
                             onClick={(e) => {
-                                e.stopPropagation();
+                                e.stopPropagation()
                                 setLightboxIndex(lightboxIndex + 1)
                             }}
                             className="absolute right-6 text-white text-4xl hover:opacity-70 transition cursor-pointer"
-                        >›</button>
+                        >
+                            ›
+                        </button>
                     )}
                     <img
                         src={images[lightboxIndex].image_url}
@@ -292,8 +302,11 @@ export default function PropertyDetailPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/properties')}
-                            className="text-gray-400 hover:text-black transition text-lg cursor-pointer">←
+                    <button
+                        onClick={() => navigate('/properties')}
+                        className="text-gray-400 hover:text-black transition text-lg cursor-pointer"
+                    >
+                        ←
                     </button>
                     <h1 className="text-2xl sm:text-4xl font-bold text-black">Property Detail</h1>
                 </div>
@@ -309,16 +322,23 @@ export default function PropertyDetailPage() {
                 <button
                     onClick={() => setActiveTab('overview')}
                     className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
-                        activeTab === 'overview' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                        activeTab === 'overview'
+                            ? 'bg-black text-white'
+                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                     }`}
-                >Overview
+                >
+                    Overview
                 </button>
                 <button
                     onClick={() => setActiveTab('management')}
                     className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
-                        activeTab === 'management' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                        activeTab === 'management'
+                            ? 'bg-black text-white'
+                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                     }`}
-                >{isLandlord ? 'Management' : 'Details'}</button>
+                >
+                    {isLandlord ? 'Management' : 'Details'}
+                </button>
             </div>
 
             {/* ══════════ OVERVIEW TAB ══════════ */}
@@ -330,36 +350,43 @@ export default function PropertyDetailPage() {
                             {images.length > 0 ? (
                                 <>
                                     <div className="grid grid-cols-1 sm:grid-cols-4 sm:grid-rows-2 gap-2 h-60 sm:h-80">
-
                                         <div
                                             className={`relative w-full h-full cursor-pointer overflow-hidden rounded-xl ${
-                                                images.length === 1 ? 'sm:col-span-4 sm:row-span-2' : 'sm:col-span-2 sm:row-span-2'
+                                                images.length === 1
+                                                    ? 'sm:col-span-4 sm:row-span-2'
+                                                    : 'sm:col-span-2 sm:row-span-2'
                                             }`}
                                             onClick={() => setLightboxIndex(0)}
                                         >
-                                            <img src={images[0].image_url}
-                                                 alt={images[0].description || 'Property'}
-                                                 className="w-full h-full object-cover hover:scale-105 transition duration-300"/>
+                                            <img
+                                                src={images[0].image_url}
+                                                alt={images[0].description || 'Property'}
+                                                className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                                            />
 
                                             {images.length > 1 && (
-                                                <div
-                                                    className="sm:hidden absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg">
+                                                <div className="sm:hidden absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg">
                                                     <span>📷</span> +{images.length - 1}
                                                 </div>
                                             )}
                                         </div>
 
                                         {images.slice(1, 5).map((img, idx) => (
-                                            <div key={img.id}
-                                                 className="hidden sm:block cursor-pointer overflow-hidden rounded-xl relative"
-                                                 onClick={() => setLightboxIndex(idx + 1)}>
-                                                <img src={img.image_url} alt={img.description || 'Property'}
-                                                     className="w-full h-full object-cover hover:scale-105 transition duration-300"/>
+                                            <div
+                                                key={img.id}
+                                                className="hidden sm:block cursor-pointer overflow-hidden rounded-xl relative"
+                                                onClick={() => setLightboxIndex(idx + 1)}
+                                            >
+                                                <img
+                                                    src={img.image_url}
+                                                    alt={img.description || 'Property'}
+                                                    className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                                                />
                                                 {idx === 3 && images.length > 5 && (
-                                                    <div
-                                                        className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                        <span
-                                                            className="text-white text-lg font-bold">+{images.length - 5}</span>
+                                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                        <span className="text-white text-lg font-bold">
+                                                            +{images.length - 5}
+                                                        </span>
                                                     </div>
                                                 )}
                                             </div>
@@ -367,8 +394,11 @@ export default function PropertyDetailPage() {
                                     </div>
                                     {isLandlord && (
                                         <div className="mt-3 flex justify-end">
-                                            <Button size="sm" variant="secondary"
-                                                    onClick={() => setShowImageModal(true)}>
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                onClick={() => setShowImageModal(true)}
+                                            >
                                                 📷 Add Photo
                                             </Button>
                                         </div>
@@ -394,8 +424,13 @@ export default function PropertyDetailPage() {
                                     <p className="text-2xl font-bold text-black">
                                         {activeLease ? formatCurrency(activeLease.rent_amount) : 'No active lease'}
                                     </p>
-                                    <p className="text-sm text-gray-500 mt-1">{property.disposition || '—'} · {property.size ? `${property.size} m²` : '—'}</p>
-                                    <p className="text-sm text-gray-500">{property.address}{property.city ? `, ${property.city}` : ''}</p>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        {property.disposition || '—'} · {property.size ? `${property.size} m²` : '—'}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                        {property.address}
+                                        {property.city ? `, ${property.city}` : ''}
+                                    </p>
                                 </div>
                                 <Badge variant={statusVariant(property.status)}>{property.status}</Badge>
                             </div>
@@ -405,7 +440,9 @@ export default function PropertyDetailPage() {
                         {property.description && (
                             <div className="bg-white rounded-2xl p-6 shadow-sm">
                                 <h2 className="text-lg font-bold text-black mb-3">About</h2>
-                                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{property.description}</p>
+                                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                                    {property.description}
+                                </p>
                             </div>
                         )}
 
@@ -413,24 +450,42 @@ export default function PropertyDetailPage() {
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Details</h2>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><p className="text-xs text-gray-400">Address</p><p
-                                    className="text-sm text-gray-700">{property.address}</p></div>
-                                <div><p className="text-xs text-gray-400">City</p><p
-                                    className="text-sm text-gray-700">{property.city || '—'}</p></div>
-                                <div><p className="text-xs text-gray-400">ZIP Code</p><p
-                                    className="text-sm text-gray-700">{property.zip_code || '—'}</p></div>
-                                <div><p className="text-xs text-gray-400">Floor</p><p
-                                    className="text-sm text-gray-700">{property.floor ?? '—'}</p></div>
-                                <div><p className="text-xs text-gray-400">Disposition</p><p
-                                    className="text-sm text-gray-700">{property.disposition || '—'}</p></div>
-                                <div><p className="text-xs text-gray-400">Size</p><p
-                                    className="text-sm text-gray-700">{property.size ? `${property.size} m²` : '—'}</p>
+                                <div>
+                                    <p className="text-xs text-gray-400">Address</p>
+                                    <p className="text-sm text-gray-700">{property.address}</p>
                                 </div>
-                                <div><p className="text-xs text-gray-400">Purchase Price</p><p
-                                    className="text-sm text-gray-700">{property.purchase_price ? formatCurrency(property.purchase_price) : '—'}</p>
+                                <div>
+                                    <p className="text-xs text-gray-400">City</p>
+                                    <p className="text-sm text-gray-700">{property.city || '—'}</p>
                                 </div>
-                                <div><p className="text-xs text-gray-400">Status</p><p
-                                    className="text-sm text-gray-700 capitalize">{property.status}</p></div>
+                                <div>
+                                    <p className="text-xs text-gray-400">ZIP Code</p>
+                                    <p className="text-sm text-gray-700">{property.zip_code || '—'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Floor</p>
+                                    <p className="text-sm text-gray-700">{property.floor ?? '—'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Disposition</p>
+                                    <p className="text-sm text-gray-700">{property.disposition || '—'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Size</p>
+                                    <p className="text-sm text-gray-700">
+                                        {property.size ? `${property.size} m²` : '—'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Purchase Price</p>
+                                    <p className="text-sm text-gray-700">
+                                        {property.purchase_price ? formatCurrency(property.purchase_price) : '—'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Status</p>
+                                    <p className="text-sm text-gray-700 capitalize">{property.status}</p>
+                                </div>
                             </div>
                         </div>
 
@@ -439,8 +494,7 @@ export default function PropertyDetailPage() {
                             <div className="bg-white rounded-2xl p-6 shadow-sm">
                                 <h2 className="text-lg font-bold text-black mb-3">Occupiers</h2>
                                 <div className="flex items-center gap-4">
-                                    <div
-                                        className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
                                         {activeLease.tenant.name.charAt(0).toUpperCase()}
                                     </div>
                                     <div>
@@ -457,21 +511,22 @@ export default function PropertyDetailPage() {
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Quick Info</h2>
                             <div className="space-y-3">
-                                <div className="flex justify-between"><span
-                                    className="text-sm text-gray-500">Leases</span><span
-                                    className="text-sm font-semibold">{property.leases?.length || 0}</span></div>
-                                <div className="flex justify-between"><span
-                                    className="text-sm text-gray-500">Meters</span><span
-                                    className="text-sm font-semibold">{property.meters?.length || 0}</span></div>
-                                <div className="flex justify-between"><span
-                                    className="text-sm text-gray-500">Images</span><span
-                                    className="text-sm font-semibold">{images.length}</span></div>
+                                <div className="flex justify-between">
+                                    <span className="text-sm text-gray-500">Leases</span>
+                                    <span className="text-sm font-semibold">{property.leases?.length || 0}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-sm text-gray-500">Meters</span>
+                                    <span className="text-sm font-semibold">{property.meters?.length || 0}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-sm text-gray-500">Images</span>
+                                    <span className="text-sm font-semibold">{images.length}</span>
+                                </div>
                             </div>
                         </div>
 
-                        {isLandlord && (
-                            <ManagerAssignment propertyId={propertyId}/>
-                        )}
+                        {isLandlord && <ManagerAssignment propertyId={propertyId} />}
                     </div>
                 </div>
             )}
@@ -486,7 +541,9 @@ export default function PropertyDetailPage() {
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-bold text-black">Notices</h2>
                                 {isLandlord && (
-                                    <Button size="sm" onClick={() => setShowNoticeModal(true)}>+ Add</Button>
+                                    <Button size="sm" onClick={() => setShowNoticeModal(true)}>
+                                        + Add
+                                    </Button>
                                 )}
                             </div>
                             {notices.length === 0 ? (
@@ -506,13 +563,18 @@ export default function PropertyDetailPage() {
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm">📢</span>
-                                                        <p className="text-sm font-semibold text-black">{notice.title}</p>
+                                                        <p className="text-sm font-semibold text-black">
+                                                            {notice.title}
+                                                        </p>
                                                         {!notice.is_active && (
-                                                            <span
-                                                                className="text-xs text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">Inactive</span>
+                                                            <span className="text-xs text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">
+                                                                Inactive
+                                                            </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-line">{notice.content}</p>
+                                                    <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-line">
+                                                        {notice.content}
+                                                    </p>
                                                     <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
                                                         <span>{formatDate(notice.created_at)}</span>
                                                         {notice.created_by && (
@@ -540,7 +602,8 @@ export default function PropertyDetailPage() {
                                                             onClick={() => handleDeleteNotice(notice.id)}
                                                             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500 cursor-pointer"
                                                             title="Delete"
-                                                        >🗑
+                                                        >
+                                                            🗑
                                                         </button>
                                                     </div>
                                                 )}
@@ -555,7 +618,9 @@ export default function PropertyDetailPage() {
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-bold text-black">Tickets</h2>
-                                <Button size="sm" onClick={() => navigate('/tickets')}>View All</Button>
+                                <Button size="sm" onClick={() => navigate('/tickets')}>
+                                    View All
+                                </Button>
                             </div>
                             {tickets.length === 0 ? (
                                 <p className="text-sm text-gray-400 text-center py-4">No tickets for this property</p>
@@ -571,8 +636,8 @@ export default function PropertyDetailPage() {
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-semibold text-black">{ticket.title}</p>
                                                     <p className="text-xs text-gray-500 mt-0.5">
-                                                        {formatDate(ticket.created_at)} ·
-                                                        Priority: {ticket.priority} · {ticket.tenant?.name || '—'}
+                                                        {formatDate(ticket.created_at)} · Priority: {ticket.priority} ·{' '}
+                                                        {ticket.tenant?.name || '—'}
                                                     </p>
                                                 </div>
                                                 <Badge variant={ticketStatusVariant(ticket.status)}>
@@ -590,7 +655,9 @@ export default function PropertyDetailPage() {
                             <div className="bg-white rounded-2xl p-6 shadow-sm">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-bold text-black">Expenses</h2>
-                                    <Button size="sm" onClick={() => setShowExpenseModal(true)}>+ Add</Button>
+                                    <Button size="sm" onClick={() => setShowExpenseModal(true)}>
+                                        + Add
+                                    </Button>
                                 </div>
                                 {expenses.length === 0 ? (
                                     <p className="text-sm text-gray-400 text-center py-4">No expenses recorded</p>
@@ -599,22 +666,38 @@ export default function PropertyDetailPage() {
                                         <div className="hidden sm:block">
                                             <table className="w-full">
                                                 <thead>
-                                                <tr className="border-b border-gray-100">
-                                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Date</th>
-                                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Type</th>
-                                                    <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">Description</th>
-                                                    <th className="text-right py-2 text-xs font-semibold text-gray-400 uppercase">Amount</th>
-                                                </tr>
+                                                    <tr className="border-b border-gray-100">
+                                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">
+                                                            Date
+                                                        </th>
+                                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">
+                                                            Type
+                                                        </th>
+                                                        <th className="text-left py-2 text-xs font-semibold text-gray-400 uppercase">
+                                                            Description
+                                                        </th>
+                                                        <th className="text-right py-2 text-xs font-semibold text-gray-400 uppercase">
+                                                            Amount
+                                                        </th>
+                                                    </tr>
                                                 </thead>
                                                 <tbody>
-                                                {expenses.slice(0, 10).map((expense) => (
-                                                    <tr key={expense.id} className="border-b border-gray-50">
-                                                        <td className="py-3 text-sm text-gray-600">{formatDate(expense.expense_date)}</td>
-                                                        <td className="py-3 text-sm text-gray-600 capitalize">{expense.type}</td>
-                                                        <td className="py-3 text-sm text-gray-600">{expense.description || '—'}</td>
-                                                        <td className="py-3 text-sm font-semibold text-right text-black">{formatCurrency(expense.amount)}</td>
-                                                    </tr>
-                                                ))}
+                                                    {expenses.slice(0, 10).map((expense) => (
+                                                        <tr key={expense.id} className="border-b border-gray-50">
+                                                            <td className="py-3 text-sm text-gray-600">
+                                                                {formatDate(expense.expense_date)}
+                                                            </td>
+                                                            <td className="py-3 text-sm text-gray-600 capitalize">
+                                                                {expense.type}
+                                                            </td>
+                                                            <td className="py-3 text-sm text-gray-600">
+                                                                {expense.description || '—'}
+                                                            </td>
+                                                            <td className="py-3 text-sm font-semibold text-right text-black">
+                                                                {formatCurrency(expense.amount)}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -622,10 +705,12 @@ export default function PropertyDetailPage() {
                                             {expenses.slice(0, 10).map((expense) => (
                                                 <div key={expense.id} className="p-3 border border-gray-100 rounded-xl">
                                                     <div className="flex items-center justify-between">
-                                                        <span
-                                                            className="text-sm font-semibold text-black capitalize">{expense.type}</span>
-                                                        <span
-                                                            className="text-sm font-bold text-black">{formatCurrency(expense.amount)}</span>
+                                                        <span className="text-sm font-semibold text-black capitalize">
+                                                            {expense.type}
+                                                        </span>
+                                                        <span className="text-sm font-bold text-black">
+                                                            {formatCurrency(expense.amount)}
+                                                        </span>
                                                     </div>
                                                     <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                                                         <span>{formatDate(expense.expense_date)}</span>
@@ -644,7 +729,9 @@ export default function PropertyDetailPage() {
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-bold text-black">Inventory</h2>
                                 {isLandlord && (
-                                    <Button size="sm" onClick={() => setShowInventoryModal(true)}>+ Add</Button>
+                                    <Button size="sm" onClick={() => setShowInventoryModal(true)}>
+                                        + Add
+                                    </Button>
                                 )}
                             </div>
                             {inventory.length === 0 ? (
@@ -655,16 +742,24 @@ export default function PropertyDetailPage() {
                                         <div key={item.id} className="p-4 border border-gray-100 rounded-xl">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-sm font-semibold text-black">{item.name}</p>
-                                                <Badge
-                                                    variant={conditionVariant(item.condition)}>{item.condition}</Badge>
+                                                <Badge variant={conditionVariant(item.condition)}>
+                                                    {item.condition}
+                                                </Badge>
                                             </div>
-                                            {item.category &&
-                                                <p className="text-xs text-gray-500 mt-1">{item.category}</p>}
+                                            {item.category && (
+                                                <p className="text-xs text-gray-500 mt-1">{item.category}</p>
+                                            )}
                                             <div className="flex items-center gap-3 mt-2">
-                                                {item.purchase_price && <span
-                                                    className="text-xs text-gray-400">{formatCurrency(item.purchase_price)}</span>}
-                                                {item.purchase_date && <span
-                                                    className="text-xs text-gray-400">{formatDate(item.purchase_date)}</span>}
+                                                {item.purchase_price && (
+                                                    <span className="text-xs text-gray-400">
+                                                        {formatCurrency(item.purchase_price)}
+                                                    </span>
+                                                )}
+                                                {item.purchase_date && (
+                                                    <span className="text-xs text-gray-400">
+                                                        {formatDate(item.purchase_date)}
+                                                    </span>
+                                                )}
                                             </div>
                                             {item.note && <p className="text-xs text-gray-400 mt-1">{item.note}</p>}
                                         </div>
@@ -678,43 +773,51 @@ export default function PropertyDetailPage() {
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-bold text-black">Documents</h2>
                                 {isLandlord && (
-                                    <Button size="sm" onClick={() => setShowDocumentModal(true)}>+ Add</Button>
+                                    <Button size="sm" onClick={() => setShowDocumentModal(true)}>
+                                        + Add
+                                    </Button>
                                 )}
                             </div>
                             {documents.length === 0 ? (
                                 <p className="text-sm text-gray-400 text-center py-4">No documents uploaded</p>
                             ) : (
-                                <div
-                                    className="space-y-3">
+                                <div className="space-y-3">
                                     {documents.map((doc) => (
-                                        <div key={doc.id}
-                                             className="flex items-start sm:items-center justify-between p-3 sm:p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition gap-3">
+                                        <div
+                                            key={doc.id}
+                                            className="flex items-start sm:items-center justify-between p-3 sm:p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition gap-3"
+                                        >
                                             <div
                                                 className="flex items-start sm:items-center gap-3 flex-1 min-w-0 cursor-pointer"
                                                 onClick={() => handleDownloadDocument(doc)}
                                             >
-                        <span className="text-2xl sm:text-xl shrink-0 mt-0.5 sm:mt-0">
-                            {(doc.name + doc.file_path).match(/\.pdf/i) ? '📄' :
-                                (doc.name + doc.file_path).match(/\.(jpg|jpeg|png|webp)/i) ? '🖼️' :
-                                    (doc.name + doc.file_path).match(/\.(doc|docx)/i) ? '📝' :
-                                        (doc.name + doc.file_path).match(/\.(xls|xlsx)/i) ? '📊' : '📎'}
-                        </span>
+                                                <span className="text-2xl sm:text-xl shrink-0 mt-0.5 sm:mt-0">
+                                                    {(doc.name + doc.file_path).match(/\.pdf/i)
+                                                        ? '📄'
+                                                        : (doc.name + doc.file_path).match(/\.(jpg|jpeg|png|webp)/i)
+                                                          ? '🖼️'
+                                                          : (doc.name + doc.file_path).match(/\.(doc|docx)/i)
+                                                            ? '📝'
+                                                            : (doc.name + doc.file_path).match(/\.(xls|xlsx)/i)
+                                                              ? '📊'
+                                                              : '📎'}
+                                                </span>
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-sm font-semibold text-black truncate leading-tight">{doc.name}</p>
+                                                    <p className="text-sm font-semibold text-black truncate leading-tight">
+                                                        {doc.name}
+                                                    </p>
 
-                                                    <div
-                                                        className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-gray-500 mt-1.5">
-                                                        <span
-                                                            className="capitalize bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 font-medium">
-                                    {doc.document_type}
-                                </span>
-                                                        <span
-                                                            className="whitespace-nowrap">{formatDate(doc.created_at)}</span>
+                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-gray-500 mt-1.5">
+                                                        <span className="capitalize bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 font-medium">
+                                                            {doc.document_type}
+                                                        </span>
+                                                        <span className="whitespace-nowrap">
+                                                            {formatDate(doc.created_at)}
+                                                        </span>
                                                         {doc.uploaded_by && (
-                                                            <span
-                                                                className="truncate max-w-30 sm:max-w-none text-gray-400">
-                                        {doc.uploaded_by.name}
-                                    </span>
+                                                            <span className="truncate max-w-30 sm:max-w-none text-gray-400">
+                                                                {doc.uploaded_by.name}
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -725,14 +828,17 @@ export default function PropertyDetailPage() {
                                                     onClick={() => handleDownloadDocument(doc)}
                                                     className="w-8 h-8 flex items-center justify-center rounded-lg transition hover:bg-gray-100 text-gray-500 hover:text-gray-700 cursor-pointer"
                                                     title="Download"
-                                                >⬇️
+                                                >
+                                                    ⬇️
                                                 </button>
                                                 {isLandlord && (
                                                     <button
                                                         onClick={() => handleDeleteDocument(doc.id)}
                                                         className="w-8 h-8 flex items-center justify-center rounded-lg transition hover:bg-red-50 text-red-400 hover:text-red-600 cursor-pointer"
                                                         title="Delete"
-                                                    >🗑</button>
+                                                    >
+                                                        🗑
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -747,13 +853,17 @@ export default function PropertyDetailPage() {
                         <div className="flex items-center justify-between">
                             <h2 className="text-lg font-bold text-black">Utilities</h2>
                             {isLandlord && (
-                                <Button size="sm" onClick={() => setShowMeterModal(true)}>+ Add</Button>
+                                <Button size="sm" onClick={() => setShowMeterModal(true)}>
+                                    + Add
+                                </Button>
                             )}
                         </div>
                         {meters.length === 0 ? (
                             <div className="bg-white rounded-2xl p-6 shadow-sm">
-                                <EmptyState title="No meters"
-                                            description="No meters have been set up for this property."/>
+                                <EmptyState
+                                    title="No meters"
+                                    description="No meters have been set up for this property."
+                                />
                             </div>
                         ) : (
                             meters.map((meter) => (

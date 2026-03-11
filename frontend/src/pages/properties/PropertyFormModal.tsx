@@ -1,8 +1,8 @@
 import * as React from 'react'
-import {useEffect, useState} from 'react'
-import {propertiesApi} from '../../api/properties'
-import type {ApiError, Property} from '../../types'
-import {AxiosError} from 'axios'
+import { useEffect, useState } from 'react'
+import { propertiesApi } from '../../api/properties'
+import type { ApiError, Property } from '../../types'
+import { AxiosError } from 'axios'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -15,7 +15,7 @@ interface Props {
     property?: Property | null
 }
 
-export default function PropertyFormModal({isOpen, onClose, onSuccess, property}: Props) {
+export default function PropertyFormModal({ isOpen, onClose, onSuccess, property }: Props) {
     const [formData, setFormData] = useState({
         address: '',
         city: '',
@@ -43,8 +43,15 @@ export default function PropertyFormModal({isOpen, onClose, onSuccess, property}
             })
         } else {
             setFormData({
-                address: '', city: '', zip_code: '', floor: '', disposition: '',
-                size: '', status: 'available', description: '', purchase_price: '',
+                address: '',
+                city: '',
+                zip_code: '',
+                floor: '',
+                disposition: '',
+                size: '',
+                status: 'available',
+                description: '',
+                purchase_price: '',
             })
         }
     }, [property, isOpen])
@@ -53,7 +60,7 @@ export default function PropertyFormModal({isOpen, onClose, onSuccess, property}
     const [isLoading, setIsLoading] = useState(false)
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -83,7 +90,7 @@ export default function PropertyFormModal({isOpen, onClose, onSuccess, property}
                 floor: '',
                 status: 'available',
                 purchase_price: '',
-                description: ''
+                description: '',
             })
             onSuccess()
         } catch (err) {
@@ -162,9 +169,9 @@ export default function PropertyFormModal({isOpen, onClose, onSuccess, property}
                         value={formData.status}
                         onChange={handleChange}
                         options={[
-                            {value: 'available', label: 'Available'},
-                            {value: 'occupied', label: 'Occupied'},
-                            {value: 'renovation', label: 'Renovation'},
+                            { value: 'available', label: 'Available' },
+                            { value: 'occupied', label: 'Occupied' },
+                            { value: 'renovation', label: 'Renovation' },
                         ]}
                         error={errors.status?.[0]}
                     />
@@ -192,7 +199,9 @@ export default function PropertyFormModal({isOpen, onClose, onSuccess, property}
                 </div>
 
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={onClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading}>
                         {isLoading ? 'Saving...' : property ? 'Save Changes' : 'Create Property'}
                     </Button>

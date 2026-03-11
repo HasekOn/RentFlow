@@ -15,29 +15,60 @@ class CheckExpiringLeases extends Command
 
     public function handle(): int
     {
-        $leases = Lease::with(['property.landlord', 'tenant'])
+        // 1. Notify about leases expiring within 30 days
+        $expiring = Lease::with(['property.landlord', 'tenant'])
             ->where('status', 'active')
             ->whereNotNull('end_date')
             ->whereBetween('end_date', [now(), now()->addDays(30)])
             ->get();
 
-        $count = 0;
-
-        foreach ($leases as $lease) {
-            // Notify tenant
+        $notified = 0;
+        foreach ($expiring as $lease) {
             if ($lease->tenant) {
                 $lease->tenant->notify(new LeaseExpiringNotification($lease));
             }
-
-            // Notify landlord
-            if ($lease->property && $lease->property->landlord) {
+            if ($lease->property?->landlord) {
                 $lease->property->landlord->notify(new LeaseExpiringNotification($lease));
             }
-
-            $count++;
+            $notified++;
         }
 
-        $this->info("Checked expiring leases. Notifications sent for $count leases.");
+        $this->info("Expiring notifications sent: {$notified}");
+
+        // 2. Auto-expire leases past end_date
+        $expired = Lease::query()
+            ->where('status', 'active')
+            ->whereNotNull('end_date')
+            ->where('end_date', '<', now()->toDateString())
+            ->get();
+
+        foreach ($expired as $lease) {
+            $lease->update(['status' => 'ended']);
+            $this->info("Lease #{$lease->id} auto-expired");
+        }
+
+        $this->info("Auto-expired leases: {$expired->count()}");
+
+        // 3. Auto-set properties without active lease to 'available'
+        $occupiedProperties = \App\Models\Property::query()
+            ->where('status', 'occupied')
+            ->get();
+
+        $freed = 0;
+
+        foreach ($occupiedProperties as $property) {
+            $hasActiveLease = $property->leases()
+                ->where('status', 'active')
+                ->exists();
+
+            if (! $hasActiveLease) {
+                $property->update(['status' => 'available']);
+                $freed++;
+                $this->info("Property #{$property->id} ({$property->address}) → available");
+            }
+        }
+
+        $this->info("Properties freed: {$freed}");
 
         return CommandAlias::SUCCESS;
     }

@@ -1,26 +1,26 @@
-import {useEffect, useState} from 'react'
-import {managersApi} from '../../api/managers'
-import {usersApi} from '../../api/users'
-import type {User} from '../../types'
+import { useEffect, useState } from 'react'
+import { managersApi } from '../../api/managers'
+import { usersApi } from '../../api/users'
+import type { User } from '../../types'
 import Button from '../../components/ui/Button'
-import {useConfirm} from '../../hooks/useConfirm'
+import { useConfirm } from '../../hooks/useConfirm'
 
 interface Props {
     propertyId: number
 }
 
-export default function ManagerAssignment({propertyId}: Props) {
+export default function ManagerAssignment({ propertyId }: Props) {
     const [managers, setManagers] = useState<User[]>([])
     const [allManagers, setAllManagers] = useState<User[]>([])
     const [selectedId, setSelectedId] = useState('')
     const [isLoading, setIsLoading] = useState(true)
-    const {confirm: showConfirm, dialog} = useConfirm()
+    const { confirm: showConfirm, dialog } = useConfirm()
 
     const load = async () => {
         try {
             const [assignedRes, usersRes] = await Promise.all([
                 managersApi.getByProperty(propertyId),
-                usersApi.getAll({role: 'manager'}),
+                usersApi.getAll({ role: 'manager' }),
             ])
             setManagers(Array.isArray(assignedRes.data) ? assignedRes.data : [])
             setAllManagers(Array.isArray(usersRes.data) ? usersRes.data : [])
@@ -80,11 +80,12 @@ export default function ManagerAssignment({propertyId}: Props) {
             ) : (
                 <div className="space-y-2 mb-3">
                     {managers.map((manager) => (
-                        <div key={manager.id}
-                             className="flex items-center justify-between p-2 border border-gray-100 rounded-xl">
+                        <div
+                            key={manager.id}
+                            className="flex items-center justify-between p-2 border border-gray-100 rounded-xl"
+                        >
                             <div className="flex items-center gap-2">
-                                <div
-                                    className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
                                     {manager.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
@@ -112,7 +113,9 @@ export default function ManagerAssignment({propertyId}: Props) {
                     >
                         <option value="">Select manager...</option>
                         {available.map((m) => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
+                            <option key={m.id} value={m.id}>
+                                {m.name}
+                            </option>
                         ))}
                     </select>
                     <Button size="sm" onClick={handleAssign} disabled={!selectedId}>

@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react'
 
 interface Props {
     title: string
@@ -6,7 +6,7 @@ interface Props {
     action?: React.ReactNode
 }
 
-export default function EmptyState({title, description, action}: Props) {
+export default function EmptyState({ title, description, action }: Props) {
     return (
         <div className="text-center py-16">
             <p className="text-lg font-semibold text-gray-400">{title}</p>

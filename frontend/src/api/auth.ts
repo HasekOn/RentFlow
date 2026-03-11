@@ -1,5 +1,5 @@
 import api from './axios'
-import type {User} from '../types'
+import type { User } from '../types'
 
 interface AuthResponse {
     user: User
@@ -20,15 +20,11 @@ interface RegisterData {
 }
 
 export const authApi = {
-    login: (data: LoginData) =>
-        api.post<AuthResponse>('/login', data),
+    login: (data: LoginData) => api.post<AuthResponse>('/login', data),
 
-    register: (data: RegisterData) =>
-        api.post<AuthResponse>('/register', data),
+    register: (data: RegisterData) => api.post<AuthResponse>('/register', data),
 
-    logout: () =>
-        api.post('/logout'),
+    logout: () => api.post('/logout'),
 
-    getUser: () =>
-        api.get<{ data: User }>('/user'),
+    getUser: () => api.get<{ data: User }>('/user'),
 }

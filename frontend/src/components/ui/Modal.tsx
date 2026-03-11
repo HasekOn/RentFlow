@@ -1,5 +1,5 @@
 import * as React from 'react'
-import {useEffect} from 'react'
+import { useEffect } from 'react'
 
 interface Props {
     isOpen: boolean
@@ -15,7 +15,7 @@ const sizes = {
     lg: 'max-w-2xl',
 }
 
-export default function Modal({isOpen, onClose, title, children, size = 'md'}: Props) {
+export default function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) {
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden'
@@ -31,9 +31,10 @@ export default function Modal({isOpen, onClose, title, children, size = 'md'}: P
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40 cursor-pointer" onClick={onClose}/>
+            <div className="absolute inset-0 bg-black/40 cursor-pointer" onClick={onClose} />
             <div
-                className={`relative bg-white rounded-2xl shadow-xl p-6 w-full ${sizes[size]} mx-4 max-h-[90vh] overflow-y-auto`}>
+                className={`relative bg-white rounded-2xl shadow-xl p-6 w-full ${sizes[size]} mx-4 max-h-[90vh] overflow-y-auto`}
+            >
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-black">{title}</h2>
                     <button

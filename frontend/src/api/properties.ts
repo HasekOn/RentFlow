@@ -1,5 +1,5 @@
 import api from './axios'
-import type {PaginatedResponse, Property, PropertyImage} from '../types'
+import type { PaginatedResponse, Property, PropertyImage } from '../types'
 
 interface PropertyFilters {
     status?: string
@@ -22,36 +22,27 @@ interface PropertyFormData {
 }
 
 export const propertiesApi = {
-    getAll: (filters?: PropertyFilters) =>
-        api.get<PaginatedResponse<Property>>('/properties', {params: filters}),
+    getAll: (filters?: PropertyFilters) => api.get<PaginatedResponse<Property>>('/properties', { params: filters }),
 
-    getOne: (id: number) =>
-        api.get<Property>('/properties/' + id),
+    getOne: (id: number) => api.get<Property>('/properties/' + id),
 
-    create: (data: PropertyFormData) =>
-        api.post<Property>('/properties', data),
+    create: (data: PropertyFormData) => api.post<Property>('/properties', data),
 
-    update: (id: number, data: Partial<PropertyFormData>) =>
-        api.put<Property>('/properties/' + id, data),
+    update: (id: number, data: Partial<PropertyFormData>) => api.put<Property>('/properties/' + id, data),
 
-    delete: (id: number) =>
-        api.delete('/properties/' + id),
+    delete: (id: number) => api.delete('/properties/' + id),
 
-    restore: (id: number) =>
-        api.put('/properties/' + id + '/restore'),
+    restore: (id: number) => api.put('/properties/' + id + '/restore'),
 
-    getList: () =>
-        api.get<PaginatedResponse<Property>>('/properties', {params: {per_page: 100}}),
+    getList: () => api.get<PaginatedResponse<Property>>('/properties', { params: { per_page: 100 } }),
 
     // Images
-    getImages: (propertyId: number) =>
-        api.get<PropertyImage[]>('/properties/' + propertyId + '/images'),
+    getImages: (propertyId: number) => api.get<PropertyImage[]>('/properties/' + propertyId + '/images'),
 
     uploadImage: (propertyId: number, formData: FormData) =>
         api.post('/properties/' + propertyId + '/images', formData, {
-            headers: {'Content-Type': 'multipart/form-data'},
+            headers: { 'Content-Type': 'multipart/form-data' },
         }),
 
-    deleteImage: (imageId: number) =>
-        api.delete('/property-images/' + imageId),
+    deleteImage: (imageId: number) => api.delete('/property-images/' + imageId),
 }

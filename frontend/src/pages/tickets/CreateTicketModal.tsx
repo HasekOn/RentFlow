@@ -1,8 +1,8 @@
-import {useEffect, useState} from 'react'
-import {ticketsApi} from '../../api/tickets'
-import {propertiesApi} from '../../api/properties'
-import type {ApiError, Property} from '../../types'
-import {AxiosError} from 'axios'
+import { useEffect, useState } from 'react'
+import { ticketsApi } from '../../api/tickets'
+import { propertiesApi } from '../../api/properties'
+import type { ApiError, Property } from '../../types'
+import { AxiosError } from 'axios'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
@@ -14,7 +14,7 @@ interface Props {
     onSuccess: () => void
 }
 
-export default function CreateTicketModal({isOpen, onClose, onSuccess}: Props) {
+export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Props) {
     const [properties, setProperties] = useState<Property[]>([])
     const [formData, setFormData] = useState({
         property_id: '',
@@ -28,14 +28,17 @@ export default function CreateTicketModal({isOpen, onClose, onSuccess}: Props) {
 
     useEffect(() => {
         if (isOpen) {
-            propertiesApi.getAll().then((res) => {
-                setProperties(res.data.data)
-            }).catch(console.error)
+            propertiesApi
+                .getAll()
+                .then((res) => {
+                    setProperties(res.data.data)
+                })
+                .catch(console.error)
         }
     }, [isOpen])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        setFormData((prev) => ({...prev, [e.target.name]: e.target.value}))
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +54,7 @@ export default function CreateTicketModal({isOpen, onClose, onSuccess}: Props) {
                 category: formData.category || undefined,
                 priority: formData.priority || undefined,
             })
-            setFormData({property_id: '', title: '', description: '', category: '', priority: 'medium'})
+            setFormData({ property_id: '', title: '', description: '', category: '', priority: 'medium' })
             onSuccess()
         } catch (err) {
             const axiosError = err as AxiosError<ApiError>
@@ -70,7 +73,7 @@ export default function CreateTicketModal({isOpen, onClose, onSuccess}: Props) {
                     value={formData.property_id}
                     onChange={handleChange}
                     placeholder="Select property..."
-                    options={properties.map((p) => ({value: String(p.id), label: p.address}))}
+                    options={properties.map((p) => ({ value: String(p.id), label: p.address }))}
                     error={errors.property_id?.[0]}
                 />
 
@@ -95,9 +98,7 @@ export default function CreateTicketModal({isOpen, onClose, onSuccess}: Props) {
                         placeholder="Describe the issue in detail (min 10 characters)..."
                         required
                     />
-                    {errors.description?.[0] && (
-                        <p className="mt-1 text-xs text-red-600">{errors.description[0]}</p>
-                    )}
+                    {errors.description?.[0] && <p className="mt-1 text-xs text-red-600">{errors.description[0]}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -108,12 +109,12 @@ export default function CreateTicketModal({isOpen, onClose, onSuccess}: Props) {
                         onChange={handleChange}
                         placeholder="Select category..."
                         options={[
-                            {value: 'plumbing', label: 'Plumbing'},
-                            {value: 'electrical', label: 'Electrical'},
-                            {value: 'heating', label: 'Heating'},
-                            {value: 'structural', label: 'Structural'},
-                            {value: 'appliance', label: 'Appliance'},
-                            {value: 'other', label: 'Other'},
+                            { value: 'plumbing', label: 'Plumbing' },
+                            { value: 'electrical', label: 'Electrical' },
+                            { value: 'heating', label: 'Heating' },
+                            { value: 'structural', label: 'Structural' },
+                            { value: 'appliance', label: 'Appliance' },
+                            { value: 'other', label: 'Other' },
                         ]}
                         error={errors.category?.[0]}
                     />
@@ -123,17 +124,19 @@ export default function CreateTicketModal({isOpen, onClose, onSuccess}: Props) {
                         value={formData.priority}
                         onChange={handleChange}
                         options={[
-                            {value: 'low', label: 'Low'},
-                            {value: 'medium', label: 'Medium'},
-                            {value: 'high', label: 'High'},
-                            {value: 'urgent', label: 'Urgent'},
+                            { value: 'low', label: 'Low' },
+                            { value: 'medium', label: 'Medium' },
+                            { value: 'high', label: 'High' },
+                            { value: 'urgent', label: 'Urgent' },
                         ]}
                         error={errors.priority?.[0]}
                     />
                 </div>
 
                 <div className="flex justify-end gap-3 pt-2">
-                    <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
+                    <Button variant="secondary" type="button" onClick={onClose}>
+                        Cancel
+                    </Button>
                     <Button type="submit" disabled={isLoading}>
                         {isLoading ? 'Creating...' : 'Create Ticket'}
                     </Button>
