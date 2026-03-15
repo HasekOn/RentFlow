@@ -1,16 +1,16 @@
 import * as React from 'react'
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
-import type { ApiError } from '../../types'
-import { AxiosError } from 'axios'
+import {useState} from 'react'
+import {Link, useNavigate} from 'react-router-dom'
+import {useAuth} from '../../contexts/AuthContext'
+import type {ApiError} from '../../types'
+import {AxiosError} from 'axios'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const { login } = useAuth()
+    const {login} = useAuth()
     const navigate = useNavigate()
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -44,7 +44,7 @@ export default function LoginPage() {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-5" aria-label="Login form">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
                             <input

@@ -3,17 +3,20 @@ import react from '@vitejs/plugin-react-swc'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-    plugins: [
-        react(),
-        tailwindcss(),
-    ],
-    server: {
-        port: 5173,
-        proxy: {
-            '/api': {
-                target: 'http://localhost:8000',
-                changeOrigin: true,
+    plugins: [react(), tailwindcss()],
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                    charts: ['recharts'],
+                },
             },
+        },
+    },
+    server: {
+        proxy: {
+            '/api': 'http://localhost:8000',
         },
     },
 })

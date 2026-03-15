@@ -17,10 +17,10 @@ const sizes = {
     md: 'px-5 py-2.5 text-sm',
 }
 
-export default function Button({ variant = 'primary', size = 'md', className = '', children, ...props }: Props) {
+export default function Button({variant = 'primary', size = 'md', className = '', children, ...props}: Props) {
     return (
         <button
-            className={`cursor-pointer disabled:cursor-not-allowed font-semibold rounded-full transition disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
+            className={`font-semibold rounded-full transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black ${variants[variant]} ${sizes[size]} ${className}`}
             {...props}
         >
             {children}

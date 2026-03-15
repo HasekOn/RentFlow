@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useEffect } from 'react'
+import {useEffect} from 'react'
 
 interface Props {
     isOpen: boolean
@@ -15,7 +15,7 @@ const sizes = {
     lg: 'max-w-2xl',
 }
 
-export default function Modal({ isOpen, onClose, title, children, size = 'md' }: Props) {
+export default function Modal({isOpen, onClose, title, children, size = 'md'}: Props) {
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden'
@@ -27,11 +27,21 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
         }
     }, [isOpen])
 
+    useEffect(() => {
+        if (!isOpen) return
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose()
+        }
+        window.addEventListener('keydown', handleKey)
+        return () => window.removeEventListener('keydown', handleKey)
+    }, [isOpen, onClose])
+
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40 cursor-pointer" onClick={onClose} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true"
+             aria-label={title}>
+            <div className="absolute inset-0 bg-black/40 cursor-pointer" onClick={onClose} aria-hidden="true"/>
             <div
                 className={`relative bg-white rounded-2xl shadow-xl p-6 w-full ${sizes[size]} mx-4 max-h-[90vh] overflow-y-auto`}
             >
@@ -40,6 +50,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
                     <button
                         onClick={onClose}
                         className="text-gray-400 hover:text-black transition text-xl leading-none cursor-pointer"
+                        aria-label="Close dialog"
                     >
                         ✕
                     </button>
