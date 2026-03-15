@@ -56,7 +56,7 @@ export default function CreatePaymentModal({ isOpen, onClose, onSuccess }: Props
         })
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setErrors({})
         setIsLoading(true)

@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { leasesApi } from '../../api/leases'
 import { propertiesApi } from '../../api/properties'
@@ -53,7 +54,7 @@ export default function CreateLeaseModal({ isOpen, onClose, onSuccess }: Props) 
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setErrors({})
         setIsLoading(true)

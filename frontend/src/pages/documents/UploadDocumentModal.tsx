@@ -30,7 +30,7 @@ export default function UploadDocumentModal({ isOpen, onClose, propertyId, onSuc
         }
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         if (!file) return
 

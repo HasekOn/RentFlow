@@ -4,6 +4,8 @@ import type { Rating } from '../types'
 export const ratingsApi = {
     getByLease: (leaseId: number) => api.get<Rating[]>('/leases/' + leaseId + '/ratings'),
 
+    getByUser: (userId: number) => api.get<Rating[]>('/users/' + userId + '/ratings'),
+
     create: (leaseId: number, data: { category: string; score: number; comment?: string }) =>
         api.post<Rating>('/leases/' + leaseId + '/ratings', data),
 }

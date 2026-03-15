@@ -162,6 +162,7 @@ export interface Rating {
     comment: string | null
     created_at: string
     rated_by?: User
+    property?: { address: string }
 }
 
 export interface Notice {

@@ -23,6 +23,7 @@ export default function PersonDetailPage() {
     const [ratings, setRatings] = useState<Rating[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const { confirm: showConfirm, dialog } = useConfirm()
+    const [showRatingsDialog, setShowRatingsDialog] = useState(false)
 
     const personId = Number(id)
     const isOwnProfile = authUser?.id === personId
@@ -124,20 +125,13 @@ export default function PersonDetailPage() {
                     const leasesData = results[1]?.data?.data || []
                     setLeases(leasesData)
 
-                    // Load ratings from ended/terminated leases
-                    const allRatings: Rating[] = []
-                    for (const lease of leasesData) {
-                        if (lease.status === 'ended' || lease.status === 'terminated') {
-                            try {
-                                const ratingsRes = await ratingsApi.getByLease(lease.id)
-                                const ratingsArr = Array.isArray(ratingsRes.data) ? ratingsRes.data : []
-                                allRatings.push(...ratingsArr)
-                            } catch {
-                                // No ratings for this lease
-                            }
-                        }
+                    // Load all ratings for this user (from all landlords)
+                    try {
+                        const ratingsRes = await ratingsApi.getByUser(personId)
+                        setRatings(Array.isArray(ratingsRes.data) ? ratingsRes.data : [])
+                    } catch {
+                        setRatings([])
                     }
-                    setRatings(allRatings)
                 }
             } catch (error) {
                 console.error('Failed to load person:', error)
@@ -350,37 +344,61 @@ export default function PersonDetailPage() {
                         </div>
                     )}
 
-                    {/* Ratings — only for tenants/managers */}
-                    {isTenantOrManager && (
-                        <div className="bg-white rounded-2xl p-6 shadow-sm">
-                            <h2 className="text-lg font-bold text-black mb-4">Ratings ({ratings.length})</h2>
-                            {ratings.length === 0 ? (
-                                <p className="text-sm text-gray-400 text-center py-4">No ratings yet</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {ratings.map((rating) => (
-                                        <div key={rating.id} className="p-4 border border-gray-100 rounded-xl">
-                                            <div className="flex items-center justify-between">
-                                                <p className="text-sm font-semibold text-black">
-                                                    {categoryLabel(rating.category)}
-                                                </p>
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-sm font-bold text-black">{rating.score}</span>
-                                                    <span className="text-yellow-500">★</span>
-                                                </div>
-                                            </div>
-                                            {rating.comment && (
-                                                <p className="text-xs text-gray-500 mt-2">{rating.comment}</p>
-                                            )}
-                                            {rating.rated_by && (
-                                                <p className="text-xs text-gray-400 mt-1">
-                                                    by {rating.rated_by.name} · {formatDate(rating.created_at)}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
+                    {/* Ratings summary — only for tenants/managers */}
+                    {isTenantOrManager && ratings.length > 0 && (
+                        <div
+                            className="bg-white rounded-2xl p-6 shadow-sm cursor-pointer hover:shadow-md transition"
+                            onClick={() => setShowRatingsDialog(true)}
+                        >
+                            <div className="flex items-center justify-between mb-3">
+                                <h2 className="text-lg font-bold text-black">Rating</h2>
+                                <span className="text-xs text-gray-400">{ratings.length} reviews →</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 rounded-2xl bg-yellow-50 border border-yellow-200 flex flex-col items-center justify-center">
+                                    <span className="text-xl font-bold text-black">
+                                        {(ratings.reduce((sum, r) => sum + r.score, 0) / ratings.length).toFixed(1)}
+                                    </span>
+                                    <span className="text-yellow-500 text-sm">★</span>
                                 </div>
-                            )}
+                                <div className="flex-1">
+                                    {['overall', 'apartment_condition', 'communication', 'rules']
+                                        .filter((cat) => ratings.some((r) => r.category === cat))
+                                        .map((cat) => {
+                                            const catRatings = ratings.filter((r) => r.category === cat)
+                                            const avg = catRatings.reduce((s, r) => s + r.score, 0) / catRatings.length
+                                            return (
+                                                <div key={cat} className="flex items-center gap-2 mb-1">
+                                                    <span className="text-xs text-gray-500 w-24 truncate">
+                                                        {categoryLabel(cat)}
+                                                    </span>
+                                                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full ${
+                                                                avg >= 4
+                                                                    ? 'bg-green-500'
+                                                                    : avg >= 3
+                                                                      ? 'bg-yellow-500'
+                                                                      : 'bg-red-500'
+                                                            }`}
+                                                            style={{ width: `${(avg / 5) * 100}%` }}
+                                                        />
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-gray-600 w-6 text-right">
+                                                        {avg.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                            )
+                                        })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isTenantOrManager && ratings.length === 0 && (
+                        <div className="bg-white rounded-2xl p-6 shadow-sm">
+                            <h2 className="text-lg font-bold text-black mb-3">Rating</h2>
+                            <p className="text-sm text-gray-400 text-center py-2">No ratings yet</p>
                         </div>
                     )}
 
@@ -421,6 +439,96 @@ export default function PersonDetailPage() {
                     </div>
                 </div>
             </div>
+            {/* Ratings Detail Dialog */}
+            {showRatingsDialog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="fixed inset-0 bg-black/40" onClick={() => setShowRatingsDialog(false)} />
+                    <div className="relative bg-white rounded-2xl p-6 shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-black">All Ratings</h3>
+                            <button
+                                onClick={() => setShowRatingsDialog(false)}
+                                className="text-gray-400 hover:text-black transition cursor-pointer text-xl"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Overall average */}
+                        <div className="text-center mb-6 p-4 bg-gray-50 rounded-xl">
+                            <div className="flex items-center justify-center gap-1 mb-1">
+                                {[1, 2, 3, 4, 5].map((star) => {
+                                    const avg = ratings.reduce((s, r) => s + r.score, 0) / ratings.length
+                                    return (
+                                        <span
+                                            key={star}
+                                            className={`text-xl ${star <= Math.round(avg) ? 'text-yellow-400' : 'text-gray-200'}`}
+                                        >
+                                            ★
+                                        </span>
+                                    )
+                                })}
+                            </div>
+                            <p className="text-2xl font-bold text-black">
+                                {(ratings.reduce((s, r) => s + r.score, 0) / ratings.length).toFixed(1)}
+                            </p>
+                            <p className="text-xs text-gray-500">Average from {ratings.length} ratings</p>
+                        </div>
+
+                        {/* Per category */}
+                        <div className="space-y-4">
+                            {['overall', 'apartment_condition', 'communication', 'rules'].map((cat) => {
+                                const catRatings = ratings.filter((r) => r.category === cat)
+                                if (catRatings.length === 0) {
+                                    return null
+                                }
+
+                                return (
+                                    <div key={cat}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-semibold text-black">
+                                                {categoryLabel(cat)}
+                                            </span>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-sm font-bold text-black">
+                                                    {(
+                                                        catRatings.reduce((s, r) => s + r.score, 0) / catRatings.length
+                                                    ).toFixed(1)}
+                                                </span>
+                                                <span className="text-yellow-500 text-sm">★</span>
+                                            </div>
+                                        </div>
+                                        {catRatings.map((rating) => (
+                                            <div key={rating.id} className="ml-2 mb-2 p-3 bg-gray-50 rounded-lg">
+                                                <div className="flex items-center gap-1 mb-1">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <span
+                                                            key={star}
+                                                            className={`text-xs ${star <= rating.score ? 'text-yellow-400' : 'text-gray-200'}`}
+                                                        >
+                                                            ★
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                {rating.comment && (
+                                                    <p className="text-xs text-gray-600 mt-1">{rating.comment}</p>
+                                                )}
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    {rating.rated_by?.name || '—'}
+                                                    {(rating as any).property?.address &&
+                                                        ` · ${(rating as any).property.address}`}
+                                                    {' · '}
+                                                    {formatDate(rating.created_at)}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
             {dialog}
         </div>
     )

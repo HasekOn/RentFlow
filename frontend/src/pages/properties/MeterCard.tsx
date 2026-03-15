@@ -39,7 +39,7 @@ export default function MeterCard({ meter, canEdit, isLandlord, onUpdate }: Prop
     const [error, setError] = useState('')
     const { confirm: showConfirm, dialog } = useConfirm()
 
-    const handleSubmitReading = async (e: React.FormEvent) => {
+    const handleSubmitReading = async (e: React.FormEvent<HTMLFormElement>) => {
         setError('')
         e.preventDefault()
 
@@ -64,7 +64,7 @@ export default function MeterCard({ meter, canEdit, isLandlord, onUpdate }: Prop
         }
     }
 
-    const handleEditMeter = async (e: React.FormEvent) => {
+    const handleEditMeter = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setIsSubmitting(true)
         setError('')

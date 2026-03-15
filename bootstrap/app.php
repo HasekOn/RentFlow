@@ -32,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->api(prepend: [
-            ThrottleRequests::class.':60,1',
+            ThrottleRequests::class.':200,1',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

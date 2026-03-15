@@ -28,7 +28,7 @@ export default function ImageUploadModal({ isOpen, onClose, propertyId, onSucces
         }
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         if (!file) return
 

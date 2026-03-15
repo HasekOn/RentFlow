@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { leasesApi } from '../../api/leases'
@@ -501,7 +502,7 @@ function EditLeaseModal({ isOpen, onClose, lease, onSuccess }: EditLeaseModalPro
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setErrors({})
         setIsLoading(true)

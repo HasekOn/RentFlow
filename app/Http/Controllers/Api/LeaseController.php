@@ -28,18 +28,24 @@ class LeaseController extends Controller
         $user = $request->user();
 
         if ($user->role === 'landlord') {
-            $query = Lease::query()->whereIn(
+            $baseQuery = $request->filled('tenant_id')
+                ? Lease::withTrashed()
+                : Lease::query();
+
+            $query = $baseQuery->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->with(['property.images', 'tenant']);
         } else {
-            $query = $user->leases()->with(['property.images', 'tenant'])->getQuery();
+            $query = Lease::withTrashed()
+                ->where('tenant_id', $user->id)
+                ->with(['property.images', 'tenant']);
         }
 
         $this->applyFilters(
             $query,
             $request,
-            filterableFields: ['status', 'property_id'],
+            filterableFields: ['status', 'property_id', 'tenant_id'],
             sortableFields: ['start_date', 'end_date', 'rent_amount', 'status', 'created_at'],
         );
 
@@ -85,7 +91,25 @@ class LeaseController extends Controller
 
         $this->authorize('update', $lease);
 
+        $oldStatus = $lease->status;
         $lease->update($request->validated());
+
+        // Auto-update property status when lease ends/terminates
+        $newStatus = $lease->status;
+        if ($oldStatus === 'active' && in_array($newStatus, ['ended', 'terminated'])) {
+            $property = $lease->property;
+            if ($property) {
+                // Check if property has any other active lease
+                $hasOtherActive = $property->leases()
+                    ->where('id', '!=', $lease->id)
+                    ->where('status', 'active')
+                    ->exists();
+
+                if (! $hasOtherActive) {
+                    $property->update(['status' => 'available']);
+                }
+            }
+        }
 
         return response()->json(new LeaseResource($lease));
     }

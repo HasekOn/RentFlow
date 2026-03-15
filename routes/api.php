@@ -20,6 +20,8 @@ use App\Http\Controllers\Api\TicketCommentController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketImageController;
 use App\Http\Resources\UserResource;
+use App\Models\Lease;
+use App\Models\Rating;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -28,7 +30,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', HealthController::class);
 
 // Public routes
-Route::middleware('throttle:120,1')->group(function () {
+Route::middleware('throttle:60,1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
@@ -38,6 +40,24 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', fn (Request $request) => new UserResource($request->user()));
+    Route::get('users/{user}/ratings', function (string $userId) {
+        $ratings = Rating::query()
+            ->whereIn('lease_id', Lease::withTrashed()->where('tenant_id', $userId)->pluck('id'))
+            ->with(['ratedBy', 'lease.property'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'category' => $r->category,
+                'score' => $r->score,
+                'comment' => $r->comment,
+                'created_at' => $r->created_at->toDateTimeString(),
+                'rated_by' => $r->ratedBy ? ['id' => $r->ratedBy->id, 'name' => $r->ratedBy->name] : null,
+                'property' => $r->lease?->property ? ['address' => $r->lease->property->address] : null,
+            ]);
+
+        return response()->json($ratings);
+    });
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'show']);

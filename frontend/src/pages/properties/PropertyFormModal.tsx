@@ -63,7 +63,7 @@ export default function PropertyFormModal({ isOpen, onClose, onSuccess, property
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setErrors({})
         setIsLoading(true)

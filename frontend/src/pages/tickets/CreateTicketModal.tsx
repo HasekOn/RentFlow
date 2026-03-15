@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { ticketsApi } from '../../api/tickets'
 import { propertiesApi } from '../../api/properties'
@@ -41,7 +42,7 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }: Props)
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setErrors({})
         setIsLoading(true)

@@ -18,7 +18,7 @@ export default function CreateNoticeModal({ isOpen, onClose, propertyId, onSucce
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         if (!title.trim() || !content.trim()) return
 

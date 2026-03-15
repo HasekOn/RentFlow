@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../api/axios'
@@ -66,7 +67,7 @@ function ProfileForm({ user, onUpdate }: ProfileFormProps) {
         setSuccess(false)
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setErrors({})
         setIsLoading(true)
@@ -155,7 +156,7 @@ function PasswordForm() {
         setSuccess(false)
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setErrors({})
         setIsLoading(true)

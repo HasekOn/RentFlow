@@ -83,7 +83,7 @@ export default function TicketDetailPage() {
         void loadTicket()
     }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleSendComment = async (e: React.FormEvent) => {
+    const handleSendComment = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         if (!newComment.trim() && !attachment) return
         setIsSending(true)
@@ -661,7 +661,7 @@ function EditTicketModal({ isOpen, onClose, ticket, isAuthor, isLandlordOrManage
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setErrors({})
         setIsLoading(true)
