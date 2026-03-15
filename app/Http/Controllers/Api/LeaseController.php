@@ -56,28 +56,27 @@ class LeaseController extends Controller
     {
         $this->authorize('create', Lease::class);
 
-        // Verify the property belongs to the logged-in landlord
         $property = Property::query()->findOrFail($request->validated('property_id'));
 
-        if ($property->status === 'renovation') {
-            return response()->json([
-                'message' => 'Cannot create lease for a property under renovation.',
-            ], 422);
-        }
-
+        // First check ownership
         if ($property->landlord_id !== $request->user()->id) {
             return response()->json([
                 'message' => 'You can only create leases for your own properties.',
             ], 403);
         }
 
+        // Then check status
+        if ($property->status === 'renovation') {
+            return response()->json([
+                'message' => 'Cannot create lease for a property under renovation.',
+            ], 422);
+        }
+
         $lease = Lease::query()->create($request->validated());
         $lease->load(['property', 'tenant']);
 
-        // Send invitation to tenant
         LeaseCreated::dispatch($lease);
 
-        // Auto-set property status to occupied
         if ($property->status === 'available') {
             $property->update(['status' => 'occupied']);
         }

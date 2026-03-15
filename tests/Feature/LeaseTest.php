@@ -229,6 +229,9 @@ class LeaseTest extends TestCase
     {
         parent::setUp();
         $this->landlord = User::factory()->landlord()->create();
-        $this->property = Property::factory()->create(['landlord_id' => $this->landlord->id]);
+        $this->property = Property::factory()->create([
+            'landlord_id' => $this->landlord->id,
+            'status' => 'available',
+        ]);
     }
 }
