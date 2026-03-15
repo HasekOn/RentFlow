@@ -73,10 +73,13 @@ export default function LeaseDetailPage() {
     }
 
     const handleStatusChange = async (newStatus: string) => {
+        const isEnd = newStatus === 'ended'
         const ok = await showConfirm({
-            title: `${newStatus === 'ended' ? 'End' : 'Terminate'} Lease`,
-            message: `Are you sure you want to mark this lease as "${newStatus}"? This action cannot be undone.`,
-            confirmLabel: newStatus === 'ended' ? 'End Lease' : 'Terminate',
+            title: isEnd ? 'End Lease' : 'Terminate Lease',
+            message: isEnd
+                ? 'End this lease? Unpaid payments will remain as outstanding debt. The property will be marked as available.'
+                : 'Terminate this lease early? Unpaid payments will remain as outstanding debt. The property will be marked as available.',
+            confirmLabel: isEnd ? 'End Lease' : 'Terminate',
             variant: 'danger',
         })
 
@@ -115,7 +118,8 @@ export default function LeaseDetailPage() {
     const handleDelete = async () => {
         const ok = await showConfirm({
             title: 'Delete Lease',
-            message: 'Are you sure you want to delete this lease? All associated payments will be affected.',
+            message:
+                'Delete this lease? It will be hidden from active views but preserved in tenant history. All payments will remain in the system. The property will be marked as available.',
             confirmLabel: 'Delete',
             variant: 'danger',
         })

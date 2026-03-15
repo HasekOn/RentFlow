@@ -345,7 +345,7 @@ export default function PaymentsPage() {
                                                     Mark Paid
                                                 </Button>
                                             )}
-                                            {isLandlord && (
+                                            {isLandlord && payment.status !== 'paid' && (
                                                 <Button
                                                     variant="secondary"
                                                     size="sm"
@@ -430,7 +430,7 @@ export default function PaymentsPage() {
                                                             Mark Paid
                                                         </Button>
                                                     )}
-                                                    {isLandlord && (
+                                                    {isLandlord && payment.status !== 'paid' && (
                                                         <Button
                                                             variant="secondary"
                                                             size="sm"

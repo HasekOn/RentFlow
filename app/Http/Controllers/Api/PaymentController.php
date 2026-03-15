@@ -109,6 +109,12 @@ class PaymentController extends Controller
 
         $this->authorize('delete', $payment);
 
+        if ($payment->status === 'paid') {
+            return response()->json([
+                'message' => 'Cannot delete a paid payment. Only unpaid or overdue payments can be deleted.',
+            ], 422);
+        }
+
         $payment->delete();
 
         return response()->json([

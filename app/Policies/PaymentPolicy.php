@@ -52,7 +52,13 @@ class PaymentPolicy
      */
     public function delete(User $user, Payment $payment): bool
     {
-        return $this->update($user, $payment);
+        if ($payment->status === 'paid') {
+            return false;
+        }
+
+        $lease = $payment->lease;
+
+        return $lease && $lease->property && $lease->property->landlord_id === $user->id;
     }
 
     /**

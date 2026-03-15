@@ -134,7 +134,22 @@ class LeaseController extends Controller
 
         $this->authorize('delete', $lease);
 
+        $property = $lease->property;
+
+        // Soft delete the lease (payments remain for history)
         $lease->delete();
+
+        // Auto-update property status
+        if ($property && $property->status === 'occupied') {
+            $hasOtherActive = $property->leases()
+                ->where('id', '!=', $lease->id)
+                ->where('status', 'active')
+                ->exists();
+
+            if (! $hasOtherActive) {
+                $property->update(['status' => 'available']);
+            }
+        }
 
         return response()->json([
             'message' => 'Lease deleted successfully.',
