@@ -31,13 +31,15 @@ class PaymentController extends Controller
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->pluck('id');
+
             $query = Payment::query()->whereIn('lease_id', $leaseIds)
-                ->with('lease.tenant');
+                ->with(['lease.tenant', 'lease.property']);
         } else {
+            // Both manager and tenant: see only own payments
             $query = Payment::query()->whereIn(
                 'lease_id',
                 $user->leases()->pluck('id')
-            )->with('lease.property');
+            )->with(['lease.tenant', 'lease.property']);
         }
 
         $this->applyFilters(
@@ -56,7 +58,6 @@ class PaymentController extends Controller
 
         $validated = $request->validated();
 
-        // Auto-set status
         if (! isset($validated['status'])) {
             $validated['status'] = ! empty($validated['paid_date']) ? 'paid' : 'unpaid';
         }
@@ -68,8 +69,7 @@ class PaymentController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $payment = Payment::query()->with('lease.tenant', 'lease.property')->findOrFail($id);
-
+        $payment = Payment::query()->with(['lease.tenant', 'lease.property'])->findOrFail($id);
         $this->authorize('view', $payment);
 
         return response()->json(new PaymentResource($payment));
@@ -78,7 +78,6 @@ class PaymentController extends Controller
     public function markPaid(string $id): JsonResponse
     {
         $payment = Payment::query()->findOrFail($id);
-
         $this->authorize('update', $payment);
 
         $payment->update([
@@ -86,7 +85,6 @@ class PaymentController extends Controller
             'status' => 'paid',
         ]);
 
-        // Recalculate tenant's trust score
         PaymentMarkedPaid::dispatch($payment);
 
         return response()->json(new PaymentResource($payment));
@@ -95,9 +93,7 @@ class PaymentController extends Controller
     public function update(UpdatePaymentRequest $request, string $id): JsonResponse
     {
         $payment = Payment::query()->findOrFail($id);
-
         $this->authorize('update', $payment);
-
         $payment->update($request->validated());
 
         return response()->json(new PaymentResource($payment));
@@ -106,7 +102,6 @@ class PaymentController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $payment = Payment::query()->findOrFail($id);
-
         $this->authorize('delete', $payment);
 
         if ($payment->status === 'paid') {
@@ -117,15 +112,9 @@ class PaymentController extends Controller
 
         $payment->delete();
 
-        return response()->json([
-            'message' => 'Payment deleted successfully.',
-        ]);
+        return response()->json(['message' => 'Payment deleted successfully.']);
     }
 
-    /**
-     * Import payments from bank CSV
-     * POST /api/payments/import-csv
-     */
     public function importCsv(Request $request): JsonResponse
     {
         $this->authorize('create', Payment::class);

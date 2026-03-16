@@ -36,14 +36,8 @@ class LeaseController extends Controller
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->with(['property.images', 'tenant']);
-        } elseif ($user->role === 'manager') {
-            // Manager sees leases for assigned properties
-            $assignedPropertyIds = $user->managedProperties()->pluck('properties.id');
-            $query = Lease::query()
-                ->whereIn('property_id', $assignedPropertyIds)
-                ->with(['property.images', 'tenant']);
         } else {
-            // Tenant sees own leases (including soft-deleted for history)
+            // Both manager and tenant: see only own leases (as tenant)
             $query = Lease::withTrashed()
                 ->where('tenant_id', $user->id)
                 ->with(['property.images', 'tenant']);
@@ -65,21 +59,14 @@ class LeaseController extends Controller
 
         $property = Property::query()->findOrFail($request->validated('property_id'));
 
-        // First check ownership
         if ($property->landlord_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only create leases for your own properties.',
-            ], 403);
+            return response()->json(['message' => 'You can only create leases for your own properties.'], 403);
         }
 
-        // Then check status
         if ($property->status === 'renovation') {
-            return response()->json([
-                'message' => 'Cannot create lease for a property under renovation.',
-            ], 422);
+            return response()->json(['message' => 'Cannot create lease for a property under renovation.'], 422);
         }
 
-        // Check for duplicate active lease (same property + same tenant)
         $existingActive = Lease::query()
             ->where('property_id', $request->validated('property_id'))
             ->where('tenant_id', $request->validated('tenant_id'))
@@ -87,9 +74,7 @@ class LeaseController extends Controller
             ->exists();
 
         if ($existingActive) {
-            return response()->json([
-                'message' => 'An active lease already exists for this tenant on this property.',
-            ], 422);
+            return response()->json(['message' => 'An active lease already exists for this tenant on this property.'], 422);
         }
 
         $lease = Lease::query()->create($request->validated());
@@ -107,23 +92,19 @@ class LeaseController extends Controller
     public function update(UpdateLeaseRequest $request, string $id): JsonResponse
     {
         $lease = Lease::query()->findOrFail($id);
-
         $this->authorize('update', $lease);
 
         $oldStatus = $lease->status;
         $lease->update($request->validated());
 
-        // Auto-update property status when lease ends/terminates
         $newStatus = $lease->status;
         if ($oldStatus === 'active' && in_array($newStatus, ['ended', 'terminated'])) {
             $property = $lease->property;
             if ($property) {
-                // Check if property has any other active lease
                 $hasOtherActive = $property->leases()
                     ->where('id', '!=', $lease->id)
                     ->where('status', 'active')
                     ->exists();
-
                 if (! $hasOtherActive) {
                     $property->update(['status' => 'available']);
                 }
@@ -135,15 +116,7 @@ class LeaseController extends Controller
 
     public function show(Request $request, string $id): JsonResponse
     {
-        // Use withTrashed so tenants can view soft-deleted leases
-        // (index shows them withTrashed, so detail must too)
-        $lease = Lease::withTrashed()->with([
-            'property',
-            'tenant',
-            'payments',
-            'ratings',
-        ])->findOrFail($id);
-
+        $lease = Lease::withTrashed()->with(['property', 'tenant', 'payments', 'ratings'])->findOrFail($id);
         $this->authorize('view', $lease);
 
         return response()->json(new LeaseResource($lease));
@@ -152,35 +125,24 @@ class LeaseController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $lease = Lease::query()->findOrFail($id);
-
         $this->authorize('delete', $lease);
 
         $property = $lease->property;
-
-        // Soft delete the lease (payments remain for history)
         $lease->delete();
 
-        // Auto-update property status
         if ($property && $property->status === 'occupied') {
             $hasOtherActive = $property->leases()
                 ->where('id', '!=', $lease->id)
                 ->where('status', 'active')
                 ->exists();
-
             if (! $hasOtherActive) {
                 $property->update(['status' => 'available']);
             }
         }
 
-        return response()->json([
-            'message' => 'Lease deleted successfully.',
-        ]);
+        return response()->json(['message' => 'Lease deleted successfully.']);
     }
 
-    /**
-     * Generate PDF contract for a lease
-     * GET /api/leases/{id}/generate-pdf
-     */
     public function generatePdf(Request $request, string $id)
     {
         $lease = Lease::withTrashed()->with(['property', 'tenant'])->findOrFail($id);
@@ -190,23 +152,13 @@ class LeaseController extends Controller
         $tenant = $lease->tenant;
         $landlord = $property->landlord;
 
-        $pdf = Pdf::loadView('pdf.lease-contract', compact(
-            'lease',
-            'property',
-            'tenant',
-            'landlord'
-        ));
-
+        $pdf = Pdf::loadView('pdf.lease-contract', compact('lease', 'property', 'tenant', 'landlord'));
         $pdf->setPaper('A4');
 
         $filename = 'contract_lease_'.$lease->id.'.pdf';
         $path = 'contracts/'.$filename;
 
-        Storage::disk('public')->put(
-            $path,
-            $pdf->output()
-        );
-
+        Storage::disk('public')->put($path, $pdf->output());
         $lease->update(['contract_path' => $path]);
 
         return $pdf->download($filename);

@@ -7,19 +7,11 @@ use App\Models\User;
 
 class LeasePolicy
 {
-    /**
-     * Can user see list of leases?
-     * Everyone logged in — controller filters the data
-     */
     public function viewAny(User $user): bool
     {
         return true;
     }
 
-    /**
-     * Can user see this lease?
-     * Landlord who owns the property OR the tenant on this lease
-     */
     public function view(User $user, Lease $lease): bool
     {
         // Landlord owns the property
@@ -27,32 +19,31 @@ class LeasePolicy
             return true;
         }
 
-        // Tenant on this lease
-        return $lease->tenant_id === $user->id;
+        // Tenant on this lease (works for both tenant and manager roles)
+        if ($lease->tenant_id === $user->id) {
+            return true;
+        }
+
+        // Manager manages this property — can view lease details (read-only)
+        if ($user->role === 'manager' && $lease->property) {
+            return $user->managedProperties()
+                ->where('properties.id', $lease->property_id)
+                ->exists();
+        }
+
+        return false;
     }
 
-    /**
-     * Can user create leases?
-     * Only landlords
-     */
     public function create(User $user): bool
     {
         return $user->role === 'landlord';
     }
 
-    /**
-     * Can user update this lease?
-     * Only landlord who owns the property
-     */
     public function update(User $user, Lease $lease): bool
     {
         return $lease->property && $lease->property->landlord_id === $user->id;
     }
 
-    /**
-     * Can user delete this lease?
-     * Only landlord who owns the property
-     */
     public function delete(User $user, Lease $lease): bool
     {
         return $lease->property && $lease->property->landlord_id === $user->id;

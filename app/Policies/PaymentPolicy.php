@@ -7,19 +7,11 @@ use App\Models\User;
 
 class PaymentPolicy
 {
-    /**
-     * Can user see list of payments?
-     * Landlords and tenants — controller filters data
-     */
     public function viewAny(User $user): bool
     {
         return true;
     }
 
-    /**
-     * Can user see this payment?
-     * Landlord who owns the property OR tenant on this lease
-     */
     public function view(User $user, Payment $payment): bool
     {
         $lease = $payment->lease;
@@ -33,40 +25,39 @@ class PaymentPolicy
             return true;
         }
 
-        // Tenant on this lease
-        return $lease->tenant_id === $user->id;
+        // Tenant on this lease (works for both tenant and manager roles)
+        if ($lease->tenant_id === $user->id) {
+            return true;
+        }
+
+        // Manager manages this property — can view payments (read-only)
+        if ($user->role === 'manager') {
+            return $user->managedProperties()
+                ->where('properties.id', $lease->property_id)
+                ->exists();
+        }
+
+        return false;
     }
 
-    /**
-     * Can user create payments?
-     * Only landlords
-     */
     public function create(User $user): bool
     {
         return $user->role === 'landlord';
     }
 
-    /**
-     * Can user delete this payment?
-     * Only landlord who owns the property
-     */
+    public function update(User $user, Payment $payment): bool
+    {
+        $lease = $payment->lease;
+
+        return $lease && $lease->property && $lease->property->landlord_id === $user->id;
+    }
+
     public function delete(User $user, Payment $payment): bool
     {
         if ($payment->status === 'paid') {
             return false;
         }
 
-        $lease = $payment->lease;
-
-        return $lease && $lease->property && $lease->property->landlord_id === $user->id;
-    }
-
-    /**
-     * Can user update this payment? (including mark-paid)
-     * Only landlord who owns the property
-     */
-    public function update(User $user, Payment $payment): bool
-    {
         $lease = $payment->lease;
 
         return $lease && $lease->property && $lease->property->landlord_id === $user->id;

@@ -664,52 +664,122 @@ export default function PropertyDetailPage() {
                                     </div>
                                 </div>
                             )}
-                            {isManager && (
-                                <div className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500">Status</span>
-                                        <Badge variant={statusVariant(property.status)}>{property.status}</Badge>
-                                    </div>
-                                    {activeLease?.tenant && (
-                                        <div className="flex justify-between">
-                                            <span className="text-sm text-gray-500">Current Tenant</span>
-                                            <span className="text-sm font-semibold">{activeLease.tenant.name}</span>
+                            {isManager &&
+                                (() => {
+                                    // Per-property context: am I tenant HERE or manager HERE?
+                                    const isTenantHere = !!activeLease && activeLease.tenant?.id === user?.id
+
+                                    if (isTenantHere) {
+                                        // Show tenant view for property where manager lives
+                                        return (
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Lease Status</span>
+                                                    <Badge variant="green">Active</Badge>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Monthly Rent</span>
+                                                    <span className="text-sm font-semibold">
+                                                        {formatCurrency(activeLease.rent_amount)}
+                                                    </span>
+                                                </div>
+                                                {activeLease.utility_advances && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm text-gray-500">Utility Advances</span>
+                                                        <span className="text-sm font-semibold">
+                                                            {formatCurrency(activeLease.utility_advances)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Total Monthly</span>
+                                                    <span className="text-sm font-bold text-black">
+                                                        {formatCurrency(
+                                                            Number(activeLease.rent_amount) +
+                                                                Number(activeLease.utility_advances || 0),
+                                                        )}
+                                                    </span>
+                                                </div>
+                                                {activeLease.deposit_amount && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm text-gray-500">Deposit</span>
+                                                        <span className="text-sm font-semibold">
+                                                            {formatCurrency(activeLease.deposit_amount)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Lease Start</span>
+                                                    <span className="text-sm font-semibold">
+                                                        {formatDate(activeLease.start_date)}
+                                                    </span>
+                                                </div>
+                                                {daysUntilExpiry !== null && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm text-gray-500">Lease Ends</span>
+                                                        <span
+                                                            className={`text-sm font-semibold ${daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-gray-900'}`}
+                                                        >
+                                                            {formatDate(activeLease.end_date)} ({daysUntilExpiry} days)
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {activeLease.variable_symbol && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm text-gray-500">Variable Symbol</span>
+                                                        <span className="text-sm font-semibold font-mono">
+                                                            {activeLease.variable_symbol}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Meters</span>
+                                                    <span className="text-sm font-semibold">
+                                                        {property.meters?.length || 0}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+
+                                    // Simplified manager view for managed properties
+                                    return (
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500">Status</span>
+                                                <Badge variant={statusVariant(property.status)}>
+                                                    {property.status}
+                                                </Badge>
+                                            </div>
+                                            {activeLease?.tenant && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Current Tenant</span>
+                                                    <span className="text-sm font-semibold">
+                                                        {activeLease.tenant.name}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500">Open Tickets</span>
+                                                <span
+                                                    className={`text-sm font-semibold ${openTicketCount > 0 ? 'text-red-500' : ''}`}
+                                                >
+                                                    {openTicketCount}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500">Meters</span>
+                                                <span className="text-sm font-semibold">
+                                                    {property.meters?.length || 0}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500">Photos</span>
+                                                <span className="text-sm font-semibold">{images.length}</span>
+                                            </div>
                                         </div>
-                                    )}
-                                    {activeLease && (
-                                        <div className="flex justify-between">
-                                            <span className="text-sm text-gray-500">Lease Status</span>
-                                            <Badge variant="green">Active</Badge>
-                                        </div>
-                                    )}
-                                    {daysUntilExpiry !== null && (
-                                        <div className="flex justify-between">
-                                            <span className="text-sm text-gray-500">Lease Expires</span>
-                                            <span
-                                                className={`text-sm font-semibold ${daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-gray-900'}`}
-                                            >
-                                                {daysUntilExpiry <= 0 ? 'Expired' : `${daysUntilExpiry} days`}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500">Open Tickets</span>
-                                        <span
-                                            className={`text-sm font-semibold ${openTicketCount > 0 ? 'text-red-500' : ''}`}
-                                        >
-                                            {openTicketCount}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500">Meters</span>
-                                        <span className="text-sm font-semibold">{property.meters?.length || 0}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500">Photos</span>
-                                        <span className="text-sm font-semibold">{images.length}</span>
-                                    </div>
-                                </div>
-                            )}
+                                    )
+                                })()}
                         </div>
                         {isLandlord && <ManagerAssignment propertyId={propertyId} />}
                     </div>
