@@ -1,4 +1,4 @@
-name: RentFlow Tests
+name: RentFlow CI
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  tests:
-    name: PHP Tests
+  backend:
+    name: Backend (PHP Tests + Pint)
     runs-on: ubuntu-latest
 
     services:
@@ -52,6 +52,9 @@ jobs:
       - name: Generate application key
         run: php artisan key:generate
 
+      - name: Run Pint (code style)
+        run: ./vendor/bin/pint --test
+
       - name: Run migrations
         env:
           DB_CONNECTION: mariadb
@@ -72,5 +75,33 @@ jobs:
           DB_PASSWORD: password
         run: php artisan test
 
-      - name: Run Pint (code style check)
-        run: ./vendor/bin/pint --test
+  frontend:
+    name: Frontend (TypeScript + Prettier + Build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Prettier check
+        working-directory: frontend
+        run: npx prettier --check "src/**/*.{ts,tsx}"
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
