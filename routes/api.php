@@ -40,9 +40,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', fn (Request $request) => new UserResource($request->user()));
-    Route::get('users/{user}/ratings', function (string $userId) {
+
+    // Ratings by user — parameter name must match route placeholder {user}
+    Route::get('users/{user}/ratings', function (string $user) {
         $ratings = Rating::query()
-            ->whereIn('lease_id', Lease::withTrashed()->where('tenant_id', $userId)->pluck('id'))
+            ->whereIn('lease_id', Lease::withTrashed()->where('tenant_id', $user)->pluck('id'))
             ->with(['ratedBy', 'lease.property'])
             ->orderBy('created_at', 'desc')
             ->get()

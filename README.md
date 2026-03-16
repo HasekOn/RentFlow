@@ -3,7 +3,7 @@
 **RentFlow** je webová aplikace pro správu pronájmu nemovitostí. Umožňuje pronajímatelům, správcům a nájemníkům
 efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — vše z jednoho místa.
 
-> **Bakalářská práce** — Ondřej, 2025/2026
+> **Bakalářská práce** — 2025/2026
 
 ---
 

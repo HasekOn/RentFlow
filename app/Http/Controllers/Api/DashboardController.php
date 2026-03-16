@@ -29,11 +29,22 @@ class DashboardController extends Controller
 
         $leaseIds = Lease::query()->whereIn('property_id', $propertyIds)->pluck('id');
 
-        // Property stats
-        $totalProperties = $user->ownedProperties()->count();
-        $occupiedProperties = $user->ownedProperties()->where('status', 'occupied')->count();
-        $availableProperties = $user->ownedProperties()->where('status', 'available')->count();
-        $renovationProperties = $user->ownedProperties()->where('status', 'renovation')->count();
+        // Property stats — use propertyIds for manager compatibility
+        $totalProperties = $user->role === 'landlord'
+            ? $user->ownedProperties()->count()
+            : $user->managedProperties()->count();
+
+        $occupiedProperties = $user->role === 'landlord'
+            ? $user->ownedProperties()->where('status', 'occupied')->count()
+            : $user->managedProperties()->where('properties.status', 'occupied')->count();
+
+        $availableProperties = $user->role === 'landlord'
+            ? $user->ownedProperties()->where('status', 'available')->count()
+            : $user->managedProperties()->where('properties.status', 'available')->count();
+
+        $renovationProperties = $user->role === 'landlord'
+            ? $user->ownedProperties()->where('status', 'renovation')->count()
+            : $user->managedProperties()->where('properties.status', 'renovation')->count();
 
         // Financial stats — current month
         $monthStart = now()->startOfMonth()->toDateString();
@@ -48,10 +59,9 @@ class DashboardController extends Controller
             ->whereBetween('expense_date', [$monthStart, $monthEnd])
             ->sum('amount');
 
-        // Overdue payments
+        // Overdue payments — only those already marked overdue by scheduler
         $overduePayments = Payment::query()->whereIn('lease_id', $leaseIds)
-            ->where('status', 'unpaid')
-            ->where('due_date', '<', now()->toDateString())
+            ->where('status', 'overdue')
             ->count();
 
         // Active leases

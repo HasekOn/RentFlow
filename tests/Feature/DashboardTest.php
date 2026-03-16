@@ -66,13 +66,17 @@ class DashboardTest extends TestCase
 
     public function test_stats_counts_overdue_payments(): void
     {
-        Payment::factory()->unpaid()->create([
+        Payment::factory()->create([
             'lease_id' => $this->lease->id,
             'due_date' => now()->subDays(10),
+            'status' => 'overdue',
+            'paid_date' => null,
         ]);
-        Payment::factory()->unpaid()->create([
+        Payment::factory()->create([
             'lease_id' => $this->lease->id,
             'due_date' => now()->subDays(5),
+            'status' => 'overdue',
+            'paid_date' => null,
         ]);
         Payment::factory()->paid()->create([
             'lease_id' => $this->lease->id,
@@ -81,7 +85,7 @@ class DashboardTest extends TestCase
 
         $response = $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/stats'));
 
-        // 2 unpaid + past due, 1 paid = 2 overdue
+        // 2 overdue + 1 paid = 2 overdue shown on dashboard
         $response->assertJsonPath('finance.overdue_payments', 2);
     }
 

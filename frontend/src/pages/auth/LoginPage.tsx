@@ -1,16 +1,16 @@
 import * as React from 'react'
-import {useState} from 'react'
-import {Link, useNavigate} from 'react-router-dom'
-import {useAuth} from '../../contexts/AuthContext'
-import type {ApiError} from '../../types'
-import {AxiosError} from 'axios'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import type { ApiError } from '../../types'
+import { AxiosError } from 'axios'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const {login} = useAuth()
+    const { login } = useAuth()
     const navigate = useNavigate()
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

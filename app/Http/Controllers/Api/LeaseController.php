@@ -36,7 +36,14 @@ class LeaseController extends Controller
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->with(['property.images', 'tenant']);
+        } elseif ($user->role === 'manager') {
+            // Manager sees leases for assigned properties
+            $assignedPropertyIds = $user->managedProperties()->pluck('properties.id');
+            $query = Lease::query()
+                ->whereIn('property_id', $assignedPropertyIds)
+                ->with(['property.images', 'tenant']);
         } else {
+            // Tenant sees own leases (including soft-deleted for history)
             $query = Lease::withTrashed()
                 ->where('tenant_id', $user->id)
                 ->with(['property.images', 'tenant']);
@@ -69,6 +76,19 @@ class LeaseController extends Controller
         if ($property->status === 'renovation') {
             return response()->json([
                 'message' => 'Cannot create lease for a property under renovation.',
+            ], 422);
+        }
+
+        // Check for duplicate active lease (same property + same tenant)
+        $existingActive = Lease::query()
+            ->where('property_id', $request->validated('property_id'))
+            ->where('tenant_id', $request->validated('tenant_id'))
+            ->where('status', 'active')
+            ->exists();
+
+        if ($existingActive) {
+            return response()->json([
+                'message' => 'An active lease already exists for this tenant on this property.',
             ], 422);
         }
 
@@ -115,7 +135,9 @@ class LeaseController extends Controller
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $lease = Lease::query()->with([
+        // Use withTrashed so tenants can view soft-deleted leases
+        // (index shows them withTrashed, so detail must too)
+        $lease = Lease::withTrashed()->with([
             'property',
             'tenant',
             'payments',
@@ -161,7 +183,7 @@ class LeaseController extends Controller
      */
     public function generatePdf(Request $request, string $id)
     {
-        $lease = Lease::with(['property', 'tenant'])->findOrFail($id);
+        $lease = Lease::withTrashed()->with(['property', 'tenant'])->findOrFail($id);
         $this->authorize('view', $lease);
 
         $property = $lease->property;

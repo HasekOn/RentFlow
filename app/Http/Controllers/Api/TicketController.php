@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
+use App\Models\Lease;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Traits\Filterable;
@@ -40,9 +41,18 @@ class TicketController extends Controller
                 })
                 ->with(['property', 'tenant', 'assignedUser']);
         } else {
-            $query = $user->tickets()
-                ->with('property')
-                ->getQuery();
+            // Tenant: sees own tickets + all tickets on properties where they have an active lease
+            $tenantPropertyIds = Lease::query()
+                ->where('tenant_id', $user->id)
+                ->where('status', 'active')
+                ->pluck('property_id');
+
+            $query = Ticket::query()
+                ->where(function ($q) use ($user, $tenantPropertyIds) {
+                    $q->where('tenant_id', $user->id)
+                        ->orWhereIn('property_id', $tenantPropertyIds);
+                })
+                ->with(['property', 'tenant', 'assignedUser']);
         }
 
         $this->applyFilters(

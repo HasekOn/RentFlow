@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Lease;
 use App\Models\Ticket;
 use App\Models\User;
 
@@ -14,10 +15,12 @@ class TicketPolicy
 
     public function view(User $user, Ticket $ticket): bool
     {
+        // Landlord owns the property
         if ($ticket->property && $ticket->property->landlord_id === $user->id) {
             return true;
         }
 
+        // Manager assigned or manages property
         if ($user->role === 'manager') {
             if ($ticket->assigned_to === $user->id) {
                 return true;
@@ -30,7 +33,21 @@ class TicketPolicy
             }
         }
 
-        return $ticket->tenant_id === $user->id;
+        // Tenant created this ticket
+        if ($ticket->tenant_id === $user->id) {
+            return true;
+        }
+
+        // Tenant has active lease on this property — can see all tickets for their unit
+        if ($user->role === 'tenant' && $ticket->property_id) {
+            return Lease::query()
+                ->where('tenant_id', $user->id)
+                ->where('property_id', $ticket->property_id)
+                ->where('status', 'active')
+                ->exists();
+        }
+
+        return false;
     }
 
     public function create(User $user): bool

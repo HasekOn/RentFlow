@@ -33,37 +33,75 @@ const formatTimeAgo = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString()
 }
 
+const getNotificationIcon = (type: string): string => {
+    switch (type) {
+        case 'lease_created':
+        case 'tenant_invitation':
+            return '📋'
+        case 'lease_expiring':
+            return '⏰'
+        case 'ticket_created':
+            return '🎫'
+        case 'ticket_resolved':
+            return '✅'
+        case 'payment_marked_paid':
+            return '💚'
+        case 'payment_overdue':
+            return '🔴'
+        default:
+            return '🔔'
+    }
+}
+
 const getNotificationText = (notification: Notification): { title: string; body: string; link?: string } => {
     const data = notification.data
     switch (notification.type) {
         case 'lease_created':
             return {
-                title: 'New Lease',
-                body: `A new lease has been created for ${(data.property_address as string) || 'a property'}.`,
+                title: 'Nová smlouva',
+                body: `Byla vytvořena nová smlouva pro ${(data.property_address as string) || 'nemovitost'}.`,
+                link: data.lease_id ? `/leases/${data.lease_id}` : '/leases',
+            }
+        case 'tenant_invitation':
+            return {
+                title: 'Pozvánka k nájmu',
+                body: `Byli jste pozváni jako nájemník v ${(data.property_address as string) || 'nemovitosti'}.`,
+                link: data.lease_id ? `/leases/${data.lease_id}` : '/leases',
+            }
+        case 'lease_expiring':
+            return {
+                title: 'Smlouva brzy končí',
+                body: `Smlouva pro ${(data.property_address as string) || 'nemovitost'} končí za ${(data.days_left as number) || '?'} dní (${(data.end_date as string) || ''}).`,
                 link: data.lease_id ? `/leases/${data.lease_id}` : '/leases',
             }
         case 'ticket_created':
             return {
-                title: 'New Ticket',
-                body: `${(data.tenant_name as string) || 'A tenant'} reported: ${(data.ticket_title as string) || 'an issue'}.`,
+                title: 'Nový ticket',
+                body: `${(data.tenant_name as string) || 'Nájemník'} nahlásil: ${(data.ticket_title as string) || 'závadu'}.`,
                 link: data.ticket_id ? `/tickets/${data.ticket_id}` : '/tickets',
             }
         case 'ticket_resolved':
             return {
-                title: 'Ticket Resolved',
-                body: `Ticket "${(data.ticket_title as string) || ''}" has been resolved.`,
+                title: 'Ticket vyřešen',
+                body: `Ticket "${(data.ticket_title as string) || ''}" byl vyřešen.`,
                 link: data.ticket_id ? `/tickets/${data.ticket_id}` : '/tickets',
             }
         case 'payment_marked_paid':
             return {
-                title: 'Payment Received',
-                body: `Payment of ${(data.amount as string) || ''} has been marked as paid.`,
+                title: 'Platba přijata',
+                body: `Platba ${(data.amount as string) || ''} byla označena jako zaplacená.`,
+                link: '/payments',
+            }
+        case 'payment_overdue':
+            return {
+                title: 'Platba po splatnosti',
+                body: `Platba pro ${(data.property_address as string) || 'nemovitost'} je ${(data.days_overdue as number) || '?'} dní po splatnosti (${(data.amount as string) || ''} Kč).`,
                 link: '/payments',
             }
         default:
             return {
-                title: 'Notification',
-                body: (data.message as string) || 'You have a new notification.',
+                title: 'Oznámení',
+                body: (data.message as string) || 'Máte nové oznámení.',
             }
     }
 }
@@ -179,13 +217,13 @@ export default function Sidebar({ isOpen, onClose }: Props) {
                             {showNotifications && (
                                 <div className="absolute left-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                                     <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                                        <h3 className="text-sm font-bold text-black">Notifications</h3>
+                                        <h3 className="text-sm font-bold text-black">Oznámení</h3>
                                         {unreadCount > 0 && (
                                             <button
                                                 onClick={handleMarkAllRead}
                                                 className="text-xs text-gray-500 hover:text-black transition cursor-pointer"
                                             >
-                                                Mark all read
+                                                Označit vše jako přečtené
                                             </button>
                                         )}
                                     </div>
@@ -193,11 +231,12 @@ export default function Sidebar({ isOpen, onClose }: Props) {
                                         {notifications.length === 0 ? (
                                             <div className="p-6 text-center">
                                                 <span className="text-2xl">🔕</span>
-                                                <p className="text-sm text-gray-400 mt-2">No notifications yet</p>
+                                                <p className="text-sm text-gray-400 mt-2">Zatím žádná oznámení</p>
                                             </div>
                                         ) : (
                                             notifications.map((notification) => {
                                                 const { title, body } = getNotificationText(notification)
+                                                const icon = getNotificationIcon(notification.type)
                                                 return (
                                                     <div
                                                         key={notification.id}
@@ -207,13 +246,16 @@ export default function Sidebar({ isOpen, onClose }: Props) {
                                                         }`}
                                                     >
                                                         <div className="flex items-start gap-2">
-                                                            {!notification.read && (
-                                                                <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 shrink-0" />
-                                                            )}
+                                                            <span className="text-base mt-0.5 shrink-0">{icon}</span>
                                                             <div className="flex-1 min-w-0">
-                                                                <p className="text-sm font-semibold text-black">
-                                                                    {title}
-                                                                </p>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <p className="text-sm font-semibold text-black">
+                                                                        {title}
+                                                                    </p>
+                                                                    {!notification.read && (
+                                                                        <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />
+                                                                    )}
+                                                                </div>
                                                                 <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
                                                                     {body}
                                                                 </p>

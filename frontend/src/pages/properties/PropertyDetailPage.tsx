@@ -74,7 +74,7 @@ type Tab = 'overview' | 'management'
 export default function PropertyDetailPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const { isLandlord, isManager, user } = useAuth()
+    const { isLandlord, isManager, isTenant, user } = useAuth()
     const [property, setProperty] = useState<Property | null>(null)
     const [meters, setMeters] = useState<Meter[]>([])
     const [expenses, setExpenses] = useState<Expense[]>([])
@@ -232,6 +232,14 @@ export default function PropertyDetailPage() {
 
     const activeLease = property.leases?.find((l) => l.status === 'active')
     const images = property.images || []
+
+    // Compute days until lease expiration
+    const daysUntilExpiry = activeLease?.end_date
+        ? Math.ceil((new Date(activeLease.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        : null
+
+    // Count open tickets from loaded data (management tab) or from property tickets
+    const openTicketCount = tickets.filter((t) => t.status === 'new' || t.status === 'in_progress').length
 
     return (
         <div>
@@ -476,12 +484,15 @@ export default function PropertyDetailPage() {
                                         {property.size ? `${property.size} m²` : '—'}
                                     </p>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-400">Purchase Price</p>
-                                    <p className="text-sm text-gray-700">
-                                        {property.purchase_price ? formatCurrency(property.purchase_price) : '—'}
-                                    </p>
-                                </div>
+                                {/* Purchase price — landlord only */}
+                                {isLandlord && (
+                                    <div>
+                                        <p className="text-xs text-gray-400">Purchase Price</p>
+                                        <p className="text-sm text-gray-700">
+                                            {property.purchase_price ? formatCurrency(property.purchase_price) : '—'}
+                                        </p>
+                                    </div>
+                                )}
                                 <div>
                                     <p className="text-xs text-gray-400">Status</p>
                                     <p className="text-sm text-gray-700 capitalize">{property.status}</p>
@@ -506,24 +517,199 @@ export default function PropertyDetailPage() {
                         )}
                     </div>
 
-                    {/* Sidebar */}
+                    {/* ══════════ SIDEBAR — ROLE-SPECIFIC QUICK INFO ══════════ */}
                     <div className="space-y-6">
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Quick Info</h2>
-                            <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-gray-500">Leases</span>
-                                    <span className="text-sm font-semibold">{property.leases?.length || 0}</span>
+
+                            {/* ─── LANDLORD Quick Info ─── */}
+                            {isLandlord && (
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Status</span>
+                                        <Badge variant={statusVariant(property.status)}>{property.status}</Badge>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Active Rent</span>
+                                        <span className="text-sm font-semibold">
+                                            {activeLease ? formatCurrency(activeLease.rent_amount) : '—'}
+                                        </span>
+                                    </div>
+                                    {activeLease?.utility_advances && (
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500">Utility Advances</span>
+                                            <span className="text-sm font-semibold">
+                                                {formatCurrency(activeLease.utility_advances)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Total Leases</span>
+                                        <span className="text-sm font-semibold">{property.leases?.length || 0}</span>
+                                    </div>
+                                    {daysUntilExpiry !== null && (
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500">Lease Expires</span>
+                                            <span
+                                                className={`text-sm font-semibold ${
+                                                    daysUntilExpiry <= 0
+                                                        ? 'text-red-500'
+                                                        : daysUntilExpiry <= 30
+                                                          ? 'text-yellow-600'
+                                                          : 'text-gray-900'
+                                                }`}
+                                            >
+                                                {daysUntilExpiry <= 0 ? 'Expired' : `${daysUntilExpiry} days`}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Meters</span>
+                                        <span className="text-sm font-semibold">{property.meters?.length || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Photos</span>
+                                        <span className="text-sm font-semibold">{images.length}</span>
+                                    </div>
+                                    {property.purchase_price && (
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500">Purchase Price</span>
+                                            <span className="text-sm font-semibold">
+                                                {formatCurrency(property.purchase_price)}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-gray-500">Meters</span>
-                                    <span className="text-sm font-semibold">{property.meters?.length || 0}</span>
+                            )}
+
+                            {/* ─── TENANT Quick Info ─── */}
+                            {isTenant && (
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Lease Status</span>
+                                        {activeLease ? (
+                                            <Badge variant="green">Active</Badge>
+                                        ) : (
+                                            <Badge variant="gray">No lease</Badge>
+                                        )}
+                                    </div>
+                                    {activeLease && (
+                                        <>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500">Monthly Rent</span>
+                                                <span className="text-sm font-semibold">
+                                                    {formatCurrency(activeLease.rent_amount)}
+                                                </span>
+                                            </div>
+                                            {activeLease.utility_advances && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Utility Advances</span>
+                                                    <span className="text-sm font-semibold">
+                                                        {formatCurrency(activeLease.utility_advances)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500">Total Monthly</span>
+                                                <span className="text-sm font-bold text-black">
+                                                    {formatCurrency(
+                                                        Number(activeLease.rent_amount) +
+                                                            Number(activeLease.utility_advances || 0),
+                                                    )}
+                                                </span>
+                                            </div>
+                                            {activeLease.deposit_amount && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Deposit</span>
+                                                    <span className="text-sm font-semibold">
+                                                        {formatCurrency(activeLease.deposit_amount)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between">
+                                                <span className="text-sm text-gray-500">Lease Start</span>
+                                                <span className="text-sm font-semibold">
+                                                    {formatDate(activeLease.start_date)}
+                                                </span>
+                                            </div>
+                                            {daysUntilExpiry !== null && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Lease Ends</span>
+                                                    <span
+                                                        className={`text-sm font-semibold ${
+                                                            daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-gray-900'
+                                                        }`}
+                                                    >
+                                                        {formatDate(activeLease.end_date)} ({daysUntilExpiry} days)
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {activeLease.variable_symbol && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-gray-500">Variable Symbol</span>
+                                                    <span className="text-sm font-semibold font-mono">
+                                                        {activeLease.variable_symbol}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Meters</span>
+                                        <span className="text-sm font-semibold">{property.meters?.length || 0}</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-gray-500">Images</span>
-                                    <span className="text-sm font-semibold">{images.length}</span>
+                            )}
+
+                            {/* ─── MANAGER Quick Info ─── */}
+                            {isManager && (
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Status</span>
+                                        <Badge variant={statusVariant(property.status)}>{property.status}</Badge>
+                                    </div>
+                                    {activeLease?.tenant && (
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500">Current Tenant</span>
+                                            <span className="text-sm font-semibold">{activeLease.tenant.name}</span>
+                                        </div>
+                                    )}
+                                    {activeLease && (
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500">Lease Status</span>
+                                            <Badge variant="green">Active</Badge>
+                                        </div>
+                                    )}
+                                    {daysUntilExpiry !== null && (
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500">Lease Expires</span>
+                                            <span
+                                                className={`text-sm font-semibold ${
+                                                    daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-gray-900'
+                                                }`}
+                                            >
+                                                {daysUntilExpiry <= 0 ? 'Expired' : `${daysUntilExpiry} days`}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Open Tickets</span>
+                                        <span
+                                            className={`text-sm font-semibold ${openTicketCount > 0 ? 'text-red-500' : ''}`}
+                                        >
+                                            {openTicketCount}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Meters</span>
+                                        <span className="text-sm font-semibold">{property.meters?.length || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500">Photos</span>
+                                        <span className="text-sm font-semibold">{images.length}</span>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                         {isLandlord && <ManagerAssignment propertyId={propertyId} />}
