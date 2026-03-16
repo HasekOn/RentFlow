@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import Button from '../../components/ui/Button'
 import Spinner from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
-import UploadDocumentModal from './UploadDocumentModal'
+import UploadDocumentModal from '../../components/ui/UploadDocumentModal.tsx'
 import { useConfirm } from '../../hooks/useConfirm'
 
 const fileIcon = (name: string, filePath?: string) => {

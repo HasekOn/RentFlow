@@ -22,9 +22,9 @@ import ExpenseModal from './ExpenseModal'
 import InventoryModal from './InventoryModal'
 import ImageUploadModal from './ImageUploadModal'
 import ManagerAssignment from './ManagerAssignment'
-import UploadDocumentModal from './UploadDocumentModal'
 import CreateNoticeModal from './CreateNoticeModal'
 import { useConfirm } from '../../hooks/useConfirm'
+import UploadDocumentModal from '../../components/ui/UploadDocumentModal.tsx'
 
 const statusVariant = (status: string) => {
     switch (status) {

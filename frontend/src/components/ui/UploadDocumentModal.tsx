@@ -1,10 +1,10 @@
 import * as React from 'react'
 import { useState } from 'react'
-import { documentsApi } from '../../api/documents'
-import Modal from '../../components/ui/Modal'
-import Input from '../../components/ui/Input'
-import Select from '../../components/ui/Select'
-import Button from '../../components/ui/Button'
+import { documentsApi } from '../../api/documents.ts'
+import Modal from './Modal.tsx'
+import Input from './Input.tsx'
+import Select from './Select.tsx'
+import Button from './Button.tsx'
 
 interface Props {
     isOpen: boolean
@@ -13,19 +13,48 @@ interface Props {
     onSuccess: () => void
 }
 
+const visibilityDefaults: Record<string, string> = {
+    contract: 'landlord_tenant',
+    protocol: 'landlord_tenant',
+    insurance: 'landlord_only',
+    tax: 'landlord_only',
+    inspection: 'landlord_manager',
+    energy_certificate: 'landlord_manager',
+    invoice: 'landlord_only',
+    other: 'landlord_only',
+}
+
+const visibilityHint: Record<string, string> = {
+    landlord_only: 'Only you will see this document.',
+    landlord_tenant: 'You and the tenant will see this document.',
+    landlord_manager: 'You and assigned managers (maintenance) will see this document.',
+    all: 'Everyone with access to this property will see this document.',
+}
+
+const visibilityAutoLabel: Record<string, string> = {
+    landlord_only: 'Landlord only',
+    landlord_tenant: 'Landlord + Tenant',
+    landlord_manager: 'Landlord + Manager',
+    all: 'Everyone',
+}
+
 export default function UploadDocumentModal({ isOpen, onClose, propertyId, onSuccess }: Props) {
     const [file, setFile] = useState<File | null>(null)
     const [name, setName] = useState('')
     const [documentType, setDocumentType] = useState('contract')
+    const [visibility, setVisibility] = useState('auto')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
+
+    const autoDefault = visibilityDefaults[documentType] || 'landlord_only'
+    const effectiveVisibility = visibility === 'auto' ? autoDefault : visibility
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0]
         if (selected) {
             setFile(selected)
             if (!name) {
-                setName(selected.name.replace(/\.[^.]+$/, ''))
+                setName(selected.name)
             }
         }
     }
@@ -42,11 +71,13 @@ export default function UploadDocumentModal({ isOpen, onClose, propertyId, onSuc
             formData.append('file', file)
             formData.append('name', name || file.name)
             formData.append('document_type', documentType)
+            formData.append('visibility', effectiveVisibility)
 
             await documentsApi.upload(propertyId, formData)
             setFile(null)
             setName('')
             setDocumentType('contract')
+            setVisibility('auto')
             onSuccess()
         } catch (err: any) {
             setError(err.response?.data?.message || 'Upload failed')
@@ -59,20 +90,34 @@ export default function UploadDocumentModal({ isOpen, onClose, propertyId, onSuc
         setFile(null)
         setName('')
         setError('')
+        setDocumentType('contract')
+        setVisibility('auto')
         onClose()
     }
+
+    const fileIcon = file
+        ? file.name.endsWith('.pdf')
+            ? '📄'
+            : file.name.match(/\.(jpg|jpeg|png|webp)$/i)
+              ? '🖼️'
+              : file.name.match(/\.(doc|docx)$/i)
+                ? '📝'
+                : file.name.match(/\.(xls|xlsx)$/i)
+                  ? '📊'
+                  : '📎'
+        : '📁'
 
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="Upload Document" size="md">
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* File picker */}
+                {/* Drop zone */}
                 <div
                     className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-gray-400 transition cursor-pointer"
-                    onClick={() => document.getElementById('doc-file-input')?.click()}
+                    onClick={() => window.document.getElementById('doc-file-input')?.click()}
                 >
                     {file ? (
                         <div>
-                            <span className="text-3xl">📎</span>
+                            <span className="text-3xl">{fileIcon}</span>
                             <p className="text-sm font-semibold text-black mt-2">{file.name}</p>
                             <p className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                         </div>
@@ -116,6 +161,26 @@ export default function UploadDocumentModal({ isOpen, onClose, propertyId, onSuc
                         { value: 'other', label: 'Other' },
                     ]}
                 />
+
+                <Select
+                    label="Who can see this document?"
+                    name="visibility"
+                    value={visibility}
+                    onChange={(e) => setVisibility(e.target.value)}
+                    options={[
+                        { value: 'auto', label: 'Auto' },
+                        { value: 'landlord_only', label: 'Landlord only' },
+                        { value: 'landlord_tenant', label: 'Landlord + Tenant' },
+                        { value: 'landlord_manager', label: 'Landlord + Manager' },
+                        { value: 'all', label: 'Everyone' },
+                    ]}
+                />
+
+                <p className="text-xs text-gray-400 -mt-2">
+                    {visibility === 'auto'
+                        ? `Auto: will use "${visibilityAutoLabel[autoDefault]}" for this document type.`
+                        : visibilityHint[visibility]}
+                </p>
 
                 {error && <p className="text-sm text-red-600">{error}</p>}
 
