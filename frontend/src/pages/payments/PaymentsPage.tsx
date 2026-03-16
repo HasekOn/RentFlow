@@ -39,6 +39,13 @@ const typeOptions = [
     { value: 'other', label: 'Other' },
 ]
 
+interface ImportResult {
+    matched: number
+    already_paid: number
+    unmatched: number
+    total_rows: number
+}
+
 export default function PaymentsPage() {
     const { isLandlord } = useAuth()
     const [payments, setPayments] = useState<Payment[]>([])
@@ -49,7 +56,8 @@ export default function PaymentsPage() {
     const [typeFilter, setTypeFilter] = useState('')
     const [page, setPage] = useState(1)
     const [isImporting, setIsImporting] = useState(false)
-    const [importResult, setImportResult] = useState<{ matched: number; unmatched: number } | null>(null)
+    const [importResult, setImportResult] = useState<ImportResult | null>(null)
+    const [importError, setImportError] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const { confirm, dialog } = useConfirm()
     const [generateResult, setGenerateResult] = useState<string | null>(null)
@@ -151,17 +159,44 @@ export default function PaymentsPage() {
 
         setIsImporting(true)
         setImportResult(null)
+        setImportError(null)
 
         try {
             const res = await paymentsApi.importCsv(file)
-            setImportResult(res.data)
+            // Response structure: { message, summary: { total_rows, matched, already_paid, unmatched }, details }
+            const summary = res.data?.summary
+            if (summary) {
+                setImportResult({
+                    matched: summary.matched || 0,
+                    already_paid: summary.already_paid || 0,
+                    unmatched: summary.unmatched || 0,
+                    total_rows: summary.total_rows || 0,
+                })
+            }
             void loadPayments()
-        } catch (error) {
+        } catch (error: any) {
             console.error('CSV import failed:', error)
+            setImportError(error.response?.data?.message || 'CSV import failed. Please check the file format.')
         } finally {
             setIsImporting(false)
             if (fileInputRef.current) fileInputRef.current.value = ''
         }
+    }
+
+    const handleDownloadTemplate = () => {
+        const BOM = '\uFEFF'
+        const csv =
+            BOM +
+            'variable_symbol;amount;date;note\r\n' +
+            '1234567890;15000;15.03.2026;Nájem březen\r\n' +
+            '1234567890;2500;15.03.2026;Zálohy březen\r\n'
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = 'payment_import_template.csv'
+        link.click()
+        window.URL.revokeObjectURL(url)
     }
 
     const totalUnpaid = payments.filter((p) => p.status === 'unpaid').length
@@ -181,36 +216,40 @@ export default function PaymentsPage() {
                             onChange={handleImportCsv}
                             className="hidden"
                         />
-                        <Button
-                            variant="secondary"
-                            onClick={() => {
-                                const BOM = '\uFEFF'
-                                const csv =
-                                    BOM +
-                                    'variable_symbol;amount;date;note\r\n' +
-                                    '1234567890;15000;2025-03-01;Rent March\r\n' +
-                                    '1234567890;2500;2025-03-01;Utilities March\r\n'
-                                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-                                const url = window.URL.createObjectURL(blob)
-                                const link = document.createElement('a')
-                                link.href = url
-                                link.download = 'payment_import_template.csv'
-                                link.click()
-                                window.URL.revokeObjectURL(url)
-                            }}
-                        >
-                            📋 Template
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isImporting}
-                        >
-                            {isImporting ? 'Importing...' : '📥 CSV'}
-                        </Button>
-                        <Button variant="secondary" onClick={handleGenerateMonthly}>
-                            🔄 Generate Monthly
-                        </Button>
+                        <div className="relative group">
+                            <Button variant="secondary" onClick={handleDownloadTemplate}>
+                                📋 Template
+                            </Button>
+                            <div className="absolute top-full right-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 hidden group-hover:block z-50 shadow-lg">
+                                <div className="absolute bottom-full right-4 border-4 border-transparent border-b-gray-900" />
+                                Download a CSV template with the correct column format. Fill in your bank data and
+                                import it using the CSV button.
+                            </div>
+                        </div>
+                        <div className="relative group">
+                            <Button
+                                variant="secondary"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isImporting}
+                            >
+                                {isImporting ? 'Importing...' : '📥 CSV'}
+                            </Button>
+                            <div className="absolute top-full right-0 mt-2 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 hidden group-hover:block z-50 shadow-lg">
+                                <div className="absolute bottom-full right-4 border-4 border-transparent border-b-gray-900" />
+                                Import a bank CSV file to automatically match and mark payments as paid. Payments are
+                                matched by variable symbol (VS). Duplicate imports are detected and skipped.
+                            </div>
+                        </div>
+                        <div className="relative group">
+                            <Button variant="secondary" onClick={handleGenerateMonthly}>
+                                🔄 Generate Monthly
+                            </Button>
+                            <div className="absolute top-full right-0 mt-2 w-72 bg-gray-900 text-white text-xs rounded-lg p-3 hidden group-hover:block z-50 shadow-lg">
+                                <div className="absolute bottom-full right-4 border-4 border-transparent border-b-gray-900" />
+                                Generate rent and utility payments for all active leases in the current month. Already
+                                existing payments are skipped — safe to run multiple times.
+                            </div>
+                        </div>
                         <Button onClick={() => setShowCreateModal(true)}>+ Add Payment</Button>
                     </div>
                 )}
@@ -218,19 +257,42 @@ export default function PaymentsPage() {
 
             {/* Import result */}
             {importResult && (
-                <div className="mt-4 bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Badge variant="green">{importResult.matched} matched</Badge>
-                        {importResult.unmatched > 0 && (
-                            <Badge variant="yellow">{importResult.unmatched} unmatched</Badge>
-                        )}
+                <div className="mt-4 bg-white rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-sm font-semibold text-black">
+                                Import: {importResult.total_rows} rows processed
+                            </span>
+                            <Badge variant="green">{importResult.matched} matched</Badge>
+                            {importResult.already_paid > 0 && (
+                                <Badge variant="gray">{importResult.already_paid} already paid</Badge>
+                            )}
+                            {importResult.unmatched > 0 && (
+                                <Badge variant="yellow">{importResult.unmatched} unmatched</Badge>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setImportResult(null)}
+                            className="text-gray-400 hover:text-black text-sm cursor-pointer"
+                        >
+                            ✕
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setImportResult(null)}
-                        className="text-gray-400 hover:text-black text-sm cursor-pointer"
-                    >
-                        Dismiss
-                    </button>
+                </div>
+            )}
+
+            {/* Import error */}
+            {importError && (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-2xl p-4">
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-red-700">{importError}</p>
+                        <button
+                            onClick={() => setImportError(null)}
+                            className="text-red-400 hover:text-red-600 text-sm cursor-pointer"
+                        >
+                            ✕
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -244,7 +306,7 @@ export default function PaymentsPage() {
                         onClick={() => setGenerateResult(null)}
                         className="text-gray-400 hover:text-black text-sm cursor-pointer"
                     >
-                        Dismiss
+                        ✕
                     </button>
                 </div>
             )}

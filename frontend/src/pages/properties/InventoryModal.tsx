@@ -1,6 +1,7 @@
 import * as React from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { inventoryApi } from '../../api/inventory'
+import type { InventoryItem } from '../../types'
 import Modal from '../../components/ui/Modal'
 import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
@@ -11,9 +12,12 @@ interface Props {
     onClose: () => void
     propertyId: number
     onSuccess: () => void
+    item?: InventoryItem | null
 }
 
-export default function CreateInventoryModal({ isOpen, onClose, propertyId, onSuccess }: Props) {
+export default function InventoryModal({ isOpen, onClose, propertyId, onSuccess, item }: Props) {
+    const isEdit = !!item
+
     const [formData, setFormData] = useState({
         name: '',
         category: '',
@@ -25,6 +29,23 @@ export default function CreateInventoryModal({ isOpen, onClose, propertyId, onSu
     const [errors, setErrors] = useState<Record<string, string[]>>({})
     const [isLoading, setIsLoading] = useState(false)
 
+    // Pre-fill form when editing
+    useEffect(() => {
+        if (item) {
+            setFormData({
+                name: item.name || '',
+                category: item.category || '',
+                condition: item.condition || 'good',
+                purchase_date: item.purchase_date ? new Date(item.purchase_date).toISOString().split('T')[0] : '',
+                purchase_price: item.purchase_price ? String(item.purchase_price) : '',
+                note: item.note || '',
+            })
+        } else {
+            setFormData({ name: '', category: '', condition: 'good', purchase_date: '', purchase_price: '', note: '' })
+        }
+        setErrors({})
+    }, [item, isOpen])
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     }
@@ -34,16 +55,21 @@ export default function CreateInventoryModal({ isOpen, onClose, propertyId, onSu
         setErrors({})
         setIsLoading(true)
 
+        const payload = {
+            name: formData.name,
+            category: formData.category || undefined,
+            condition: formData.condition,
+            purchase_date: formData.purchase_date || undefined,
+            purchase_price: formData.purchase_price ? Number(formData.purchase_price) : undefined,
+            note: formData.note || undefined,
+        }
+
         try {
-            await inventoryApi.create(propertyId, {
-                name: formData.name,
-                category: formData.category || undefined,
-                condition: formData.condition,
-                purchase_date: formData.purchase_date || undefined,
-                purchase_price: formData.purchase_price ? Number(formData.purchase_price) : undefined,
-                note: formData.note || undefined,
-            })
-            setFormData({ name: '', category: '', condition: 'good', purchase_date: '', purchase_price: '', note: '' })
+            if (isEdit && item) {
+                await inventoryApi.update(item.id, payload)
+            } else {
+                await inventoryApi.create(propertyId, payload)
+            }
             onSuccess()
         } catch (err: any) {
             setErrors(err.response?.data?.errors || {})
@@ -53,7 +79,12 @@ export default function CreateInventoryModal({ isOpen, onClose, propertyId, onSu
     }
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add Inventory Item" size="md">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={isEdit ? 'Edit Inventory Item' : 'Add Inventory Item'}
+            size="md"
+        >
             <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
                     label="Item Name"
@@ -123,7 +154,7 @@ export default function CreateInventoryModal({ isOpen, onClose, propertyId, onSu
                         Cancel
                     </Button>
                     <Button type="submit" disabled={isLoading}>
-                        {isLoading ? 'Creating...' : 'Add Item'}
+                        {isLoading ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Item'}
                     </Button>
                 </div>
             </form>

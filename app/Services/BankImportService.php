@@ -21,11 +21,24 @@ class BankImportService
             'total_rows' => count($rows),
         ];
 
-        // Get all lease IDs for this landlord's properties
-        $landlordLeaseIds = Lease::query()->whereHas('property', function ($query) use ($landlordId) {
+        // Get all leases for this landlord's properties, keyed by cleaned VS
+        $landlordLeases = Lease::query()->whereHas('property', function ($query) use ($landlordId) {
             $query->where('landlord_id', $landlordId);
-        })->pluck('id', 'variable_symbol')->toArray();
-        // Result: ['VS123' => 5, 'VS456' => 8, ...]
+        })->whereNotNull('variable_symbol')
+            ->get(['id', 'variable_symbol']);
+
+        // Build lookup: cleaned VS → lease ID (handles leading zeros consistently)
+        $vsToLeaseId = [];
+        foreach ($landlordLeases as $lease) {
+            $cleanedVs = $this->cleanVariableSymbol($lease->variable_symbol);
+            if ($cleanedVs !== '') {
+                $vsToLeaseId[$cleanedVs] = $lease->id;
+            }
+        }
+
+        // Track which payment IDs we've already matched in THIS import
+        // to prevent a single CSV from matching multiple payments accidentally
+        $matchedPaymentIds = [];
 
         foreach ($rows as $row) {
             $vs = $this->cleanVariableSymbol($row['variable_symbol'] ?? '');
@@ -42,8 +55,18 @@ class BankImportService
                 continue;
             }
 
+            // Skip rows with zero or negative amount
+            if ($amount <= 0) {
+                $results['unmatched'][] = [
+                    'row' => $row,
+                    'reason' => 'Invalid amount: '.($row['amount'] ?? '0'),
+                ];
+
+                continue;
+            }
+
             // Find lease by variable symbol
-            if (! isset($landlordLeaseIds[$vs])) {
+            if (! isset($vsToLeaseId[$vs])) {
                 $results['unmatched'][] = [
                     'row' => $row,
                     'reason' => 'Variable symbol not found: '.$vs,
@@ -52,45 +75,69 @@ class BankImportService
                 continue;
             }
 
-            $leaseId = $landlordLeaseIds[$vs];
+            $leaseId = $vsToLeaseId[$vs];
 
-            // Find unpaid payment for this lease closest to the date
-            $payment = Payment::query()->where('lease_id', $leaseId)
-                ->where('status', 'unpaid')
-                ->where('variable_symbol', $vs)
+            // Find unpaid/overdue payment for this lease
+            // Match by amount first for accuracy, then by VS on payment if set
+            $paymentQuery = Payment::query()
+                ->where('lease_id', $leaseId)
+                ->whereIn('status', ['unpaid', 'overdue'])
+                ->whereNotIn('id', $matchedPaymentIds);
+
+            // Try exact amount match first (most reliable)
+            $payment = (clone $paymentQuery)
+                ->where('amount', $amount)
                 ->orderBy('due_date')
                 ->first();
 
+            // If no exact match, try any unpaid payment on the lease
             if (! $payment) {
-                // Try without variable_symbol on payment (might not be set)
-                $payment = Payment::query()->where('lease_id', $leaseId)
-                    ->where('status', 'unpaid')
+                $payment = $paymentQuery
                     ->orderBy('due_date')
                     ->first();
             }
 
             if (! $payment) {
+                // Check if there's a paid payment with same VS and date to detect duplicate import
+                $alreadyImported = Payment::query()
+                    ->where('lease_id', $leaseId)
+                    ->where('status', 'paid')
+                    ->where('note', 'LIKE', '%CSV import%')
+                    ->when($date, fn ($q) => $q->where('paid_date', $date))
+                    ->where('amount', $amount)
+                    ->exists();
+
+                $reason = $alreadyImported
+                    ? 'Already imported (duplicate CSV row) for VS: '.$vs
+                    : 'No unpaid payment found for VS: '.$vs;
+
                 $results['already_paid'][] = [
                     'row' => $row,
-                    'reason' => 'No unpaid payment found for VS: '.$vs,
+                    'reason' => $reason,
                 ];
 
                 continue;
             }
+
+            // Track this payment to prevent double-matching within same import
+            $matchedPaymentIds[] = $payment->id;
+
+            // Check amount mismatch — still match but add warning
+            $amountMismatch = abs((float) $payment->amount - $amount) > 0.01;
 
             // Match — mark as paid
             $payment->update([
                 'paid_date' => $date ?: now()->toDateString(),
                 'status' => 'paid',
                 'variable_symbol' => $vs,
-                'note' => 'Auto-matched from bank CSV import',
+                'note' => 'Auto-matched from bank CSV import'.($amountMismatch
+                        ? ' (CSV amount: '.number_format($amount, 2).', expected: '.number_format((float) $payment->amount, 2).')'
+                        : ''),
             ]);
 
             // Recalculate trust score
             $payment->load('lease.tenant');
-
             $tenant = $payment->lease?->tenant;
-
             $tenant?->recalculateTrustScore();
 
             $results['matched'][] = [
@@ -98,6 +145,8 @@ class BankImportService
                 'lease_id' => $leaseId,
                 'variable_symbol' => $vs,
                 'amount' => $amount,
+                'payment_amount' => (float) $payment->amount,
+                'amount_mismatch' => $amountMismatch,
                 'date' => $date,
             ];
         }
@@ -112,6 +161,10 @@ class BankImportService
     private function parseCsv(string $content): array
     {
         $rows = [];
+
+        // Remove BOM if present
+        $content = str_replace("\xEF\xBB\xBF", '', $content);
+
         $lines = array_filter(explode("\n", trim($content)));
 
         if (count($lines) < 2) {
@@ -152,7 +205,7 @@ class BankImportService
      */
     private function normalizeHeader(string $header): string
     {
-        $header = mb_strtolower($header);
+        $header = mb_strtolower(trim($header));
 
         // Remove BOM and quotes
         $header = str_replace(["\xEF\xBB\xBF", '"', "'"], '', $header);
@@ -163,6 +216,7 @@ class BankImportService
             'variabilní symbol' => 'variable_symbol',
             'variabilni symbol' => 'variable_symbol',
             'variable symbol' => 'variable_symbol',
+            'variable_symbol' => 'variable_symbol',
             'var. symbol' => 'variable_symbol',
             'var.symbol' => 'variable_symbol',
 
@@ -180,12 +234,18 @@ class BankImportService
             'datum zauctovani' => 'date',
             'datum platby' => 'date',
 
+            // Note variants
+            'note' => 'note',
+            'poznámka' => 'note',
+            'poznamka' => 'note',
+            'zpráva pro příjemce' => 'note',
+            'zprava pro prijemce' => 'note',
+            'message' => 'note',
+
             // Counter account info (for reference)
             'protiúčet' => 'counter_account',
             'protiucet' => 'counter_account',
             'název protiúčtu' => 'counter_name',
-            'zpráva pro příjemce' => 'message',
-            'zprava pro prijemce' => 'message',
         ];
 
         return $map[$header] ?? $header;
@@ -197,6 +257,8 @@ class BankImportService
     private function cleanVariableSymbol(string $vs): string
     {
         $vs = trim($vs);
+        // Remove all non-numeric characters
+        $vs = preg_replace('/[^0-9]/', '', $vs);
 
         return ltrim($vs, '0');
     }
@@ -210,7 +272,7 @@ class BankImportService
         $amount = str_replace(' ', '', $amount);    // Remove spaces (thousand separator)
         $amount = str_replace(',', '.', $amount);    // Czech decimal comma to dot
 
-        return (float) $amount;
+        return abs((float) $amount); // Always positive (some exports use negative for outgoing)
     }
 
     /**

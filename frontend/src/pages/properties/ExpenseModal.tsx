@@ -1,6 +1,7 @@
 import * as React from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { expensesApi } from '../../api/expenses'
+import type { Expense } from '../../types'
 import Modal from '../../components/ui/Modal'
 import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
@@ -11,9 +12,12 @@ interface Props {
     onClose: () => void
     propertyId: number
     onSuccess: () => void
+    expense?: Expense | null
 }
 
-export default function CreateExpenseModal({ isOpen, onClose, propertyId, onSuccess }: Props) {
+export default function ExpenseModal({ isOpen, onClose, propertyId, onSuccess, expense }: Props) {
+    const isEdit = !!expense
+
     const [formData, setFormData] = useState({
         type: 'maintenance',
         amount: '',
@@ -22,6 +26,28 @@ export default function CreateExpenseModal({ isOpen, onClose, propertyId, onSucc
     })
     const [errors, setErrors] = useState<Record<string, string[]>>({})
     const [isLoading, setIsLoading] = useState(false)
+
+    // Pre-fill form when editing
+    useEffect(() => {
+        if (expense) {
+            setFormData({
+                type: expense.type || 'maintenance',
+                amount: String(expense.amount || ''),
+                expense_date: expense.expense_date
+                    ? new Date(expense.expense_date).toISOString().split('T')[0]
+                    : new Date().toISOString().split('T')[0],
+                description: expense.description || '',
+            })
+        } else {
+            setFormData({
+                type: 'maintenance',
+                amount: '',
+                expense_date: new Date().toISOString().split('T')[0],
+                description: '',
+            })
+        }
+        setErrors({})
+    }, [expense, isOpen])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -32,20 +58,20 @@ export default function CreateExpenseModal({ isOpen, onClose, propertyId, onSucc
         setErrors({})
         setIsLoading(true)
 
+        const payload = {
+            property_id: propertyId,
+            type: formData.type,
+            amount: Number(formData.amount),
+            expense_date: formData.expense_date,
+            description: formData.description || undefined,
+        }
+
         try {
-            await expensesApi.create({
-                property_id: propertyId,
-                type: formData.type,
-                amount: Number(formData.amount),
-                expense_date: formData.expense_date,
-                description: formData.description || undefined,
-            })
-            setFormData({
-                type: 'maintenance',
-                amount: '',
-                expense_date: new Date().toISOString().split('T')[0],
-                description: '',
-            })
+            if (isEdit && expense) {
+                await expensesApi.update(expense.id, payload)
+            } else {
+                await expensesApi.create(payload)
+            }
             onSuccess()
         } catch (err: any) {
             setErrors(err.response?.data?.errors || {})
@@ -55,7 +81,7 @@ export default function CreateExpenseModal({ isOpen, onClose, propertyId, onSucc
     }
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add Expense" size="md">
+        <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Edit Expense' : 'Add Expense'} size="md">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <Select
@@ -110,7 +136,7 @@ export default function CreateExpenseModal({ isOpen, onClose, propertyId, onSucc
                         Cancel
                     </Button>
                     <Button type="submit" disabled={isLoading}>
-                        {isLoading ? 'Creating...' : 'Add Expense'}
+                        {isLoading ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Expense'}
                     </Button>
                 </div>
             </form>

@@ -18,8 +18,8 @@ import EmptyState from '../../components/ui/EmptyState'
 import MeterCard from './MeterCard'
 import PropertyFormModal from './PropertyFormModal'
 import CreateMeterModal from './CreateMeterModal'
-import CreateExpenseModal from './CreateExpenseModal'
-import CreateInventoryModal from './CreateInventoryModal'
+import ExpenseModal from './ExpenseModal'
+import InventoryModal from './InventoryModal'
 import ImageUploadModal from './ImageUploadModal'
 import ManagerAssignment from './ManagerAssignment'
 import UploadDocumentModal from './UploadDocumentModal'
@@ -96,6 +96,10 @@ export default function PropertyDetailPage() {
     const [showDocumentModal, setShowDocumentModal] = useState(false)
     const [showNoticeModal, setShowNoticeModal] = useState(false)
 
+    // Edit state
+    const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+    const [editingInventory, setEditingInventory] = useState<InventoryItem | null>(null)
+
     const propertyId = Number(id)
     const { confirm: showConfirm, dialog } = useConfirm()
 
@@ -139,7 +143,6 @@ export default function PropertyDetailPage() {
             variant: 'danger',
         })
         if (!ok) return
-
         try {
             await propertiesApi.deleteImage(imageId)
             void loadProperty()
@@ -205,6 +208,38 @@ export default function PropertyDetailPage() {
         }
     }
 
+    const handleDeleteExpense = async (expenseId: number) => {
+        const ok = await showConfirm({
+            title: 'Delete Expense',
+            message: 'Are you sure you want to delete this expense?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+        if (!ok) return
+        try {
+            await expensesApi.delete(expenseId)
+            void loadManagementData()
+        } catch (error) {
+            console.error('Failed to delete expense:', error)
+        }
+    }
+
+    const handleDeleteInventory = async (itemId: number) => {
+        const ok = await showConfirm({
+            title: 'Delete Inventory Item',
+            message: 'Are you sure you want to delete this item?',
+            confirmLabel: 'Delete',
+            variant: 'danger',
+        })
+        if (!ok) return
+        try {
+            await inventoryApi.delete(itemId)
+            void loadManagementData()
+        } catch (error) {
+            console.error('Failed to delete inventory item:', error)
+        }
+    }
+
     useEffect(() => {
         void loadProperty()
     }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -232,13 +267,9 @@ export default function PropertyDetailPage() {
 
     const activeLease = property.leases?.find((l) => l.status === 'active')
     const images = property.images || []
-
-    // Compute days until lease expiration
     const daysUntilExpiry = activeLease?.end_date
         ? Math.ceil((new Date(activeLease.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
         : null
-
-    // Count open tickets from loaded data (management tab) or from property tickets
     const openTicketCount = tickets.filter((t) => t.status === 'new' || t.status === 'in_progress').length
 
     return (
@@ -329,21 +360,13 @@ export default function PropertyDetailPage() {
             <div className="flex gap-2 mb-6">
                 <button
                     onClick={() => setActiveTab('overview')}
-                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
-                        activeTab === 'overview'
-                            ? 'bg-black text-white'
-                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                    }`}
+                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${activeTab === 'overview' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
                 >
                     Overview
                 </button>
                 <button
                     onClick={() => setActiveTab('management')}
-                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${
-                        activeTab === 'management'
-                            ? 'bg-black text-white'
-                            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                    }`}
+                    className={`px-6 py-2.5 rounded-full text-sm font-semibold transition cursor-pointer ${activeTab === 'management' ? 'bg-black text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
                 >
                     {isLandlord ? 'Management' : 'Details'}
                 </button>
@@ -359,11 +382,7 @@ export default function PropertyDetailPage() {
                                 <>
                                     <div className="grid grid-cols-1 sm:grid-cols-4 sm:grid-rows-2 gap-2 h-60 sm:h-80">
                                         <div
-                                            className={`relative w-full h-full cursor-pointer overflow-hidden rounded-xl ${
-                                                images.length === 1
-                                                    ? 'sm:col-span-4 sm:row-span-2'
-                                                    : 'sm:col-span-2 sm:row-span-2'
-                                            }`}
+                                            className={`relative w-full h-full cursor-pointer overflow-hidden rounded-xl ${images.length === 1 ? 'sm:col-span-4 sm:row-span-2' : 'sm:col-span-2 sm:row-span-2'}`}
                                             onClick={() => setLightboxIndex(0)}
                                         >
                                             <img
@@ -371,14 +390,12 @@ export default function PropertyDetailPage() {
                                                 alt={images[0].description || 'Property'}
                                                 className="w-full h-full object-cover hover:scale-105 transition duration-300"
                                             />
-
                                             {images.length > 1 && (
                                                 <div className="sm:hidden absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg">
                                                     <span>📷</span> +{images.length - 1}
                                                 </div>
                                             )}
                                         </div>
-
                                         {images.slice(1, 5).map((img, idx) => (
                                             <div
                                                 key={img.id}
@@ -484,7 +501,6 @@ export default function PropertyDetailPage() {
                                         {property.size ? `${property.size} m²` : '—'}
                                     </p>
                                 </div>
-                                {/* Purchase price — landlord only */}
                                 {isLandlord && (
                                     <div>
                                         <p className="text-xs text-gray-400">Purchase Price</p>
@@ -521,8 +537,6 @@ export default function PropertyDetailPage() {
                     <div className="space-y-6">
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-black mb-3">Quick Info</h2>
-
-                            {/* ─── LANDLORD Quick Info ─── */}
                             {isLandlord && (
                                 <div className="space-y-3">
                                     <div className="flex justify-between">
@@ -551,13 +565,7 @@ export default function PropertyDetailPage() {
                                         <div className="flex justify-between">
                                             <span className="text-sm text-gray-500">Lease Expires</span>
                                             <span
-                                                className={`text-sm font-semibold ${
-                                                    daysUntilExpiry <= 0
-                                                        ? 'text-red-500'
-                                                        : daysUntilExpiry <= 30
-                                                          ? 'text-yellow-600'
-                                                          : 'text-gray-900'
-                                                }`}
+                                                className={`text-sm font-semibold ${daysUntilExpiry <= 0 ? 'text-red-500' : daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-gray-900'}`}
                                             >
                                                 {daysUntilExpiry <= 0 ? 'Expired' : `${daysUntilExpiry} days`}
                                             </span>
@@ -581,8 +589,6 @@ export default function PropertyDetailPage() {
                                     )}
                                 </div>
                             )}
-
-                            {/* ─── TENANT Quick Info ─── */}
                             {isTenant && (
                                 <div className="space-y-3">
                                     <div className="flex justify-between">
@@ -636,9 +642,7 @@ export default function PropertyDetailPage() {
                                                 <div className="flex justify-between">
                                                     <span className="text-sm text-gray-500">Lease Ends</span>
                                                     <span
-                                                        className={`text-sm font-semibold ${
-                                                            daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-gray-900'
-                                                        }`}
+                                                        className={`text-sm font-semibold ${daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-gray-900'}`}
                                                     >
                                                         {formatDate(activeLease.end_date)} ({daysUntilExpiry} days)
                                                     </span>
@@ -660,8 +664,6 @@ export default function PropertyDetailPage() {
                                     </div>
                                 </div>
                             )}
-
-                            {/* ─── MANAGER Quick Info ─── */}
                             {isManager && (
                                 <div className="space-y-3">
                                     <div className="flex justify-between">
@@ -684,9 +686,7 @@ export default function PropertyDetailPage() {
                                         <div className="flex justify-between">
                                             <span className="text-sm text-gray-500">Lease Expires</span>
                                             <span
-                                                className={`text-sm font-semibold ${
-                                                    daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-gray-900'
-                                                }`}
+                                                className={`text-sm font-semibold ${daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-gray-900'}`}
                                             >
                                                 {daysUntilExpiry <= 0 ? 'Expired' : `${daysUntilExpiry} days`}
                                             </span>
@@ -711,7 +711,6 @@ export default function PropertyDetailPage() {
                                 </div>
                             )}
                         </div>
-
                         {isLandlord && <ManagerAssignment propertyId={propertyId} />}
                     </div>
                 </div>
@@ -720,7 +719,6 @@ export default function PropertyDetailPage() {
             {/* ══════════ MANAGEMENT TAB ══════════ */}
             {activeTab === 'management' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left column */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Notices */}
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -739,11 +737,7 @@ export default function PropertyDetailPage() {
                                     {notices.map((notice) => (
                                         <div
                                             key={notice.id}
-                                            className={`p-4 border rounded-xl transition ${
-                                                notice.is_active
-                                                    ? 'border-green-200 bg-green-50/50'
-                                                    : 'border-gray-100 bg-gray-50/50 opacity-60'
-                                            }`}
+                                            className={`p-4 border rounded-xl transition ${notice.is_active ? 'border-green-200 bg-green-50/50' : 'border-gray-100 bg-gray-50/50 opacity-60'}`}
                                         >
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="flex-1 min-w-0">
@@ -775,11 +769,7 @@ export default function PropertyDetailPage() {
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         <button
                                                             onClick={() => handleToggleNotice(notice)}
-                                                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition cursor-pointer ${
-                                                                notice.is_active
-                                                                    ? 'hover:bg-yellow-50 text-green-500 hover:text-yellow-500'
-                                                                    : 'hover:bg-green-50 text-gray-400 hover:text-green-500'
-                                                            }`}
+                                                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition cursor-pointer ${notice.is_active ? 'hover:bg-yellow-50 text-green-500 hover:text-yellow-500' : 'hover:bg-green-50 text-gray-400 hover:text-green-500'}`}
                                                             title={notice.is_active ? 'Deactivate' : 'Activate'}
                                                         >
                                                             {notice.is_active ? '🔕' : '🔔'}
@@ -841,7 +831,13 @@ export default function PropertyDetailPage() {
                             <div className="bg-white rounded-2xl p-6 shadow-sm">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-bold text-black">Expenses</h2>
-                                    <Button size="sm" onClick={() => setShowExpenseModal(true)}>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => {
+                                            setEditingExpense(null)
+                                            setShowExpenseModal(true)
+                                        }}
+                                    >
                                         + Add
                                     </Button>
                                 </div>
@@ -865,6 +861,9 @@ export default function PropertyDetailPage() {
                                                         <th className="text-right py-2 text-xs font-semibold text-gray-400 uppercase">
                                                             Amount
                                                         </th>
+                                                        <th className="text-right py-2 text-xs font-semibold text-gray-400 uppercase w-20">
+                                                            Actions
+                                                        </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -882,6 +881,27 @@ export default function PropertyDetailPage() {
                                                             <td className="py-3 text-sm font-semibold text-right text-black">
                                                                 {formatCurrency(expense.amount)}
                                                             </td>
+                                                            <td className="py-3 text-right">
+                                                                <div className="flex items-center justify-end gap-1">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingExpense(expense)
+                                                                            setShowExpenseModal(true)
+                                                                        }}
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700 cursor-pointer"
+                                                                        title="Edit"
+                                                                    >
+                                                                        ✏️
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDeleteExpense(expense.id)}
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500 cursor-pointer"
+                                                                        title="Delete"
+                                                                    >
+                                                                        🗑
+                                                                    </button>
+                                                                </div>
+                                                            </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -894,9 +914,26 @@ export default function PropertyDetailPage() {
                                                         <span className="text-sm font-semibold text-black capitalize">
                                                             {expense.type}
                                                         </span>
-                                                        <span className="text-sm font-bold text-black">
-                                                            {formatCurrency(expense.amount)}
-                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-bold text-black">
+                                                                {formatCurrency(expense.amount)}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingExpense(expense)
+                                                                    setShowExpenseModal(true)
+                                                                }}
+                                                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700 cursor-pointer"
+                                                            >
+                                                                ✏️
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteExpense(expense.id)}
+                                                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500 cursor-pointer"
+                                                            >
+                                                                🗑
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                                                         <span>{formatDate(expense.expense_date)}</span>
@@ -915,7 +952,13 @@ export default function PropertyDetailPage() {
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-bold text-black">Inventory</h2>
                                 {isLandlord && (
-                                    <Button size="sm" onClick={() => setShowInventoryModal(true)}>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => {
+                                            setEditingInventory(null)
+                                            setShowInventoryModal(true)
+                                        }}
+                                    >
                                         + Add
                                     </Button>
                                 )}
@@ -928,9 +971,32 @@ export default function PropertyDetailPage() {
                                         <div key={item.id} className="p-4 border border-gray-100 rounded-xl">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-sm font-semibold text-black">{item.name}</p>
-                                                <Badge variant={conditionVariant(item.condition)}>
-                                                    {item.condition}
-                                                </Badge>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Badge variant={conditionVariant(item.condition)}>
+                                                        {item.condition}
+                                                    </Badge>
+                                                    {isLandlord && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingInventory(item)
+                                                                    setShowInventoryModal(true)
+                                                                }}
+                                                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700 cursor-pointer"
+                                                                title="Edit"
+                                                            >
+                                                                ✏️
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteInventory(item.id)}
+                                                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-gray-400 hover:text-red-500 cursor-pointer"
+                                                                title="Delete"
+                                                            >
+                                                                🗑
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                             {item.category && (
                                                 <p className="text-xs text-gray-500 mt-1">{item.category}</p>
@@ -992,7 +1058,6 @@ export default function PropertyDetailPage() {
                                                     <p className="text-sm font-semibold text-black truncate leading-tight">
                                                         {doc.name}
                                                     </p>
-
                                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-gray-500 mt-1.5">
                                                         <span className="capitalize bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 font-medium">
                                                             {doc.document_type}
@@ -1008,7 +1073,6 @@ export default function PropertyDetailPage() {
                                                     </div>
                                                 </div>
                                             </div>
-
                                             <div className="flex items-center gap-1.5 shrink-0 mt-1 sm:mt-0">
                                                 <button
                                                     onClick={() => handleDownloadDocument(doc)}
@@ -1085,21 +1149,31 @@ export default function PropertyDetailPage() {
                     void loadManagementData()
                 }}
             />
-            <CreateExpenseModal
+            <ExpenseModal
                 isOpen={showExpenseModal}
-                onClose={() => setShowExpenseModal(false)}
+                onClose={() => {
+                    setShowExpenseModal(false)
+                    setEditingExpense(null)
+                }}
                 propertyId={propertyId}
+                expense={editingExpense}
                 onSuccess={() => {
                     setShowExpenseModal(false)
+                    setEditingExpense(null)
                     void loadManagementData()
                 }}
             />
-            <CreateInventoryModal
+            <InventoryModal
                 isOpen={showInventoryModal}
-                onClose={() => setShowInventoryModal(false)}
+                onClose={() => {
+                    setShowInventoryModal(false)
+                    setEditingInventory(null)
+                }}
                 propertyId={propertyId}
+                item={editingInventory}
                 onSuccess={() => {
                     setShowInventoryModal(false)
+                    setEditingInventory(null)
                     void loadManagementData()
                 }}
             />
