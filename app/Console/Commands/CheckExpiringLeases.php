@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Lease;
+use App\Models\Property;
 use App\Notifications\LeaseExpiringNotification;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Command\Command as CommandAlias;
@@ -50,7 +51,7 @@ class CheckExpiringLeases extends Command
         $this->info("Auto-expired leases: {$expired->count()}");
 
         // 3. Auto-set properties without active lease to 'available'
-        $occupiedProperties = \App\Models\Property::query()
+        $occupiedProperties = Property::query()
             ->where('status', 'occupied')
             ->get();
 
