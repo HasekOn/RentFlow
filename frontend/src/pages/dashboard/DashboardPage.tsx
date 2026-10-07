@@ -630,7 +630,7 @@ function LandlordDashboard() {
                                 tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
                             />
                             <Tooltip
-                                formatter={(value?: number | string) => formatCurrency(Number(value ?? 0))}
+                                formatter={(value) => formatCurrency(Number(value ?? 0))}
                                 contentStyle={{
                                     borderRadius: '12px',
                                     border: 'none',

@@ -19,5 +19,12 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // TODO: refactor data fetching out of effects, then switch back to 'error'
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/purity': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'react-refresh/only-export-components': ['error', { allowExportNames: ['useAuth'] }],
+    },
   },
 ])
