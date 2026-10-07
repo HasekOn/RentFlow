@@ -14,8 +14,12 @@ Stav: `- [ ]` čeká, `- [x]` hotovo. Poznámky piš pod krok.
 ## Fáze 0 – příprava
 
 - [x] Aktualizace závislostí: Laravel 13, PHPUnit 12, Vite 8, ESLint 10 (větev `chore/upgrade-deps`)
-- [ ] CI: `php-version: '8.5'`, `node-version: '24'` v `.github/workflows/tests.yml`
+- [x] CI: `php-version: '8.5'`, `node-version: '24'` v `.github/workflows/tests.yml`
+  - Akce zvednuté na `actions/checkout@v7`, `actions/cache@v6`, `actions/setup-node@v7`; `composer.json` `php: ^8.5`.
+  - Workflow je **dočasně vypnutý** (jen `workflow_dispatch`). Zapnout spouštěče push/PR (v komentáři
+    v souboru) nejpozději ve fázi 6 spolu s úpravou jobů (bez React jobu, `npm run build`, `composer analyse`).
 - [ ] Merge `chore/upgrade-deps` → `main`, založit větev `v2`
+  - Merge hotový (PR #1). Zbývá založit `v2`.
 - [x] `CLAUDE.md`, `.claude/` (settings, skills) a tento plán
 
 ## Fáze 1 – audit (jen čtení, nic neměnit)
