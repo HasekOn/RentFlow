@@ -78,8 +78,9 @@ window.fetch = async (...a) => { const r = await of(...a); window.__st.push(r.st
   - XSS (`<script>`, `javascript:`, `"` v atributech) v adrese, popisu, komentáři tiketu, jménu
   Po každém pokusu stránku znovu načti. Odmítnutý `$set` na `#[Locked]` vlastnost zůstane ve stavu klienta
   a další požadavky pak vrací 500. Výsledek ověř i v DB.
-- **Parita s Reactem** (fáze 5): ve `frontend/` `npm run dev` a `http://localhost:5173` vedle sebe. Projdi položky
-  stránky v `docs/FEATURES.md` a u každé napiš OK / změněno / chybí.
+- **Parita s Reactem** (fáze 5): React je na větvi `main`. Spuštění vedle nového UI přes `git worktree` a vlastní
+  Herd site `rentflow-main.test` (recept ve skillu `rentflow-page`, sekce 1). Bez spuštěné předlohy porovnávej podle
+  `docs/FEATURES.md` a kódu (`git show main:frontend/src/pages/…`). U každé položky stránky napiš OK / změněno / chybí.
 - Konzole: `read_console_messages` (`onlyErrors`, `pattern: "Content Security Policy"`) a log
   `storage/logs/laravel.log` (`grep -o "local\.[A-Z]*: [^{]\{0,140\}"`).
 

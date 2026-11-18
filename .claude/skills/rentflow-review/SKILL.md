@@ -15,7 +15,7 @@ na začátku. Dál v textu je `<cíl>`.
    Vědomá rozhodnutí nehlas jako chyby.
 3. Rozsah: `git diff --stat <cíl>...HEAD` a pak celý diff, včetně změn mimo hlavní úkol (layout, sidebar, sdílené
    komponenty, CSS, `routes/api.php`, testy).
-4. Automatické kontroly: skill `rentflow-checks` včetně auditů. Když se diff dotkl API, i React část.
+4. Automatické kontroly: skill `rentflow-checks` včetně auditů.
 5. Proklikání a útoky z konzole: skill `rentflow-browser` (se zálohou DB a obnovou na konci).
 6. Migrace: `php artisan migrate:status`, nové migrace jen přidávají, rollback starého kódu nad novou DB projde.
 
@@ -37,7 +37,8 @@ na začátku. Dál v textu je `<cíl>`.
   logika v Blade, magické stringy rolí a statusů (enumy), konzistence s design systémem `<x-…>`.
 - **E Testy:** negativní cesty (jiná role, cizí data, nepřiřazený správce, nájemník bez smlouvy, `#[Locked]`),
   hranice dnů se `setTestNow`, testy, které nic neověřují, duplicity, API testy beze změny asercí.
-- **F Kompatibilita a nasazení:** dokud existuje `frontend/`, tvar JSON API se nemění. Migrace jen přidávající,
+- **F Kompatibilita a nasazení:** API testy jsou záchranná síť do konce fáze 5. Změna tvaru JSON nebo asercí jen
+  zdůvodněná a s testem. Migrace jen přidávající,
   `env()` mimo config, nové proměnné prostředí, `autoload-dev` v runtime kódu, CSP.
 - **G Parita s Reactem** (stránky z fáze 5): každá položka z `docs/FEATURES.md` je hotová, nebo je vědomě
   vynechaná se zdůvodněním.

@@ -26,6 +26,15 @@ class Document extends Model
     use SoftDeletes;
 
     /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'visibility' => 'landlord_only',
+    ];
+
+    /**
      * Visibility options:
      * - landlord_only: Only the landlord
      * - landlord_tenant: Landlord + tenant with active lease

@@ -23,6 +23,15 @@ class Notice extends Model
 {
     use HasFactory;
 
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_active' => true,
+    ];
+
     protected $fillable = [
         'property_id',
         'created_by',

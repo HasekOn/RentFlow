@@ -101,15 +101,17 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 ## 🏗 Architektura
 
+> **Probíhá přepis UI** z React SPA na Blade + Livewire 4 + Alpine + Tailwind 4 (plán v `docs/REWRITE_PLAN.md`).
+> React SPA už v této větvi není, jako předloha chování zůstává na větvi `main` a v `docs/FEATURES.md`.
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                      Browser                             │
-│  React 19 + TypeScript + Tailwind CSS + Vite             │
+│  Blade + Livewire 4 + Alpine + Tailwind CSS 4 (přepis)   │
 └──────────────────────┬──────────────────────────────────┘
-                       │ HTTP (Axios)
-                       │ /api/v1/*
+                       │ HTTP (session) · REST /api/v1 (Bearer token)
 ┌──────────────────────▼──────────────────────────────────┐
-│                  Laravel 12 API                          │
+│                  Laravel 13                              │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐ │
 │  │Controllers│ │ Policies │ │Resources │ │  Events    │ │
 │  └──────────┘ └──────────┘ └──────────┘ └────────────┘ │
@@ -119,28 +121,19 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 └──────────────────────┬──────────────────────────────────┘
                        │ Eloquent ORM
 ┌──────────────────────▼──────────────────────────────────┐
-│              MariaDB 10.11 Database                       │
+│        SQLite (lokálně) · MariaDB (README, produkce)      │
 │  15+ tables, soft deletes, compound indexes              │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Frontend → Backend komunikace
-
-```
-Vite Dev Server (:5173)
-  ├── /login, /register → React pages (public)
-  ├── /api/* → proxy → Laravel (:8000)
-  └── /* → ProtectedRoute → AppLayout → page
-```
-
-### Auth Flow
+### Auth Flow (REST API)
 
 ```
 1. User → /login
 2. POST /api/v1/login → Sanctum token + user data
-3. Token → localStorage + Axios interceptor
+3. Klient si token uloží
 4. Každý request → Authorization: Bearer {token}
-5. 401 response → interceptor → clear token → redirect /login
+5. 401 → token je neplatný, klient se přihlásí znovu
 ```
 
 ---
@@ -149,15 +142,13 @@ Vite Dev Server (:5173)
 
 | Vrstva            | Technologie        | Verze                       |
 |-------------------|--------------------|-----------------------------|
-| **Backend**       | Laravel (PHP)      | 12.x (PHP 8.4)              |
-| **Frontend**      | React + TypeScript | 19.x + 5.7                  |
+| **Backend**       | Laravel (PHP)      | 13.x (PHP 8.5)              |
+| **Frontend**      | Blade + Livewire   | 4.x (přepis, fáze 3+)       |
 | **Styling**       | Tailwind CSS       | 4.0                         |
-| **Build**         | Vite               | 6.x                         |
+| **Build**         | Vite               | 8.x                         |
 | **Database**      | MariaDB            | 10.11                       |
-| **Auth**          | Laravel Sanctum    | SPA tokens                  |
+| **Auth**          | Laravel Sanctum    | API tokens                  |
 | **PDF**           | DomPDF             | via barryvdh/laravel-dompdf |
-| **Charts**        | Recharts           | Bar + Pie charts            |
-| **HTTP Client**   | Axios              | s interceptory              |
 | **Code Style BE** | Laravel Pint       | PSR-12                      |
 | **Code Style FE** | Prettier           | custom config               |
 | **CI/CD**         | GitHub Actions     | PHPUnit + Pint              |
@@ -253,10 +244,10 @@ User (landlord/manager/tenant)
 
 ### Požadavky
 
-- PHP 8.4+ s extensions: mbstring, pdo_mysql, gd
+- PHP 8.5+ s extensions: mbstring, pdo_sqlite (nebo pdo_mysql), gd
 - Composer 2.x
-- Node.js 20+ s npm
-- MariaDB 10.11+ nebo MySQL 8+
+- Node.js 24 s npm (jen pro build assetů)
+- Lokálně [Laravel Herd](https://herd.laravel.com) (SQLite), produkce zatím nerozhodnutá
 
 ### 1. Klonování
 
@@ -265,43 +256,22 @@ git clone https://github.com/your-repo/rentflow.git
 cd rentflow
 ```
 
-### 2. Backend
+### 2. Instalace
 
 ```bash
 composer install
 cp .env.example .env
 php artisan key:generate
-```
-
-Uprav `.env`:
-
-```env
-DB_CONNECTION=mariadb
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=rentflow
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
-```bash
-php artisan migrate
+php artisan migrate --seed
 php artisan storage:link
-php artisan db:seed
-php artisan serve
+npm ci
+npm run build
 ```
 
-### 3. Frontend
+### 3. Spuštění
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 4. Otevření
-
-Aplikace běží na **http://localhost:5173**
+Herd složku obslouží sám, aplikace běží na **http://rentflow.test**. Druhý terminál ani `npm run dev`
+nejsou potřeba, po změně šablon nebo CSS stačí `npm run build`.
 
 ---
 
@@ -459,11 +429,9 @@ php artisan test
 ### Code Style
 
 ```bash
-# Backend
 vendor/bin/pint
-
-# Frontend
-cd frontend && npx prettier --write "src/**/*.{ts,tsx}"
+composer analyse   # Larastan
+composer check     # Pint + Larastan + testy
 ```
 
 ---
@@ -474,18 +442,19 @@ cd frontend && npx prettier --write "src/**/*.{ts,tsx}"
 
 Soubor: `.github/workflows/tests.yml`
 
-**Triggery:** Push na `main`/`develop`, Pull Request do `main`
+**Triggery:** během přepisu dočasně jen ručně (`workflow_dispatch`), zapnutí push/PR ve fázi 6
 
 **Pipeline:**
 
 ```
 1. Checkout code
-2. Setup PHP 8.4 + extensions
+2. Setup PHP 8.5 + extensions
 3. Cache Composer dependencies
 4. Install dependencies
 5. Setup environment (.env + key)
-6. Run migrations + tests (MariaDB service container)
-7. Run Pint (code style check)
+6. Run Pint (code style check)
+7. Run Larastan (composer analyse)
+8. Run migrations + tests (MariaDB service container)
 ```
 
 | Výsledek | Ikona | Význam                        |
@@ -519,25 +488,8 @@ rentflow/
 │   ├── factories/                 # 13 model factories
 │   ├── migrations/                # 15+ migrations
 │   └── seeders/                   # DatabaseSeeder (české seed data)
-├── frontend/
-│   └── src/
-│       ├── api/                   # 11 API modules (axios)
-│       ├── components/
-│       │   ├── layout/            # AppLayout, Sidebar, ProtectedRoute
-│       │   └── ui/                # Button, Modal, Badge, Spinner, ...
-│       ├── contexts/              # AuthContext (global auth state)
-│       ├── hooks/                 # useConfirm (custom dialog)
-│       ├── pages/
-│       │   ├── auth/              # Login, Register
-│       │   ├── dashboard/         # Landlord + Tenant + Manager dashboard
-│       │   ├── leases/            # Leases CRUD + PDF + Rating modal
-│       │   ├── payments/          # Payments + CSV import + Generate
-│       │   ├── people/            # People list + Person detail
-│       │   ├── properties/        # Properties + Detail (6 sections)
-│       │   ├── settings/          # Profile + Password
-│       │   └── tickets/           # Tickets + Comments + Images
-│       ├── types/                 # TypeScript interfaces (20+)
-│       └── utils/                 # format helpers (currency, date)
+├── lang/cs/                       # české překlady (laravel-lang)
+├── resources/views/               # Blade (nové UI, přepis)
 ├── routes/
 │   ├── api.php                    # 60+ API routes
 │   └── console.php                # Scheduler config

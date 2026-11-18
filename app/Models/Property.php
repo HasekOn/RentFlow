@@ -40,6 +40,15 @@ class Property extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'status' => 'available',
+    ];
+
     protected $fillable = [
         'landlord_id',
         'address',

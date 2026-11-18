@@ -11,7 +11,7 @@ on:
 
 jobs:
   backend:
-    name: Backend (PHP Tests + Pint)
+    name: Backend (PHP Tests + Pint + Larastan)
     runs-on: ubuntu-latest
 
     services:
@@ -58,6 +58,9 @@ jobs:
       - name: Run Pint (code style)
         run: ./vendor/bin/pint --test
 
+      - name: Run Larastan
+        run: composer analyse
+
       - name: Run migrations
         env:
           DB_CONNECTION: mariadb
@@ -77,34 +80,3 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: password
         run: php artisan test
-
-  frontend:
-    name: Frontend (TypeScript + Prettier + Build)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: TypeScript check
-        working-directory: frontend
-        run: npx tsc --noEmit
-
-      - name: Prettier check
-        working-directory: frontend
-        run: npx prettier --check "src/**/*.{ts,tsx}"
-
-      - name: Build
-        working-directory: frontend
-        run: npm run build

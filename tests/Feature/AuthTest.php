@@ -131,6 +131,20 @@ class AuthTest extends TestCase
             ->assertJsonPath('message', 'Logged out successfully.');
     }
 
+    public function test_logout_deletes_only_the_current_token(): void
+    {
+        $user = User::factory()->create();
+        $current = $user->createToken('current');
+        $other = $user->createToken('other');
+
+        $this->withToken($current->plainTextToken)
+            ->postJson($this->apiUrl('/logout'))
+            ->assertStatus(200);
+
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $current->accessToken->id]);
+        $this->assertDatabaseHas('personal_access_tokens', ['id' => $other->accessToken->id]);
+    }
+
     public function test_logout_requires_authentication(): void
     {
         $response = $this->postJson(($this->apiUrl('/logout')));

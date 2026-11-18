@@ -4,8 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @property int $id
+ * @property int $ticket_id
+ * @property int $uploaded_by
+ * @property string $image_path
+ * @property string|null $description
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read string $image_url
+ * @property-read Ticket|null $ticket
+ * @property-read User|null $uploader
+ */
 class TicketImage extends Model
 {
     protected $fillable = [

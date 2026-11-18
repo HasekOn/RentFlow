@@ -70,9 +70,10 @@ final class MarkPaymentPaid
 - Žádné `request()`, `auth()` ani HTTP odpovědi v Action. Vstup jsou typované parametry nebo validované pole.
 - Akce nad více záznamy (generování plateb, CSV import) vrací souhrn (počty vytvořených, přeskočených, chyb).
 
-## 5. API controller (dokud existuje React)
+## 5. API controller (do rozhodnutí o API ve fázi 6)
 
-- `authorize` → `FormRequest` → Action → stejný `Resource` jako dřív. **Tvar JSON se nemění.**
+- `authorize` → `FormRequest` → Action → stejný `Resource` jako dřív. Tvar JSON se mění jen se zdůvodněním
+  (oprava autorizace, chyba) a s testem. React ho už nečte, API testy jsou ale záchranná síť do konce fáze 5.
 - `index`: `Model::query()->visibleTo($user)` + `Filterable` + eager loading toho, co Resource čte.
 - `find()` + `if ($x === null) { abort(404); }`.
 
