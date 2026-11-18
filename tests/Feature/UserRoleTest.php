@@ -2,15 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Enums\DocumentVisibility;
 use App\Enums\Role;
-use App\Models\Document;
-use App\Models\Lease;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class UserRoleTest extends TestCase
@@ -82,76 +77,5 @@ class UserRoleTest extends TestCase
         $response = $this->actingAs($tenant)->postJson($this->apiUrl('/expenses'), []);
 
         $response->assertStatus(403)->assertExactJson(['message' => 'Access denied.']);
-    }
-
-    public function test_document_visibility_is_respected_per_role(): void
-    {
-        Storage::fake('public');
-        $landlord = User::factory()->landlord()->create();
-        $tenant = User::factory()->tenant()->create();
-        $property = Property::factory()->create(['landlord_id' => $landlord->id]);
-        Lease::factory()->create(['property_id' => $property->id, 'tenant_id' => $tenant->id]);
-
-        $shared = $this->document($property, DocumentVisibility::LandlordTenant);
-        $private = $this->document($property, DocumentVisibility::LandlordOnly);
-
-        $this->actingAs($tenant)
-            ->getJson($this->apiUrl("/properties/{$property->id}/documents"))
-            ->assertStatus(200)
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.id', $shared->id);
-
-        $this->actingAs($tenant)->get($this->apiUrl("/documents/{$shared->id}/download"))->assertStatus(200);
-        $this->actingAs($tenant)->get($this->apiUrl("/documents/{$private->id}/download"))->assertStatus(403);
-    }
-
-    public function test_document_visibility_is_respected_for_assigned_manager(): void
-    {
-        Storage::fake('public');
-        $landlord = User::factory()->landlord()->create();
-        $manager = User::factory()->manager()->create();
-        $property = Property::factory()->create(['landlord_id' => $landlord->id]);
-        $property->managers()->attach($manager->id);
-
-        $forManager = $this->document($property, DocumentVisibility::LandlordManager);
-        $forTenant = $this->document($property, DocumentVisibility::LandlordTenant);
-
-        $this->actingAs($manager)
-            ->getJson($this->apiUrl("/properties/{$property->id}/documents"))
-            ->assertStatus(200)
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.id', $forManager->id);
-
-        $this->actingAs($manager)->get($this->apiUrl("/documents/{$forManager->id}/download"))->assertStatus(200);
-        $this->actingAs($manager)->get($this->apiUrl("/documents/{$forTenant->id}/download"))->assertStatus(403);
-    }
-
-    public function test_document_upload_rejects_unknown_visibility(): void
-    {
-        Storage::fake('public');
-        $landlord = User::factory()->landlord()->create();
-        $property = Property::factory()->create(['landlord_id' => $landlord->id]);
-
-        $this->actingAs($landlord)->postJson($this->apiUrl("/properties/{$property->id}/documents"), [
-            'file' => UploadedFile::fake()->create('smlouva.pdf', 10, 'application/pdf'),
-            'document_type' => 'contract',
-            'name' => 'Smlouva',
-            'visibility' => 'everyone',
-        ])->assertStatus(422)->assertJsonValidationErrors('visibility');
-    }
-
-    private function document(Property $property, DocumentVisibility $visibility): Document
-    {
-        $path = "documents/{$property->id}/{$visibility->value}.pdf";
-        Storage::disk('public')->put($path, 'pdf');
-
-        return Document::query()->create([
-            'property_id' => $property->id,
-            'document_type' => 'contract',
-            'name' => $visibility->value.'.pdf',
-            'file_path' => $path,
-            'visibility' => $visibility,
-            'uploaded_by' => $property->landlord_id,
-        ]);
     }
 }

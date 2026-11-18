@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\PropertyImageType;
+use App\Support\PrivateFile;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,7 +17,7 @@ class StorePropertyImageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'image' => ['required', 'image', 'max:5120'],
+            'image' => ['required', 'file', PrivateFile::IMAGE_MIMES, 'max:'.PrivateFile::IMAGE_MAX_KB],
             'type' => ['sometimes', Rule::enum(PropertyImageType::class)],
             'description' => ['nullable', 'string'],
             'sort_order' => ['nullable', 'integer', 'min:0'],

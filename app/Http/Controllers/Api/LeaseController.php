@@ -16,7 +16,7 @@ use App\Traits\Filterable;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Response;
 
 class LeaseController extends Controller
 {
@@ -145,7 +145,10 @@ class LeaseController extends Controller
         return response()->json(['message' => 'Lease deleted successfully.']);
     }
 
-    public function generatePdf(Request $request, string $id)
+    /**
+     * PDF se generuje za běhu a nikam se neukládá (osobní údaje, GET bez vedlejšího efektu).
+     */
+    public function generatePdf(string $id): Response
     {
         $lease = Lease::withTrashed()->with(['property', 'tenant'])->findOrFail($id);
         $this->authorize('view', $lease);
@@ -157,13 +160,7 @@ class LeaseController extends Controller
         $pdf = Pdf::loadView('pdf.lease-contract', compact('lease', 'property', 'tenant', 'landlord'));
         $pdf->setPaper('A4');
 
-        $filename = 'contract_lease_'.$lease->id.'.pdf';
-        $path = 'contracts/'.$filename;
-
-        Storage::disk('public')->put($path, $pdf->output());
-        $lease->update(['contract_path' => $path]);
-
-        return $pdf->download($filename);
+        return $pdf->download('contract_lease_'.$lease->id.'.pdf');
     }
 
     protected function getDateField(): string

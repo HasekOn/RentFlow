@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\TicketImage;
+use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TicketImageController extends Controller
 {
@@ -28,14 +29,11 @@ class TicketImageController extends Controller
         $ticket = Ticket::query()->findOrFail($ticketId);
 
         $request->validate([
-            'image' => ['required', 'file', 'image', 'max:5120'],
+            'image' => ['required', 'file', PrivateFile::IMAGE_MIMES, 'max:'.PrivateFile::IMAGE_MAX_KB],
             'description' => ['sometimes', 'string', 'max:255'],
         ]);
 
-        $path = $request->file('image')->store(
-            'tickets/'.$ticket->id.'/images',
-            'public'
-        );
+        $path = $request->file('image')->store('tickets/'.$ticket->id.'/images', PrivateFile::DISK);
 
         $image = TicketImage::query()->create([
             'ticket_id' => $ticket->id,
@@ -49,6 +47,18 @@ class TicketImageController extends Controller
         return response()->json($image, 201);
     }
 
+    public function file(string $ticketId, string $imageId): StreamedResponse
+    {
+        $image = TicketImage::query()->with('ticket.property')->where('ticket_id', $ticketId)->find($imageId);
+        if ($image === null || $image->ticket === null) {
+            abort(404);
+        }
+
+        $this->authorize('view', $image->ticket);
+
+        return PrivateFile::download($image->image_path, basename($image->image_path));
+    }
+
     public function destroy(Request $request, string $ticketId, string $imageId): JsonResponse
     {
         $image = TicketImage::query()
@@ -60,7 +70,7 @@ class TicketImageController extends Controller
             return response()->json(['message' => 'You can only delete your own images.'], 403);
         }
 
-        Storage::disk('public')->delete($image->image_path);
+        PrivateFile::delete($image->image_path);
         $image->delete();
 
         return response()->json(['message' => 'Image deleted successfully.']);

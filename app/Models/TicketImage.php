@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * @property int $id
@@ -28,6 +27,9 @@ class TicketImage extends Model
         'description',
     ];
 
+    /** Cesta k souboru se ven neposílá, soubor se stahuje autorizovanou routou. */
+    protected $hidden = ['image_path'];
+
     protected $appends = ['image_url'];
 
     public function ticket(): BelongsTo
@@ -42,6 +44,6 @@ class TicketImage extends Model
 
     public function getImageUrlAttribute(): string
     {
-        return url(Storage::url($this->image_path));
+        return route('api.ticket-images.file', [$this->ticket_id, $this->id]);
     }
 }

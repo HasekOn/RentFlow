@@ -20,7 +20,6 @@ class UpdateExpenseRequest extends FormRequest
             'amount' => ['sometimes', 'numeric', 'min:0'],
             'expense_date' => ['sometimes', 'date'],
             'description' => ['nullable', 'string'],
-            'invoice_path' => ['nullable', 'string'],
         ];
     }
 }

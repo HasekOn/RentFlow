@@ -16,7 +16,6 @@ class StoreMeterReadingRequest extends FormRequest
         return [
             'reading_value' => ['required', 'numeric', 'min:0'],
             'reading_date' => ['required', 'date'],
-            'photo_proof' => ['nullable', 'string'],
         ];
     }
 

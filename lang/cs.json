@@ -192,6 +192,8 @@
     "Tag": "Štítek",
     "Tags": "Tagy",
     "Temporary Redirect": "Dočasné přesměrování",
+    "The :attribute field must be valid UTF-8 text.": "Pole :attribute musí být platný text v kódování UTF-8.",
+    "The CSV file must be UTF-8 encoded. Save the bank export as UTF-8 and upload it again.": "Soubor CSV musí být v kódování UTF-8. Uložte výpis z banky v UTF-8 a nahrajte ho znovu.",
     "The existing encrypted environment file is not in readable format. Use --force to overwrite it.": "Stávající soubor zašifrovaného prostředí není v čitelném formátu. Pro jeho přepsání použijte --force.",
     "The existing encryption key is required to update the encrypted environment file.": "Pro aktualizaci souboru zašifrovaného prostředí je vyžadován stávající šifrovací klíč.",
     "The given data was invalid.": "Uvedené údaje byly neplatné.",

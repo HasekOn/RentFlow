@@ -7,8 +7,10 @@ use App\Http\Requests\StoreTicketCommentRequest;
 use App\Http\Resources\TicketCommentResource;
 use App\Models\Ticket;
 use App\Models\TicketComment;
+use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TicketCommentController extends Controller
 {
@@ -31,10 +33,7 @@ class TicketCommentController extends Controller
         $attachmentPath = null;
 
         if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store(
-                'tickets/'.$ticket->id,
-                'public'
-            );
+            $attachmentPath = $request->file('attachment')->store('tickets/'.$ticket->id, PrivateFile::DISK);
         }
 
         $comment = TicketComment::query()->create([
@@ -49,6 +48,18 @@ class TicketCommentController extends Controller
         return response()->json(new TicketCommentResource($comment), 201);
     }
 
+    public function attachment(string $ticketId, string $commentId): StreamedResponse
+    {
+        $comment = TicketComment::query()->with('ticket.property')->where('ticket_id', $ticketId)->find($commentId);
+        if ($comment === null || $comment->ticket === null || $comment->attachment_path === null) {
+            abort(404);
+        }
+
+        $this->authorize('view', $comment->ticket);
+
+        return PrivateFile::download($comment->attachment_path, basename($comment->attachment_path));
+    }
+
     public function destroy(Request $request, string $ticketId, string $commentId): JsonResponse
     {
         $comment = TicketComment::query()->where('ticket_id', $ticketId)
@@ -61,6 +72,7 @@ class TicketCommentController extends Controller
             ], 403);
         }
 
+        PrivateFile::delete($comment->attachment_path);
         $comment->delete();
 
         return response()->json([

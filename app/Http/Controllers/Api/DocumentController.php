@@ -3,56 +3,38 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\DocumentVisibility;
-use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Models\Document;
 use App\Models\Property;
+use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentController extends Controller
 {
     public function index(Request $request, string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
-        $user = $request->user();
+        $property = $this->findProperty($propertyId);
+        $this->authorize('view', $property);
 
-        $query = $property->documents()
+        $documents = $property->documents()
+            ->visibleTo($request->user())
             ->with('uploadedBy')
-            ->orderBy('created_at', 'desc');
-
-        // Filter by visibility based on role
-        // Landlord always sees everything — no filter needed
-        if ($user->isTenant()) {
-            // Tenant sees: landlord_tenant + all
-            $query->whereIn('visibility', [DocumentVisibility::LandlordTenant, DocumentVisibility::All]);
-        } elseif ($user->isManager()) {
-            // Manager sees: landlord_manager + all
-            $query->whereIn('visibility', [DocumentVisibility::LandlordManager, DocumentVisibility::All]);
-        }
-
-        $documents = $query->get();
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json(DocumentResource::collection($documents));
     }
 
     public function store(StoreDocumentRequest $request, string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('create', [Document::class, $property]);
 
-        if ($property->landlord_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only upload documents to your own properties.',
-            ], 403);
-        }
-
-        $path = $request->file('file')->store(
-            'documents/'.$property->id,
-            'public'
-        );
+        $path = $request->file('file')->store('documents/'.$property->id, PrivateFile::DISK);
 
         $document = Document::query()->create([
             'property_id' => $property->id,
@@ -68,39 +50,44 @@ class DocumentController extends Controller
         return response()->json(new DocumentResource($document), 201);
     }
 
-    public function download(Request $request, string $id)
+    public function download(string $id): StreamedResponse
     {
-        $document = Document::query()->with('property')->findOrFail($id);
-        $user = $request->user();
+        $document = $this->findDocument($id);
+        $this->authorize('view', $document);
 
-        // Landlord always has access
-        if (! $user->isLandlord()) {
-            $allowed = match ($user->role) {
-                Role::Tenant => in_array($document->visibility, [DocumentVisibility::LandlordTenant, DocumentVisibility::All], true),
-                Role::Manager => in_array($document->visibility, [DocumentVisibility::LandlordManager, DocumentVisibility::All], true),
-                default => false,
-            };
-
-            if (! $allowed) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-        }
-
-        return Storage::disk('public')->download(
-            $document->file_path,
-            $document->name
-        );
+        return PrivateFile::download($document->file_path, $document->name);
     }
 
     public function destroy(string $id): JsonResponse
     {
-        $document = Document::query()->findOrFail($id);
+        $document = $this->findDocument($id);
+        $this->authorize('delete', $document);
 
-        Storage::disk('public')->delete($document->file_path);
+        PrivateFile::delete($document->file_path);
         $document->delete();
 
         return response()->json([
             'message' => 'Document deleted successfully.',
         ]);
+    }
+
+    private function findProperty(string $id): Property
+    {
+        $property = Property::query()->find($id);
+        if ($property === null) {
+            abort(404);
+        }
+
+        return $property;
+    }
+
+    private function findDocument(string $id): Document
+    {
+        $document = Document::query()->with('property')->find($id);
+        if ($document === null) {
+            abort(404);
+        }
+
+        return $document;
     }
 }

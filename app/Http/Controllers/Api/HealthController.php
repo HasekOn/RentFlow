@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -52,8 +53,8 @@ class HealthController extends Controller
     {
         try {
             $testFile = 'health_check_'.time().'.tmp';
-            Storage::disk('public')->put($testFile, 'ok');
-            Storage::disk('public')->delete($testFile);
+            Storage::disk(PrivateFile::DISK)->put($testFile, 'ok');
+            Storage::disk(PrivateFile::DISK)->delete($testFile);
 
             return [
                 'healthy' => true,

@@ -5,15 +5,24 @@ namespace App\Services;
 use App\Enums\PaymentStatus;
 use App\Models\Lease;
 use App\Models\Payment;
+use Illuminate\Validation\ValidationException;
 
 class BankImportService
 {
     /**
      * Parse CSV and match payments by variable symbol
      * Returns summary of matched, unmatched and already paid
+     *
+     * @throws ValidationException soubor není v UTF-8 (např. export banky v cp1250), řádky se vrací v odpovědi
      */
     public function import(string $csvContent, int $landlordId): array
     {
+        if (! mb_check_encoding($csvContent, 'UTF-8')) {
+            throw ValidationException::withMessages([
+                'file' => __('The CSV file must be UTF-8 encoded. Save the bank export as UTF-8 and upload it again.'),
+            ]);
+        }
+
         $rows = $this->parseCsv($csvContent);
         $results = [
             'matched' => [],
