@@ -112,6 +112,8 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
 
 ## Skills v `.claude/skills/`
 
-`rentflow-checks` (kontroly) · `rentflow-browser` (proklikání, útoky, měření) · `rentflow-review` (review větve
-před mergem) · `rentflow-backend` (změna logiky: policy, Action, scope, testy) · `rentflow-page` (převod React
-stránky na Livewire).
+`rentflow-step` (jeden krok z plánu od stavu repa po shrnutí, spouští uživatel) · `rentflow-checks` (kontroly,
+subagent – v argumentu co se změnilo) · `rentflow-browser` (proklikání, útoky, měření, záloha DB) ·
+`rentflow-review` (review větve před mergem, subagent, spouští uživatel) · `rentflow-backend` (změna logiky:
+policy, Action, scope, testy) · `rentflow-page` (převod React stránky na Livewire).
+Další skills (design, security, release, dlouhé texty) jsou naplánované ve fázích v `docs/REWRITE_PLAN.md`.
