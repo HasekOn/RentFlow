@@ -120,9 +120,7 @@ class User extends Authenticatable
      */
     public function recalculateTrustScore(): float
     {
-        $service = new TrustScoreService;
-
-        return $service->calculate($this);
+        return app(TrustScoreService::class)->calculate($this);
     }
 
     /**

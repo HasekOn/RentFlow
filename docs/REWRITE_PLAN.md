@@ -144,13 +144,21 @@ pokrýt test.
     - Seeder má data dál jako stringy (cast je převede). `findOrFail` zůstává mimo dotčené řádky, řeší 2.5+.
     - Po review: testy scheduleru (`SchedulerCommandsTest`), hodnocení aktivní smlouvy, smlouvy na nemovitost
       v rekonstrukci a stahování dokumentů správcem.
-- [ ] **Po 2.2: dvojitá registrace listenerů** (nález z review 2.2, existovalo už předtím, v `docs/REVIEW.md` není)
+- [x] **Po 2.2: dvojitá registrace listenerů** (nález z review 2.2, existovalo už předtím, v `docs/REVIEW.md` není)
   - Každý listener je registrovaný dvakrát: v `$listen` v `app/Providers/EventServiceProvider.php` i přes
     auto-discovery (`php artisan event:list` ukazuje `Listener` i `Listener@handle`).
   - Dopad: nový tiket pošle pronajímateli 2 notifikace a 2 e-maily, `PaymentMarkedPaid` dvakrát přepočítá Trust Score
     a dvakrát notifikuje.
   - Oprava: smazat `EventServiceProvider` (discovery stačí), nebo vypnout discovery. Test, že jedna událost = jedna
     notifikace (`Notification::fake()` + `assertSentToTimes(…, 1)`).
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `EventServiceProvider` smazán a `withProviders` odebráno z `bootstrap/app.php`. Zůstává výchozí auto-discovery
+      Laravelu 13, stejně jako JaTime.
+    - `User::recalculateTrustScore()` bere službu z kontejneru, aby šel počet přepočtů ověřit testem.
+    - `EventListenersTest`: registrace každého listeneru právě jednou a 1 notifikace u `TicketCreated`,
+      `TicketResolved` a `LeaseCreated`. U `PaymentMarkedPaid` 1 přepočet. Notifikaci neposílá, protože
+      `SendPaymentMarkedNotification` je zatím prázdný placeholder (výše uvedené „dvakrát notifikuje“ neplatilo).
+    - Testy byly před opravou červené (2×), po ní zelené.
 - [ ] **Po 2.2: `CodeHygieneTest`** (vzor `tests/Feature/CodeHygieneTest.php` z JaTime)
   - Hlídá: ladicí výpisy (`dd`, `dump`, `ray`, `var_dump`), `TODO`/`FIXME`, holé stringy rolí a statusů
     v `app/` (`'landlord'`, `'paid'` … místo enumů z 2.2) a nepoužité Blade komponenty a partials (od fáze 3).

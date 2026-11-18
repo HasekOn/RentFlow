@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\RoleMiddleware;
-use App\Providers\EventServiceProvider;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -23,9 +22,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         apiPrefix: 'api/v1',
     )
-    ->withProviders([
-        EventServiceProvider::class,
-    ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => RoleMiddleware::class,
