@@ -1,7 +1,8 @@
 # RentFlow – inventář funkcí React frontendu (fáze 1)
 
 Předloha pro fázi 5. Při převodu stránky odškrtni každou funkci (`- [x]`), nebo napiš, proč se vědomě vynechává.
-Zdroj: `frontend/src` (pages, components, api, contexts) ke commitu `9c43509`.
+Zdroj: `frontend/src` (pages, components, api, contexts) ke commitu `9c43509`. Od kroku 2.1 je React jen na větvi
+`main` (`git show main:frontend/src/…`), spuštění přes `git worktree` popisuje skill `rentflow-page`.
 
 **Role:**
 

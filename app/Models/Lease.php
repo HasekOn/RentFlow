@@ -34,6 +34,15 @@ class Lease extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'status' => 'active',
+    ];
+
     protected $fillable = [
         'property_id',
         'tenant_id',

@@ -1,6 +1,6 @@
 ---
 name: rentflow-page
-description: Převod jedné React stránky RentFlow (frontend/src/pages) na Livewire 4 + Blade + Alpine s novým designem – inventář funkcí, mapování API na Actions a scopes, route, komponenta, šablona z design systému, testy pro všechny role a kontrola parity v prohlížeči. Použij ve fázi 5 přepisu pro každou stránku nebo záložku.
+description: Převod jedné React stránky RentFlow (předloha na větvi main, frontend/src/pages) na Livewire 4 + Blade + Alpine s novým designem – inventář funkcí, mapování API na Actions a scopes, route, komponenta, šablona z design systému, testy pro všechny role a kontrola parity v prohlížeči. Použij ve fázi 5 přepisu pro každou stránku nebo záložku.
 ---
 
 # Převod stránky z Reactu na Livewire
@@ -10,16 +10,36 @@ description: Převod jedné React stránky RentFlow (frontend/src/pages) na Live
 - Backend oblasti je hotový podle fáze 2: policy, scope `visibleTo` a Actions. Chybí → nejdřív skill
   `rentflow-backend`, ne obcházení v komponentě.
 - Design systém a layout z fáze 3 existují (`resources/views/components`, `layouts/app.blade.php`).
-- Stránka má sekci v `docs/FEATURES.md`. Když chybí, nejdřív ji doplň z React kódu.
+- Stránka má sekci v `docs/FEATURES.md`. Když chybí, nejdřív ji doplň z React kódu na `main`.
 
 ## 1. Pochop předlohu
 
-- Přečti `frontend/src/pages/<…>.tsx`, komponenty, které importuje, volání v `frontend/src/api/*.ts`
-  a typy v `frontend/src/types/index.ts`.
+- React už ve `v2` není, kód je na větvi `main`. Přečti `git show main:frontend/src/pages/<…>.tsx`, komponenty,
+  které importuje, volání v `main:frontend/src/api/*.ts` a typy v `main:frontend/src/types/index.ts`
+  (seznam souborů: `git ls-tree -r --name-only main frontend/src`).
 - Doplň nebo ověř checklist v `docs/FEATURES.md`: každé tlačítko, filtr, řazení, stránkování, modal, potvrzení,
   prázdný stav, toast, chybová hláška, polling a **rozdíly podle role** (co vidí pronajímatel, správce, nájemník).
-- Spusť starou appku pro porovnání: ve `frontend/` `npm run dev` (`.env.local` s `API_URL=http://rentflow.test`),
-  pak `http://localhost:5173`.
+- Spuštění staré appky pro porovnání je volitelné (recept níže). Většinou stačí `docs/FEATURES.md` a kód.
+
+### Recept: React předloha vedle nového UI (git worktree)
+
+Vlastní backend z `main` je nutný, API na `v2` se mění. Worktree leží mimo repo, `rentflow.test` se ho nedotkne.
+
+```powershell
+git worktree add ../rentflow-main main
+Set-Location ../rentflow-main
+composer install
+Copy-Item .env.example .env              # DB_CONNECTION=sqlite, vlastní database/database.sqlite
+php artisan key:generate
+php artisan migrate --seed
+herd link rentflow-main                  # backend z main na http://rentflow-main.test
+Set-Location frontend
+npm ci
+Set-Content .env.local "API_URL=http://rentflow-main.test"
+npm run dev                              # adresu SPA vypíše Vite
+```
+
+Úklid po fázi 5: `herd unlink rentflow-main` (ve worktree) a `git worktree remove ../rentflow-main`.
 
 ## 2. Mapování a návrh (plán ke schválení)
 
@@ -86,6 +106,5 @@ Pojmenované routy anglicky (`properties.index`, `properties.show`). URL a texty
 2. Prohlížeč (skill `rentflow-browser`): všechny role, 390 a 1440 px, útoky z konzole a **porovnání s React
    stránkou** bod po bodu podle `docs/FEATURES.md`.
 3. V `docs/FEATURES.md` odškrtni převedené funkce. V `docs/REWRITE_PLAN.md` odškrtni stránku.
-4. React stránku nemaž (to je fáze 6).
-5. Souhrn: tabulka parity (funkce → OK / změněno / vynecháno + proč), seznam souborů, návrh commit zprávy.
+4. Souhrn: tabulka parity (funkce → OK / změněno / vynecháno + proč), seznam souborů, návrh commit zprávy.
    Necommituj.

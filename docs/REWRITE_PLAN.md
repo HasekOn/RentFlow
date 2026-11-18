@@ -59,10 +59,11 @@ Na konci shrnutí: počty nálezů podle závažnosti a 5 nejdůležitějších.
 
 ## Fáze 2 – backend (API a testy musí zůstat zelené)
 
-Postup pro každý krok: skill `rentflow-backend`. Každý krok je jeden PR do `v2`.
+Postup pro každý krok: skill `rentflow-backend`. Každý krok je jeden PR do `v2` (větev `v2-<krok>`).
 
-Tvar JSON odpovědí API se nemění, protože React ho ještě používá. Výjimka je oprava autorizace: role pak dostane
-méně dat nebo 403. Takovou změnu napiš do PR i s testem.
+React už v `v2` není (smazaný v 2.1), tvar JSON se kvůli němu držet nemusí. API a jeho testy jsou ale záchranná síť
+do konce fáze 5: změnu tvaru odpovědi nebo asserce (typicky oprava autorizace, kdy role dostane méně dat nebo 403)
+napiš do PR i s testem. O API se rozhodne ve fázi 6.
 
 Čísla `#` jsou nálezy z `docs/REVIEW.md`. U kroku jsou uvedené nálezy, které krok opravuje, a každý z nich musí
 pokrýt test.
@@ -75,7 +76,7 @@ pokrýt test.
   - Promote = přiřazení uživatele k nemovitosti pronajímatele.
   - Demote odebere jen přiřazení k nemovitostem toho pronajímatele.
   - `users.role = manager` se přepočítává podle toho, jestli má uživatel aspoň jedno přiřazení (kvůli
-    kompatibilitě s Reactem).
+    kompatibilitě API; rozhodnuto ještě s Reactem).
 
   (#14, #24)
 - **Nájemník do smlouvy:** existující účet se vyhledá podle přesného e-mailu. Seznam všech uživatelů pronajímatel
@@ -91,17 +92,51 @@ pokrýt test.
 
 ### Kroky
 
-- [ ] **2.1 Nástroje a základ** (#26)
+- [x] **2.1 Nástroje a základ** (#26, #57)
   - `larastan/larastan` (level 5, postupně 7), `laravel-lang/common` (dev), skripty `composer analyse`
     a `composer check` jako v JaTime, `pint.json`.
   - `AppServiceProvider`: `Model::shouldBeStrict()` mimo produkci, `Carbon::setLocale('cs')`.
   - `config/app.php`: `timezone` `Europe/Prague`, `APP_LOCALE=cs`, `lang/cs`.
   - Rate limiter přihlášení přijde s webovým loginem ve fázi 4 (#25).
+  - **Smazání `frontend/`** (přesunuto z fáze 6). React zůstává jako předloha na větvi `main` (spuštění přes
+    `git worktree`, recept ve skillu `rentflow-page`) a v `docs/FEATURES.md`. Úprava `CLAUDE.md` (přechodné období
+    do konce fáze 5), CORS pro SPA (#57), React job v CI, `unlighthouse.config.ts`, README a skills bez `localhost:5173`.
+    Kořenový `package.json` a `vite.config.js` zůstávají pro Blade.
+  - **Údržba závislostí** jako u JaTime: `composer outdated --direct`, `npm outdated`, `composer audit`,
+    `npm audit --omit=dev`. Patch a minor aktualizovat, majory jen navrhnout.
+  - Poznámky (18. 11. 2026):
+    - Larastan level 5 bez baseline: 9 chyb opraveno (generika relací `Meter::readings`, `Ticket::images`,
+      `@property` u `TicketImage`, logout v `AuthController` maže token z hlavičky + nový test).
+    - `$attributes` s DB defaulty u 12 modelů. Se strict, `Europe/Prague` a fakerem `cs_CZ` prošlo všech 117 testů
+      beze změny asercí.
+    - `pint.json` vynechává `lang/` (generuje `lang:add` / `lang:update`). `composer.json`
+      `audit.abandoned: report` jako JaTime: `dragon-code/*` z laravel-lang jsou opuštěné, jen se hlásí.
+    - `composer update`: framework 13.43 (spodní hranice `^13.43`), Symfony 8.1.11, Sanctum 4.5, všech
+      9 advisories opraveno. npm: Vite 8.3.8, Tailwind 4.3.5, laravel-vite-plugin 3.2.1.
+    - Plný `npm audit` (s dev) hlásí ReDoS v `picomatch` přes Vite. Oprava zatím není, produkční závislosti jsou čisté.
+    - **Majory (návrh, neprovedeno):** PHPUnit 12 → 13 (JaTime je na 13.4) jako samostatný malý krok.
+    - **Návrhy na později:** odebrat `laravel/sail` (Herd), `axios` a `resources/js/bootstrap.js` ve fázi 3,
+      `composer dev` (`artisan serve` + `vite`) je v rozporu s během jen přes Herd.
+    - Větev `v2/<krok>` git nedovolí vedle `v2`, proto `v2-<krok>` (opraveno v `CLAUDE.md`).
+    - **Skills podle JaTime (skupina „Hned“):**
+      - `rentflow-checks` běží jako subagent (Haiku) a nic neopravuje,
+      - `rentflow-review` je subagent spouštěný uživatelem, se stavem větve, checklistem „Čistota kódu“
+        a migracemi/rollbackem,
+      - nový `rentflow-step` (jeden krok plánu od stavu repa po shrnutí),
+      - `db-snapshot.php` pracuje s aktivní DB z konfigurace, má `save-default` / `load-default`
+        (`database/default.sqlite`) a při existující záloze skončí kódem 2.
+    - Ostatní skills z JaTime jsou rozplánované do fází: po 2.2 `CodeHygieneTest`, po fázi 2 `rentflow-security`,
+      ve fázi 3 `cdp.mjs`, `rentflow-design` a `ThemeTest`, ve fázích 5–7 dlouhé texty a `rentflow-release`.
+      `jatime-module` se nepřebírá (RentFlow nemá vypínatelné moduly).
 - [ ] **2.2 Enumy a role** (#21, #40, #58)
   - `App\Enums\Role` (+ cast na `User`), enumy pro statusy (property, lease, payment, ticket) a typy.
   - `User::$fillable` bez `role` a `trust_score`. Nastavují se jen explicitně v registraci, u správců
     a v `TrustScoreService`.
   - Registrace jen `landlord` nebo `tenant`.
+- [ ] **Po 2.2: `CodeHygieneTest`** (vzor `tests/Feature/CodeHygieneTest.php` z JaTime)
+  - Hlídá: ladicí výpisy (`dd`, `dump`, `ray`, `var_dump`), `TODO`/`FIXME`, holé stringy rolí a statusů
+    v `app/` (`'landlord'`, `'paid'` … místo enumů z 2.2) a nepoužité Blade komponenty a partials (od fáze 3).
+  - Výjimky jen vědomě, s komentářem v testu. Checklist „Čistota kódu“ v `rentflow-review` odkáže na test.
 - [ ] **2.3 Soubory** (#1, #2, #3, #15, #43, #55)
   - Dokumenty, PDF smluv a fotky tiketů na privátní disk, existující soubory přesunout (příkaz nebo migrace).
   - Whitelist typů (`mimes` + `max`, žádné SVG ani HTML).
@@ -116,8 +151,8 @@ pokrýt test.
     - nájemník: jen sám sebe.
   - Vyhledání účtu podle přesného e-mailu pro novou smlouvu.
   - `users/{user}/ratings` do controlleru s policy, trust score jen přes `UserPolicy::view`.
-  - **Vědomě:** React `CreateLeaseModal` pak nabídne jen nájemníky, které pronajímatel už zná. Smlouvu s novým
-    nájemníkem v Reactu nezaloží. Půjde to až v Livewire stránce Smlouvy (hledání podle e-mailu).
+  - **Vědomě:** smlouvu s novým nájemníkem (účtem, který pronajímatel ještě nezná) půjde založit až v Livewire
+    stránce Smlouvy (hledání podle e-mailu). React se po 2.1 už nespouští, takže se to netýká.
 
 **Kroky 2.5–2.10 jsou policies a `visibleTo()` po oblastech.** Každá akce má testy pro všechny role, cizí data
 (jiný pronajímatel), nepřiřazeného správce a nájemníka bez aktivní smlouvy (#38).
@@ -170,13 +205,24 @@ pokrýt test.
   - Typ nákladu `utility` (rozhodnout), `download_url`, mrtvý kód.
 - [ ] **Hotovo, když:** `composer check` je zelený, Larastan bez baseline (nebo s malou a zdůvodněnou) a všechny
       nálezy kroků 2.1–2.14 mají opravu s testem.
+- [ ] **Po fázi 2: skill `rentflow-security`** podle `jatime-security` a hned první běh (ověří opravy z REVIEW).
+  - Audit celé aplikace jako subagent spouštěný uživatelem. Každý nález s `soubor:řádek` a scénářem zneužití.
+  - A autentizace: Sanctum tokeny a jejich expirace, od fáze 4 session a limiter `login` (#25).
+  - B autorizace: matice z README × každá API metoda a Livewire akce. Izolace pronajímatelů místo „více škol“,
+    správce přes `property_manager`, nájemník jen s aktivní smlouvou.
+  - C vstupy: uploady (privátní disk, `mimes`), CSV import (vzorce, kódování), DomPDF (uživatelské texty v PDF),
+    `$fillable` bez `role` a `trust_score`.
+  - D HTTP: `SecurityHeaders`, CORS (vypnutý od 2.1), trust proxies.
+  - E data a provoz: fronta `database` a e-maily notifikací, logy, tajemství v repu, audity závislostí.
+  - F osobní údaje: nájemníci, citlivé dokumenty, hodnocení a Trust Score.
 
 **Nálezy mimo fázi 2:**
 
 | Nález | Fáze | Co |
 | --- | --- | --- |
 | #25 | 4 | Rate limiter `login`, změna hesla odhlásí ostatní zařízení. Expirace Sanctum tokenů podle rozhodnutí o API ve fázi 6. |
-| #57 | 6 | CORS se odstraní spolu se SPA. |
+
+Krok se dá spustit i skillem `/rentflow-step 2.x <název kroku>` (stav repa, plán, kontroly, odškrtnutí, shrnutí).
 
 ```text
 Fáze 2 z docs/REWRITE_PLAN.md, krok „2.x <název kroku>“. Postupuj podle skillu rentflow-backend.
@@ -199,6 +245,22 @@ Na konci odškrtni krok v plánu.
 - [ ] Layout `layouts/app.blade.php` (sidebar podle role, mobilní menu, uživatelské menu, zvoneček notifikací,
       `<meta name="csrf-token">`), chybové stránky 403/404/419/429/500/503
 - [ ] `SecurityHeaders` middleware (CSP bez `script-src`/`style-src` jako JaTime), `trustProxies`
+- [ ] **Skill `rentflow-design`** podle `jatime-design` (vzniká spolu s komponentami a tokeny, `paths:
+      resources/views/**, resources/css/**`).
+  - Tabulka komponent `<x-…>` s props, tokeny `@theme`.
+  - Závazná pravidla: karty, nebo tabulka, zalamování textů od lidí, `maxlength` = `max:` z validace, dotyk 44 px,
+    tlačítka a dialogy, toasty, prázdné stavy, čísla, data a česká typografie, tmavý režim.
+  - Přístupnost a gotchas Blade.
+  - Bez modulových tříd JaTime (`.nb-*`, `.rp-*`, `.dq-*`, `.tr-*`). Navíc stavy nemovitosti, smlouvy, platby
+    a tiketu z enumů, peníze, Trust Score, grafy a záložky detailu nemovitosti.
+  - Porovnání se schváleným mockupem RentFlow.
+- [ ] **`ThemeTest`** (vzor JaTime): žádné natvrdo hex barvy v Blade a CSS, `tracking-[…]` jen přes token.
+- [ ] **`cdp.mjs` v `rentflow-browser`** (vzor `jatime-browser`): headless Edge přes CDP bez pluginu a bez npm
+      balíčků, jeden skript na scénář s malým JSON výstupem, `checks.overflow` a `checks.contrast`.
+  - Úpravy: `http://rentflow.test` (bez HTTPS), `login()` s heslem `password` a selektory z fáze 4, klíč
+    tmavého režimu z fáze 3.
+  - Skill pak poběží jako subagent s argumentem „stránky a role“. Vestavěný prohlížeč jen na přání (odpadne hack
+    s `requestAnimationFrame`).
 
 ```text
 Fáze 3 z docs/REWRITE_PLAN.md, krok „<název kroku>“. Vzor je JaTime v C:\dev\jatime (resources/views/components,
@@ -212,7 +274,7 @@ vzhled uprav pro RentFlow podle schváleného návrhu. Nepřidávej závislosti 
       (vzor `LoginController` z JaTime, rate limiter `login` podle e-mailu a IP, #25)
 - [ ] Middleware `role:` pro web (redirect/403 stránka místo JSON), `$middleware->authenticateSessions()`
 - [ ] Profil a změna hesla (`/nastaveni`), změna hesla odhlásí ostatní zařízení (#25)
-- [ ] Sanctum a API nechat beze změny (React běží dál)
+- [ ] Sanctum a API nechat beze změny (API zůstává do rozhodnutí ve fázi 6)
 
 ## Fáze 5 – stránky (každá = PR, skill `rentflow-page`)
 
@@ -234,23 +296,38 @@ Pořadí podle závislostí. URL česky. Detail nemovitosti rozdělit na zálož
 - [ ] Dokumenty `/dokumenty`
 - [ ] Notifikace (zvoneček, označit přečtené, `wire:poll`)
 - [ ] Nastavení `/nastaveni`
+- [ ] **Scénář „dlouhé texty“** v `rentflow-browser` (vzor `jatime-browser/dlouhe-texty`, po převodu stránek):
+  - `analyze.js`: ořezání, překryv, prvek mimo kartu, dotyk pod 44 px, zalomení po písmenech.
+  - `run.mjs`: role × šířky 360–1920 a souhrn.
+  - `data.php`: limity RentFlow – adresy a popisy nemovitostí, názvy a texty tiketů, komentáře, jména, názvy
+    dokumentů, poznámky plateb, částky do maxima `decimal`.
+  - `scenarios.mjs` po stránkách fáze 5.
+  - Spolu s `LongTextTest`, který hlídá `wrap-anywhere` u textů od lidí.
 
 ```text
 Fáze 5 z docs/REWRITE_PLAN.md, stránka „<název>“. Postupuj podle skillu rentflow-page.
-Předloha: frontend/src/pages/<…>.tsx a sekce stránky v docs/FEATURES.md. Nic z inventáře nesmí chybět;
+Předloha: git show main:frontend/src/pages/<…>.tsx a sekce stránky v docs/FEATURES.md. Nic z inventáře nesmí chybět;
 vědomé vynechání napiš. Nejdřív plán, pak implementace, testy, rentflow-checks a rentflow-browser.
 ```
 
 ## Fáze 6 – úklid
 
-- [ ] Smazat `frontend/`, proxy, CORS konfiguraci pro SPA (#57) a `unlighthouse.config.ts` přepsat na nové URL
-- [ ] Rozhodnout API: ponechat (veřejné API s tokeny a testy), nebo odstranit i se Sanctum
-- [ ] CI: odstranit frontend job, přidat `npm run build` v kořeni, `composer analyse`, audity
+- Smazání `frontend/`, proxy, CORS pro SPA (#57), React jobu v CI a `unlighthouse.config.ts` se přesunulo
+  do kroku 2.1.
+- [ ] Rozhodnout API: ponechat (veřejné API s tokeny a testy), nebo odstranit i se Sanctum. Podle toho nastavit CORS
+      (`config/cors.php`, teď vypnutý).
+- [ ] CI: zapnout spouštěče push/PR, přidat `npm run build` v kořeni a audity (`composer analyse` už je od 2.1)
+- [ ] Odstranit worktree s React předlohou (`herd unlink rentflow-main`, `git worktree remove ../rentflow-main`)
 - [ ] README (architektura, instalace přes Herd, screenshoty), `CHANGELOG.md`
 
 ## Fáze 7 – kvalita a nasazení
 
 - [ ] Playwright E2E na hlavní toky (přihlášení všech rolí, nemovitost, smlouva, platba, tiket s komentářem)
-- [ ] Unlighthouse (výkon, přístupnost) na hlavních stránkách
+- [ ] Unlighthouse (výkon, přístupnost) na hlavních stránkách: nový `unlighthouse.config.ts` pro `rentflow.test`
+      a české URL (starý pro React smazán ve 2.1)
 - [ ] Rozhodnout produkci (Coolify na Hetzneru jako JaTime? SQLite vs MariaDB), Dockerfile, zálohy
-- [ ] Skill `rentflow-release` podle `jatime-release`
+- [ ] Skill `rentflow-release` podle `jatime-release`, až po rozhodnutí o produkci.
+  - Verze + `CHANGELOG.md` + README.
+  - Připravenost na produkci: `env()` mimo config, `autoload-dev` v běhovém kódu, migrace bez modelů, simulace
+    startu `migrate` → `optimize` → smoke, rollback.
+  - Návrh popisu PR. Sekce „Migrace a rollback“ z `rentflow-review` se sem přesune.

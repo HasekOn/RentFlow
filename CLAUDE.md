@@ -4,15 +4,16 @@ Správa pronájmu nemovitostí pro tři role: pronajímatel (`landlord`), správ
 Obsahuje nemovitosti, smlouvy, platby, tikety, měřiče, inventář, náklady, dokumenty, oznámení, hodnocení a Trust Score.
 Laravel 13 · PHP 8.5 · SQLite lokálně (Herd) · Sanctum API `/api/v1` · DomPDF.
 
-**Probíhá přepis frontendu** z Reactu (`frontend/`) na Blade + Livewire 4 (class-based) + Alpine + Tailwind 4,
+**Probíhá přepis frontendu** z React SPA na Blade + Livewire 4 (class-based) + Alpine + Tailwind 4,
 stejný stack a vzory jako JaTime. Plán, fáze a checklist jsou v `docs/REWRITE_PLAN.md`. Vždy zjisti, ve které fázi jsme.
 
-## Přechodné období (do fáze 6)
+## Přechodné období (do konce fáze 5)
 
-- `frontend/` je starý React SPA (běží přes `npm run dev` ve `frontend/` na `localhost:5173` a proxy na Herd).
-  Neupravuj ho, pokud to úkol výslovně nechce. Smaže se ve fázi 6 a do té doby slouží jako **předloha chování**.
-- API (`routes/api.php`, `app/Http/Controllers/Api`) a jeho testy jsou záchranná síť. Dokud existuje `frontend/`,
-  **neměň tvar JSON odpovědí** – React by se rozbil. Když test API musí změnit aserci, napiš proč.
+- React SPA už v repu není (smazaný v kroku 2.1). **Předloha chování** je `docs/FEATURES.md` a kód na větvi `main`
+  (`git show main:frontend/src/pages/<…>.tsx`). Spuštění vedle nového UI přes `git worktree`: skill `rentflow-page`.
+- API (`routes/api.php`, `app/Http/Controllers/Api`) a jeho testy jsou **záchranná síť do konce fáze 5**. Tvar JSON
+  se kvůli Reactu držet nemusí, ale API testy se neoslabují: když test musí změnit aserci, napiš proč. Jestli API
+  zůstane, se rozhodne ve fázi 6.
 - Nové UI: `routes/web.php`, `app/Livewire/*`, `resources/views/*`. Česká URL (`/nemovitosti`, `/platby` …).
 - Po dokončení kroku ho v `docs/REWRITE_PLAN.md` odškrtni (`- [x]`) a dopiš krátkou poznámku, pokud se něco změnilo.
 
@@ -24,7 +25,7 @@ stejný stack a vzory jako JaTime. Plán, fáze a checklist jsou v `docs/REWRITE
   Na konci úkolu dej shrnutí, seznam změněných souborů (po logických krocích) a návrh commit zprávy
   (česky, jeden řádek + pár odrážek).
 - Na začátku úkolu `git status` + `git branch --show-current`. Nečistý strom nebo jiná větev → zeptej se.
-  Přepis se dělá ve větvi `v2` (nebo `v2/<krok>` z ní).
+  Přepis se dělá ve větvi `v2` (nebo `v2-<krok>` z ní; `v2/<krok>` git nedovolí, protože `v2` existuje).
 - **Jeden úkol = jeden krok nebo jedna stránka z plánu.** Udělej jen to, co úkol chce, a zastav se.
   U větších kroků nejdřív plán (plan mode), kód až po schválení.
 - KISS: žádné nové balíčky, fronty ani JS knihovny mimo ty, které plán výslovně uvádí. Drž se vzorů z repa a z JaTime.
@@ -37,10 +38,9 @@ stejný stack a vzory jako JaTime. Plán, fáze a checklist jsou v `docs/REWRITE
 | --- | --- |
 | Testy | `php artisan test` (filtr: `php artisan test --filter=Payment`; regex s `\|` v PowerShellu nepoužívej) |
 | Formát | `vendor/bin/pint --test` (opravit: `vendor/bin/pint <soubor>`) |
-| Larastan (od fáze 2, `app/`) | `composer analyse` |
-| Pint + Larastan + testy | `composer check` (od fáze 2) |
-| Build nového UI | `npm run build` v kořeni (ne `npm run dev`) |
-| Starý React (do fáze 6) | ve `frontend/`: `npx tsc -b`, `npm run lint`, `npm run build` |
+| Larastan (`app/`, `phpstan.neon`) | `composer analyse` |
+| Pint + Larastan + testy | `composer check` |
+| Build nového UI | `npm run build` v kořeni (ne `npm run dev`; appka běží jen přes Herd) |
 | Audity | `composer audit`, `npm audit --omit=dev` |
 
 **Lokálně (Windows + Herd):** appka běží na `http://rentflow.test` (PHP 8.5 z Herdu). PHP, Composer a npm pouštěj
@@ -71,7 +71,7 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
   endpointu neplatí a persistent middleware neběží v `Livewire::test()`. Validuj všechno, co přijde z klienta.
   Id, která klient nesmí měnit, označ `#[Locked]`. Sdílená logika komponent patří do traitů `app/Livewire/Concerns/`.
 - `find()` + `if ($x === null) { abort(404); }`, ne `findOrFail()` / `abort_if()` (Larastan, test harness).
-- `Model::shouldBeStrict()` mimo produkci (od fáze 2) → eager loading všude. Model se sloupcem s DB defaultem
+- `Model::shouldBeStrict()` mimo produkci → eager loading všude. Model se sloupcem s DB defaultem
   má `$attributes` se stejnými výchozími hodnotami.
 - Blade: v `@props` / `@php` nepiš `<x-…>` ani v komentáři. Výstup jen přes `{{ }}`, `{!! !!}` jen u důvěryhodného
   HTML. Používej design systém `<x-…>` (z JaTime, fáze 3) a nové komponenty zakládej, jen když žádná nesedí.
@@ -82,7 +82,7 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
   autorizovanou routou. Upload: `mimes` + `max`, žádné SVG/HTML od uživatelů.
 - Peníze: sloupce `decimal`. Součty počítej v DB (`SUM`) nebo v haléřích (`int`), nikdy přes float.
   Formát „12&nbsp;500&nbsp;Kč“ přes jeden helper nebo komponentu (`<x-money>`).
-- Data: SQLite ukládá datum s časem → rozsahy `>=` a `<` (ne `<=` konec dne). Časová zóna `Europe/Prague` (fáze 2).
+- Data: SQLite ukládá datum s časem → rozsahy `>=` a `<` (ne `<=` konec dne). Časová zóna `Europe/Prague`.
 - Kód nesmí záviset na konkrétní DB (lokálně SQLite, produkce zatím nerozhodnutá, README počítá s MariaDB).
 - `env()` jen v `config/*.php`. Novou proměnnou prostředí výslovně nahlas.
 - Pint: `! $x` s mezerou. V docblocku nepiš `@slovo` na začátku slova (Pint to bere jako anotaci).
@@ -104,13 +104,16 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
   `app/Console/Commands/*` (scheduler), `app/Events` + `app/Listeners` + `app/Notifications`.
 - Od fáze 2: `app/Actions/*`, `app/Enums/*`. Od fáze 3: `app/Livewire/*`, `resources/views/components/*`
   (design systém), `resources/css/app.css` (`@theme` tokeny), `app/Support/helpers.php` (`cz_*`).
-- `frontend/src/pages/*` je předloha pro přepis (do fáze 6). `docs/FEATURES.md` je inventář funkcí
-  (fáze 1) a `docs/REVIEW.md` audit (fáze 1).
+- Předloha pro přepis: `docs/FEATURES.md` (inventář funkcí, fáze 1) a React na větvi `main`
+  (`git show main:frontend/src/pages/…`). `docs/REVIEW.md` je audit (fáze 1).
+- `lang/cs/*` + `lang/cs.json` (laravel-lang), `phpstan.neon` (+ `phpstan-baseline.neon`), `pint.json`.
 - Demo účty (`php artisan migrate:fresh --seed`, heslo `password`): `landlord@rentflow.cz` (pronajímatel),
   `manager@rentflow.cz` (správce), `marie@rentflow.cz`, `tomas@rentflow.cz` (nájemníci). Další jsou v README.
 
 ## Skills v `.claude/skills/`
 
-`rentflow-checks` (kontroly) · `rentflow-browser` (proklikání, útoky, měření) · `rentflow-review` (review větve
-před mergem) · `rentflow-backend` (změna logiky: policy, Action, scope, testy) · `rentflow-page` (převod React
-stránky na Livewire).
+`rentflow-step` (jeden krok z plánu od stavu repa po shrnutí, spouští uživatel) · `rentflow-checks` (kontroly,
+subagent – v argumentu co se změnilo) · `rentflow-browser` (proklikání, útoky, měření, záloha DB) ·
+`rentflow-review` (review větve před mergem, subagent, spouští uživatel) · `rentflow-backend` (změna logiky:
+policy, Action, scope, testy) · `rentflow-page` (převod React stránky na Livewire).
+Další skills (design, security, release, dlouhé texty) jsou naplánované ve fázích v `docs/REWRITE_PLAN.md`.

@@ -62,12 +62,8 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        /** @var PersonalAccessToken $token */
-        $token = $request->user()->currentAccessToken();
-
-        if ($token && method_exists($token, 'delete')) {
-            $token->delete();
-        }
+        // Smaže token, kterým se klient přihlásil. Bez Bearer tokenu (např. actingAs v testech) není co mazat.
+        PersonalAccessToken::findToken((string) $request->bearerToken())?->delete();
 
         return response()->json([
             'message' => 'Logged out successfully.',

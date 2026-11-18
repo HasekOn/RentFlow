@@ -38,6 +38,16 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'role' => 'tenant',
+        'trust_score' => '50.00',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

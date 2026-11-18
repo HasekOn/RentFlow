@@ -18,11 +18,20 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read Property|null $property
- * @property-read Collection<MeterReading> $readings
+ * @property-read Collection<int, MeterReading> $readings
  */
 class Meter extends Model
 {
     use HasFactory;
+
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'meter_type' => 'electricity',
+    ];
 
     protected $fillable = [
         'property_id',
@@ -36,6 +45,9 @@ class Meter extends Model
         return $this->belongsTo(Property::class);
     }
 
+    /**
+     * @return HasMany<MeterReading, $this>
+     */
     public function readings(): HasMany
     {
         return $this->hasMany(MeterReading::class);

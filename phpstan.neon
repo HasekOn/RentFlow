@@ -1,0 +1,8 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+    # Plán: level 5, postupně 7 (docs/REWRITE_PLAN.md, krok 2.1).
+    level: 5

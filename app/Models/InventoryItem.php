@@ -26,6 +26,15 @@ class InventoryItem extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'condition' => 'good',
+    ];
+
     protected $fillable = [
         'property_id',
         'name',

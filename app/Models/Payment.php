@@ -27,6 +27,16 @@ class Payment extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'type' => 'rent',
+        'status' => 'unpaid',
+    ];
+
     protected $fillable = [
         'lease_id',
         'type',

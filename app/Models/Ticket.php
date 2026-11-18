@@ -27,11 +27,23 @@ use Illuminate\Support\Carbon;
  * @property-read Property|null $property
  * @property-read User|null $tenant
  * @property-read User|null $assignedUser
- * @property-read Collection<TicketComment> $comments
+ * @property-read Collection<int, TicketComment> $comments
+ * @property-read Collection<int, TicketImage> $images
  */
 class Ticket extends Model
 {
     use HasFactory, SoftDeletes;
+
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'category' => 'other',
+        'status' => 'new',
+        'priority' => 'medium',
+    ];
 
     protected $fillable = [
         'property_id',
@@ -65,6 +77,9 @@ class Ticket extends Model
         return $this->hasMany(TicketComment::class);
     }
 
+    /**
+     * @return HasMany<TicketImage, $this>
+     */
     public function images(): HasMany
     {
         return $this->hasMany(TicketImage::class);

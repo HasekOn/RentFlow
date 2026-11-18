@@ -24,6 +24,16 @@ class PropertyImage extends Model
 {
     use HasFactory;
 
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'type' => 'marketing',
+        'sort_order' => 0,
+    ];
+
     protected $fillable = [
         'property_id',
         'image_path',
