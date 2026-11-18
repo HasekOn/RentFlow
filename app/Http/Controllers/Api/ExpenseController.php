@@ -2,37 +2,26 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\LeaseStatus;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\UpdateExpenseRequest;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
-use App\Models\Property;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
 {
-    use Filterable;
+    use Filterable, FindsProperty;
 
     public function index(Request $request)
     {
         $this->authorize('viewAny', Expense::class);
 
-        $user = $request->user();
-
-        if ($user->isLandlord()) {
-            $propertyIds = $user->ownedProperties()->pluck('id');
-        } else {
-            $propertyIds = $user->leases()
-                ->where('status', LeaseStatus::Active)
-                ->pluck('property_id');
-        }
-
         $query = Expense::query()
-            ->whereIn('property_id', $propertyIds)
+            ->visibleTo($request->user())
             ->with('property');
 
         $this->applyFilters(
@@ -48,16 +37,8 @@ class ExpenseController extends Controller
 
     public function store(StoreExpenseRequest $request): JsonResponse
     {
-        $this->authorize('create', Expense::class);
-
-        // Verify property belongs to landlord
-        $property = Property::query()->findOrFail($request->validated('property_id'));
-
-        if ($property->landlord_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only add expenses to your own properties.',
-            ], 403);
-        }
+        $property = $this->findProperty((string) $request->validated('property_id'));
+        $this->authorize('create', [Expense::class, $property]);
 
         $expense = Expense::query()->create($request->validated());
 
@@ -66,8 +47,7 @@ class ExpenseController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $expense = Expense::query()->with('property')->findOrFail($id);
-
+        $expense = $this->findExpense($id);
         $this->authorize('view', $expense);
 
         return response()->json(new ExpenseResource($expense));
@@ -75,8 +55,7 @@ class ExpenseController extends Controller
 
     public function update(UpdateExpenseRequest $request, string $id): JsonResponse
     {
-        $expense = Expense::query()->findOrFail($id);
-
+        $expense = $this->findExpense($id);
         $this->authorize('update', $expense);
 
         $expense->update($request->validated());
@@ -86,8 +65,7 @@ class ExpenseController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $expense = Expense::query()->findOrFail($id);
-
+        $expense = $this->findExpense($id);
         $this->authorize('delete', $expense);
 
         $expense->delete();
@@ -95,6 +73,16 @@ class ExpenseController extends Controller
         return response()->json([
             'message' => 'Expense deleted successfully.',
         ]);
+    }
+
+    private function findExpense(string $id): Expense
+    {
+        $expense = Expense::query()->with('property')->find($id);
+        if ($expense === null) {
+            abort(404);
+        }
+
+        return $expense;
     }
 
     protected function getDateField(): string

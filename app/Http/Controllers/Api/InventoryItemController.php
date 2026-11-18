@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInventoryItemRequest;
 use App\Http\Requests\UpdateInventoryItemRequest;
 use App\Http\Resources\InventoryItemResource;
 use App\Models\InventoryItem;
-use App\Models\Property;
 use Illuminate\Http\JsonResponse;
 
 class InventoryItemController extends Controller
 {
+    use FindsProperty;
+
     public function index(string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('view', $property);
 
         $items = $property->inventoryItems()
             ->orderBy('category')
@@ -26,13 +29,8 @@ class InventoryItemController extends Controller
 
     public function store(StoreInventoryItemRequest $request, string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
-
-        if ($property->landlord_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only manage inventory for your own properties.',
-            ], 403);
-        }
+        $property = $this->findProperty($propertyId);
+        $this->authorize('create', [InventoryItem::class, $property]);
 
         $item = InventoryItem::query()->create([
             ...$request->validated(),
@@ -44,14 +42,16 @@ class InventoryItemController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $item = InventoryItem::query()->with('property')->findOrFail($id);
+        $item = $this->findItem($id);
+        $this->authorize('view', $item);
 
         return response()->json(new InventoryItemResource($item));
     }
 
     public function update(UpdateInventoryItemRequest $request, string $id): JsonResponse
     {
-        $item = InventoryItem::query()->findOrFail($id);
+        $item = $this->findItem($id);
+        $this->authorize('update', $item);
 
         $item->update($request->validated());
 
@@ -60,12 +60,23 @@ class InventoryItemController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $item = InventoryItem::query()->findOrFail($id);
+        $item = $this->findItem($id);
+        $this->authorize('delete', $item);
 
         $item->delete();
 
         return response()->json([
             'message' => 'Inventory item deleted successfully.',
         ]);
+    }
+
+    private function findItem(string $id): InventoryItem
+    {
+        $item = InventoryItem::query()->with('property')->find($id);
+        if ($item === null) {
+            abort(404);
+        }
+
+        return $item;
     }
 }

@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\TrustScoreService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class DashboardController extends Controller
 {
@@ -32,8 +33,6 @@ class DashboardController extends Controller
         } else {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
-
-        $leaseIds = Lease::query()->whereIn('property_id', $propertyIds)->pluck('id');
 
         // Property stats — use propertyIds for manager compatibility
         $totalProperties = $user->isLandlord()
@@ -52,7 +51,79 @@ class DashboardController extends Controller
             ? $user->ownedProperties()->where('status', PropertyStatus::Renovation)->count()
             : $user->managedProperties()->where('properties.status', PropertyStatus::Renovation)->count();
 
-        // Financial stats — current month
+        // Active leases
+        $activeLeases = Lease::query()->whereIn('property_id', $propertyIds)
+            ->where('status', LeaseStatus::Active)
+            ->count();
+
+        // Leases ending within 30 days
+        $expiringLeases = Lease::query()->whereIn('property_id', $propertyIds)
+            ->where('status', LeaseStatus::Active)
+            ->whereBetween('end_date', [now(), now()->addDays(30)])
+            ->count();
+
+        // Open tickets
+        $openTickets = Ticket::query()->whereIn('property_id', $propertyIds)
+            ->whereIn('status', [TicketStatus::New, TicketStatus::InProgress])
+            ->count();
+
+        $stats = [
+            'properties' => [
+                'total' => $totalProperties,
+                'occupied' => $occupiedProperties,
+                'available' => $availableProperties,
+                'renovation' => $renovationProperties,
+            ],
+            'leases' => [
+                'active' => $activeLeases,
+                'expiring_soon' => $expiringLeases,
+            ],
+            'tickets' => [
+                'open' => $openTickets,
+            ],
+        ];
+
+        // celkové finance jen pronajímateli; správce dostane přehled plateb, které potvrzuje (#17)
+        if ($user->isLandlord()) {
+            $stats['finance'] = $this->monthFinance($propertyIds);
+        } else {
+            $stats['payments'] = $this->paymentOverview($propertyIds);
+        }
+
+        return response()->json($stats);
+    }
+
+    /**
+     * Nezaplacené a po splatnosti platby aktivních smluv daných nemovitostí (stejný výřez jako Payment::visibleTo
+     * pro správce): počet a součet v DB.
+     *
+     * @param  Collection<int, int>  $propertyIds
+     * @return array<string, array{count: int, amount: mixed}>
+     */
+    private function paymentOverview(Collection $propertyIds): array
+    {
+        $overview = [];
+        foreach (['unpaid' => PaymentStatus::Unpaid, 'overdue' => PaymentStatus::Overdue] as $key => $status) {
+            $payments = Payment::query()
+                ->where('status', $status)
+                ->whereHas('lease', fn ($lease) => $lease
+                    ->where('status', LeaseStatus::Active)
+                    ->whereIn('property_id', $propertyIds));
+            $overview[$key] = ['count' => (clone $payments)->count(), 'amount' => $payments->sum('amount')];
+        }
+
+        return $overview;
+    }
+
+    /**
+     * Příjmy, výdaje a platby po splatnosti za aktuální měsíc.
+     *
+     * @param  Collection<int, int>  $propertyIds
+     * @return array<string, mixed>
+     */
+    private function monthFinance(Collection $propertyIds): array
+    {
+        $leaseIds = Lease::query()->whereIn('property_id', $propertyIds)->pluck('id');
         $monthStart = now()->startOfMonth()->toDateString();
         $monthEnd = now()->endOfMonth()->toDateString();
 
@@ -70,43 +141,12 @@ class DashboardController extends Controller
             ->where('status', PaymentStatus::Overdue)
             ->count();
 
-        // Active leases
-        $activeLeases = Lease::query()->whereIn('property_id', $propertyIds)
-            ->where('status', LeaseStatus::Active)
-            ->count();
-
-        // Leases ending within 30 days
-        $expiringLeases = Lease::query()->whereIn('property_id', $propertyIds)
-            ->where('status', LeaseStatus::Active)
-            ->whereBetween('end_date', [now(), now()->addDays(30)])
-            ->count();
-
-        // Open tickets
-        $openTickets = Ticket::query()->whereIn('property_id', $propertyIds)
-            ->whereIn('status', [TicketStatus::New, TicketStatus::InProgress])
-            ->count();
-
-        return response()->json([
-            'properties' => [
-                'total' => $totalProperties,
-                'occupied' => $occupiedProperties,
-                'available' => $availableProperties,
-                'renovation' => $renovationProperties,
-            ],
-            'finance' => [
-                'monthly_income' => $monthlyIncome,
-                'monthly_expenses' => $monthlyExpenses,
-                'cashflow' => $monthlyIncome - $monthlyExpenses,
-                'overdue_payments' => $overduePayments,
-            ],
-            'leases' => [
-                'active' => $activeLeases,
-                'expiring_soon' => $expiringLeases,
-            ],
-            'tickets' => [
-                'open' => $openTickets,
-            ],
-        ]);
+        return [
+            'monthly_income' => $monthlyIncome,
+            'monthly_expenses' => $monthlyExpenses,
+            'cashflow' => $monthlyIncome - $monthlyExpenses,
+            'overdue_payments' => $overduePayments,
+        ];
     }
 
     /**
@@ -117,13 +157,11 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        if ($user->isLandlord()) {
-            $propertyIds = $user->ownedProperties()->pluck('id');
-        } elseif ($user->isManager()) {
-            $propertyIds = $user->managedProperties()->pluck('properties.id');
-        } else {
+        // finance jen pronajímateli, správce ani nájemník je nevidí (#17)
+        if (! $user->isLandlord()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+        $propertyIds = $user->ownedProperties()->pluck('id');
 
         $leaseIds = Lease::query()->whereIn('property_id', $propertyIds)->pluck('id');
 

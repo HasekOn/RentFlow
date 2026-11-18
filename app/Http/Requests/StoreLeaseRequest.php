@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Role;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreLeaseRequest extends FormRequest
 {
@@ -15,7 +17,8 @@ class StoreLeaseRequest extends FormRequest
     {
         return [
             'property_id' => ['required', 'exists:properties,id'],
-            'tenant_id' => ['required', 'exists:users,id'],
+            // nájemníkem smlouvy může být jen účet nájemníka nebo správce, ne pronajímatel (#22)
+            'tenant_id' => ['required', Rule::exists('users', 'id')->whereIn('role', [Role::Tenant->value, Role::Manager->value])],
             'start_date' => ['required', 'date'],
             'end_date' => ['nullable', 'date', 'after:start_date'],
             'rent_amount' => ['required', 'numeric', 'min:0'],

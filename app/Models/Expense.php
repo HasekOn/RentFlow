@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ExpenseType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,16 @@ class Expense extends Model
         'description',
         'invoice_path',
     ];
+
+    /**
+     * Náklady jsou finance vlastníka: vidí je jen vlastník nemovitosti (ne správce ani nájemník, #16).
+     *
+     * @param  Builder<Expense>  $query
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $query->whereHas('property', fn (Builder $property) => $property->where('landlord_id', $user->id));
+    }
 
     public function property(): BelongsTo
     {

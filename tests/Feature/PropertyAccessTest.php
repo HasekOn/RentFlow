@@ -90,9 +90,11 @@ class PropertyAccessTest extends TestCase
             ->assertJsonCount(1, 'data.0.leases')
             ->assertJsonMissingPath('data.0.purchase_price');
 
-        // správce své nájemníky dostane z /users (2.4), smlouvy a částky ne (2.8, 2.9)
+        // správce od 2.8 vidí aktivní smlouvy (Lease::visibleTo) s nájemným pro párování plateb, kauci ne; dřív žádnou cizí
         $this->actingAs($this->manager)->getJson($url)
-            ->assertJsonCount(0, 'leases')
+            ->assertJsonCount(2, 'leases')
+            ->assertJsonStructure(['leases' => [['rent_amount', 'variable_symbol']]])
+            ->assertJsonMissingPath('leases.0.deposit_amount')
             ->assertJsonMissingPath('purchase_price');
     }
 
