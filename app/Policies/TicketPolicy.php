@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Enums\LeaseStatus;
-use App\Enums\Role;
 use App\Models\Lease;
 use App\Models\Ticket;
 use App\Models\User;
@@ -54,7 +53,9 @@ class TicketPolicy
 
     public function create(User $user): bool
     {
-        return in_array($user->role, Role::cases(), true);
+        // Tiket smí založit každá role. Kontrolu nemovitosti (zatím jen u správce v TicketController::store)
+        // doplní policies v krocích 2.5+.
+        return true;
     }
 
     public function update(User $user, Ticket $ticket): bool

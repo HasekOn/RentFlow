@@ -70,6 +70,23 @@ class LeaseTest extends TestCase
             'tenant_id' => $tenant->id,
             'variable_symbol' => '12345',
         ]);
+        $this->assertSame(PropertyStatus::Occupied, $this->property->refresh()->status);
+    }
+
+    public function test_cannot_create_lease_for_property_under_renovation(): void
+    {
+        $this->property->update(['status' => PropertyStatus::Renovation]);
+        $tenant = User::factory()->tenant()->create();
+
+        $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
+            'property_id' => $this->property->id,
+            'tenant_id' => $tenant->id,
+            'start_date' => '2026-01-01',
+            'rent_amount' => 10000,
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('leases', ['property_id' => $this->property->id]);
+        $this->assertSame(PropertyStatus::Renovation, $this->property->refresh()->status);
     }
 
     public function test_tenant_cannot_create_lease(): void

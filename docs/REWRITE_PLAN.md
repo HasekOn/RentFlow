@@ -142,6 +142,15 @@ pokrýt test.
       seeder). Opravena a pokrytá testy.
     - Nově 422 při neplatné `visibility` u uploadu dokumentu (dřív tichý fallback na `landlord_only`).
     - Seeder má data dál jako stringy (cast je převede). `findOrFail` zůstává mimo dotčené řádky, řeší 2.5+.
+    - Po review: testy scheduleru (`SchedulerCommandsTest`), hodnocení aktivní smlouvy, smlouvy na nemovitost
+      v rekonstrukci a stahování dokumentů správcem.
+- [ ] **Po 2.2: dvojitá registrace listenerů** (nález z review 2.2, existovalo už předtím, v `docs/REVIEW.md` není)
+  - Každý listener je registrovaný dvakrát: v `$listen` v `app/Providers/EventServiceProvider.php` i přes
+    auto-discovery (`php artisan event:list` ukazuje `Listener` i `Listener@handle`).
+  - Dopad: nový tiket pošle pronajímateli 2 notifikace a 2 e-maily, `PaymentMarkedPaid` dvakrát přepočítá Trust Score
+    a dvakrát notifikuje.
+  - Oprava: smazat `EventServiceProvider` (discovery stačí), nebo vypnout discovery. Test, že jedna událost = jedna
+    notifikace (`Notification::fake()` + `assertSentToTimes(…, 1)`).
 - [ ] **Po 2.2: `CodeHygieneTest`** (vzor `tests/Feature/CodeHygieneTest.php` z JaTime)
   - Hlídá: ladicí výpisy (`dd`, `dump`, `ray`, `var_dump`), `TODO`/`FIXME`, holé stringy rolí a statusů
     v `app/` (`'landlord'`, `'paid'` … místo enumů z 2.2) a nepoužité Blade komponenty a partials (od fáze 3).
@@ -230,6 +239,8 @@ pokrýt test.
 | Nález | Fáze | Co |
 | --- | --- | --- |
 | #25 | 4 | Rate limiter `login`, změna hesla odhlásí ostatní zařízení. Expirace Sanctum tokenů podle rozhodnutí o API ve fázi 6. |
+| review 2.2 | 5 | České názvy atributů ve validaci (`lang/cs/validation.php`, `attributes`): teď „Vybraná stav je neplatná“. |
+| review 2.2 | 6 | `days_overdue` v `PaymentResource` je float (`diffInDays` v Carbon 3 vrací desetinné číslo). |
 
 Krok se dá spustit i skillem `/rentflow-step 2.x <název kroku>` (stav repa, plán, kontroly, odškrtnutí, shrnutí).
 
@@ -305,6 +316,9 @@ Pořadí podle závislostí. URL česky. Detail nemovitosti rozdělit na zálož
 - [ ] Dokumenty `/dokumenty`
 - [ ] Notifikace (zvoneček, označit přečtené, `wire:poll`)
 - [ ] Nastavení `/nastaveni`
+- [ ] **České názvy atributů ve validaci** (review 2.2): `lang/cs/validation.php` → `attributes` (`status` → „stav“,
+  `type` → „typ“ …) a rod v hlášce `enum`/`in` („Vybraná stav je neplatná“ → např. „Hodnota pole stav je
+  neplatná.“). Ověřit na formulářích fáze 5 i v API 422.
 - [ ] **Scénář „dlouhé texty“** v `rentflow-browser` (vzor `jatime-browser/dlouhe-texty`, po převodu stránek):
   - `analyze.js`: ořezání, překryv, prvek mimo kartu, dotyk pod 44 px, zalomení po písmenech.
   - `run.mjs`: role × šířky 360–1920 a souhrn.
@@ -325,6 +339,8 @@ vědomé vynechání napiš. Nejdřív plán, pak implementace, testy, rentflow-
   do kroku 2.1.
 - [ ] Rozhodnout API: ponechat (veřejné API s tokeny a testy), nebo odstranit i se Sanctum. Podle toho nastavit CORS
       (`config/cors.php`, teď vypnutý).
+- [ ] `days_overdue` v `PaymentResource` jako celé číslo (review 2.2: Carbon 3 vrací z `diffInDays` float, např.
+      `10.707…`). Podle rozhodnutí o API, s testem. Stejný výpočet pro UI fáze 5 přes jeden helper.
 - [ ] CI: zapnout spouštěče push/PR, přidat `npm run build` v kořeni a audity (`composer analyse` už je od 2.1)
 - [ ] Odstranit worktree s React předlohou (`herd unlink rentflow-main`, `git worktree remove ../rentflow-main`)
 - [ ] README (architektura, instalace přes Herd, screenshoty), `CHANGELOG.md`

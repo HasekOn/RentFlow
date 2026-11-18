@@ -19,9 +19,9 @@ use Illuminate\Support\Carbon;
  * @property int $tenant_id
  * @property string $title
  * @property string $description
- * @property TicketCategory|null $category
+ * @property TicketCategory $category
  * @property TicketStatus $status
- * @property TicketPriority|null $priority
+ * @property TicketPriority $priority
  * @property int|null $assigned_to
  * @property Carbon|null $resolved_at
  * @property Carbon $created_at

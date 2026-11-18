@@ -28,8 +28,8 @@ class TicketCreatedNotification extends Notification
             ->line('A new issue has been reported.')
             ->line('Property: '.$this->ticket->property->address)
             ->line('Title: '.$this->ticket->title)
-            ->line('Category: '.$this->ticket->category?->value)
-            ->line('Priority: '.$this->ticket->priority?->value)
+            ->line('Category: '.$this->ticket->category->value)
+            ->line('Priority: '.$this->ticket->priority->value)
             ->line('Reported by: '.$this->ticket->tenant->name)
             ->action('View ticket in RentFlow', config('app.url'))
             ->line('Please review and assign this ticket.');
@@ -42,7 +42,7 @@ class TicketCreatedNotification extends Notification
             'ticket_id' => $this->ticket->id,
             'title' => $this->ticket->title,
             'property_address' => $this->ticket->property->address,
-            'priority' => $this->ticket->priority?->value,
+            'priority' => $this->ticket->priority->value,
         ];
     }
 }

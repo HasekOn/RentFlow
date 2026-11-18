@@ -105,6 +105,27 @@ class UserRoleTest extends TestCase
         $this->actingAs($tenant)->get($this->apiUrl("/documents/{$private->id}/download"))->assertStatus(403);
     }
 
+    public function test_document_visibility_is_respected_for_assigned_manager(): void
+    {
+        Storage::fake('public');
+        $landlord = User::factory()->landlord()->create();
+        $manager = User::factory()->manager()->create();
+        $property = Property::factory()->create(['landlord_id' => $landlord->id]);
+        $property->managers()->attach($manager->id);
+
+        $forManager = $this->document($property, DocumentVisibility::LandlordManager);
+        $forTenant = $this->document($property, DocumentVisibility::LandlordTenant);
+
+        $this->actingAs($manager)
+            ->getJson($this->apiUrl("/properties/{$property->id}/documents"))
+            ->assertStatus(200)
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $forManager->id);
+
+        $this->actingAs($manager)->get($this->apiUrl("/documents/{$forManager->id}/download"))->assertStatus(200);
+        $this->actingAs($manager)->get($this->apiUrl("/documents/{$forTenant->id}/download"))->assertStatus(403);
+    }
+
     public function test_document_upload_rejects_unknown_visibility(): void
     {
         Storage::fake('public');
