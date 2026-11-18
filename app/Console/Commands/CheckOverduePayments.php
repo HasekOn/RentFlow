@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\PaymentStatus;
 use App\Models\Payment;
 use App\Notifications\PaymentOverdueNotification;
 use Illuminate\Console\Command;
@@ -17,7 +18,7 @@ class CheckOverduePayments extends Command
     {
         // Find payments that are 5+ days overdue and still unpaid
         $payments = Payment::with(['lease.tenant', 'lease.property'])
-            ->where('status', 'unpaid')
+            ->where('status', PaymentStatus::Unpaid)
             ->where('due_date', '<', now()->subDays(5))
             ->get();
 
@@ -25,7 +26,7 @@ class CheckOverduePayments extends Command
 
         foreach ($payments as $payment) {
             // Mark as overdue
-            $payment->update(['status' => 'overdue']);
+            $payment->update(['status' => PaymentStatus::Overdue]);
 
             // Notify tenant
             $tenant = $payment->lease->tenant;

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Role;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
@@ -18,10 +19,11 @@ class RoleMiddleware
         /** @var User|null $user */
         $user = $request->user();
 
-        if (! $user || ! in_array($user->role, $roles)) {
-            return response()->json([
-                'message' => 'Access denied. Required role: '.implode(' or ', $roles).'.',
-            ], 403);
+        $allowed = array_map(fn (string $role): Role => Role::from($role), $roles);
+
+        // Hláška záměrně neprozrazuje, které role mají přístup.
+        if (! $user || ! in_array($user->role, $allowed, true)) {
+            return response()->json(['message' => 'Access denied.'], 403);
         }
 
         return $next($request);

@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\LeaseStatus;
 use App\Models\Notice;
 use App\Models\User;
 
@@ -36,7 +37,7 @@ class NoticePolicy
         // Tenant has active lease for this property
         return $user->leases()
             ->where('property_id', $property->id)
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->exists();
     }
 
@@ -46,7 +47,7 @@ class NoticePolicy
      */
     public function create(User $user): bool
     {
-        return $user->role === 'landlord';
+        return $user->isLandlord();
     }
 
     /**

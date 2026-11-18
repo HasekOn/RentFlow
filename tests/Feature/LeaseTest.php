@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PropertyStatus;
 use App\Models\Lease;
 use App\Models\Property;
 use App\Models\User;
@@ -69,6 +70,23 @@ class LeaseTest extends TestCase
             'tenant_id' => $tenant->id,
             'variable_symbol' => '12345',
         ]);
+        $this->assertSame(PropertyStatus::Occupied, $this->property->refresh()->status);
+    }
+
+    public function test_cannot_create_lease_for_property_under_renovation(): void
+    {
+        $this->property->update(['status' => PropertyStatus::Renovation]);
+        $tenant = User::factory()->tenant()->create();
+
+        $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
+            'property_id' => $this->property->id,
+            'tenant_id' => $tenant->id,
+            'start_date' => '2026-01-01',
+            'rent_amount' => 10000,
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('leases', ['property_id' => $this->property->id]);
+        $this->assertSame(PropertyStatus::Renovation, $this->property->refresh()->status);
     }
 
     public function test_tenant_cannot_create_lease(): void
@@ -223,6 +241,19 @@ class LeaseTest extends TestCase
         $response = $this->actingAs($otherLandlord)->deleteJson($this->apiUrl('/leases/'.$lease->id));
 
         $response->assertStatus(403);
+    }
+
+    public function test_ending_last_active_lease_makes_property_available(): void
+    {
+        $this->property->update(['status' => PropertyStatus::Occupied]);
+        $lease = Lease::factory()->create(['property_id' => $this->property->id]);
+
+        $this->actingAs($this->landlord)
+            ->putJson($this->apiUrl('/leases/'.$lease->id), ['status' => 'ended'])
+            ->assertStatus(200)
+            ->assertJsonPath('status', 'ended');
+
+        $this->assertSame(PropertyStatus::Available, $this->property->refresh()->status);
     }
 
     protected function setUp(): void

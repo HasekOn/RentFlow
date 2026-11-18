@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentVisibility;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -13,7 +14,7 @@ use Illuminate\Support\Carbon;
  * @property string $document_type
  * @property string $name
  * @property string $file_path
- * @property string $visibility
+ * @property DocumentVisibility $visibility
  * @property int $uploaded_by
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -31,21 +32,7 @@ class Document extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'visibility' => 'landlord_only',
-    ];
-
-    /**
-     * Visibility options:
-     * - landlord_only: Only the landlord
-     * - landlord_tenant: Landlord + tenant with active lease
-     * - landlord_manager: Landlord + assigned managers
-     * - all: Everyone with access to the property
-     */
-    public const array VISIBILITY_OPTIONS = [
-        'landlord_only',
-        'landlord_tenant',
-        'landlord_manager',
-        'all',
+        'visibility' => DocumentVisibility::LandlordOnly->value,
     ];
 
     protected $fillable = [
@@ -56,6 +43,16 @@ class Document extends Model
         'visibility',
         'uploaded_by',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'visibility' => DocumentVisibility::class,
+        ];
+    }
 
     public function property(): BelongsTo
     {

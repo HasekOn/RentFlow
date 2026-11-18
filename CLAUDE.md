@@ -52,7 +52,11 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
 
 ## Role a oprávnění
 
-- `users.role` je zatím string `landlord|manager|tenant`. Ve fázi 2 se z něj stane enum `App\Enums\Role`.
+- `users.role` je enum `App\Enums\Role` (cast), dotazuj se přes `isLandlord()` / `isManager()` / `isTenant()`.
+  `role` a `trust_score` nejsou fillable: `User::create(['role' => …])` roli **tiše zahodí** (uživatel bude
+  `tenant`), nastavuj je přes `forceFill()`. Registrace přijme jen `landlord` nebo `tenant`.
+- Statusy a typy jsou enumy v `app/Enums` s castem na modelu. Po castu je `$model->status === 'paid'` vždy `false`:
+  porovnávej s enumem (`=== PaymentStatus::Paid`, `in_array(…, true)`, `match` na casech), validuj `Rule::enum()`.
 - **Specifikace oprávnění = matice v `README.md` (sekce „Role a oprávnění“).** Když se kód s maticí rozchází,
   nehádej a zeptej se.
 - Pronajímatel vidí a spravuje jen **své** nemovitosti (`properties.landlord_id`). Správce jen **přiřazené**

@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\InventoryCondition;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateInventoryItemRequest extends FormRequest
 {
@@ -16,7 +18,7 @@ class UpdateInventoryItemRequest extends FormRequest
         return [
             'name' => ['sometimes', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:100'],
-            'condition' => ['sometimes', 'in:new,good,fair,poor,broken'],
+            'condition' => ['sometimes', Rule::enum(InventoryCondition::class)],
             'purchase_date' => ['nullable', 'date'],
             'purchase_price' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string'],

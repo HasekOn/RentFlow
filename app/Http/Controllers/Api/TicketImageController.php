@@ -56,7 +56,7 @@ class TicketImageController extends Controller
             ->findOrFail($imageId);
 
         // Only uploader or landlord can delete
-        if ($image->uploaded_by !== $request->user()->id && $request->user()->role !== 'landlord') {
+        if ($image->uploaded_by !== $request->user()->id && ! $request->user()->isLandlord()) {
             return response()->json(['message' => 'You can only delete your own images.'], 403);
         }
 

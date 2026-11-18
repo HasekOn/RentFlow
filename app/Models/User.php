@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Services\TrustScoreService;
 use Database\Factories\UserFactory;
@@ -19,7 +20,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property int $id
  * @property string $name
  * @property string $email
- * @property string $role
+ * @property Role $role
  * @property float $trust_score
  * @property string|null $phone
  * @property Carbon|null $email_verified_at
@@ -43,12 +44,12 @@ class User extends Authenticatable
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'role' => 'tenant',
+        'role' => Role::Tenant->value,
         'trust_score' => '50.00',
     ];
 
     /**
-     * The attributes that are mass assignable.
+     * Role a trust_score záměrně chybí: nastavují se jen explicitně (registrace, správci, TrustScoreService).
      *
      * @var list<string>
      */
@@ -56,8 +57,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
-        'trust_score',
         'phone',
     ];
 
@@ -70,6 +69,21 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    public function isLandlord(): bool
+    {
+        return $this->role === Role::Landlord;
+    }
+
+    public function isManager(): bool
+    {
+        return $this->role === Role::Manager;
+    }
+
+    public function isTenant(): bool
+    {
+        return $this->role === Role::Tenant;
+    }
 
     public function ownedProperties(): HasMany
     {
@@ -119,6 +133,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'role' => Role::class,
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'trust_score' => 'decimal:2',

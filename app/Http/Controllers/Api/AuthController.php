@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
@@ -9,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -20,15 +22,16 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Password::min(8)],
-            'role' => ['sometimes', 'in:landlord,manager,tenant'],
+            // Správcem se uživatel stává jen povýšením od pronajímatele (ManagerController::promote).
+            'role' => ['sometimes', Rule::in([Role::Landlord->value, Role::Tenant->value])],
         ]);
 
-        $user = User::create([
+        $user = new User([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'role' => $validated['role'] ?? 'tenant',
         ]);
+        $user->forceFill(['role' => $validated['role'] ?? Role::Tenant])->save();
 
         $token = $user->createToken('auth-token')->plainTextToken;
 

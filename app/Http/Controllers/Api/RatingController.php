@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LeaseStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRatingRequest;
 use App\Http\Resources\RatingResource;
@@ -28,14 +29,14 @@ class RatingController extends Controller
         $lease = Lease::query()->findOrFail($leaseId);
 
         // Only landlord can rate
-        if ($request->user()->role !== 'landlord') {
+        if (! $request->user()->isLandlord()) {
             return response()->json([
                 'message' => 'Only landlords can rate tenants.',
             ], 403);
         }
 
         // Only ended leases
-        if ($lease->status === 'active') {
+        if ($lease->status === LeaseStatus::Active) {
             return response()->json([
                 'message' => 'Cannot rate an active lease. End the lease first.',
             ], 422);

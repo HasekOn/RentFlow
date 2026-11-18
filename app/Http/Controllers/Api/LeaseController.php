@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LeaseStatus;
+use App\Enums\PropertyStatus;
 use App\Events\LeaseCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreLeaseRequest;
@@ -27,7 +29,7 @@ class LeaseController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->role === 'landlord') {
+        if ($user->isLandlord()) {
             $baseQuery = $request->filled('tenant_id')
                 ? Lease::withTrashed()
                 : Lease::query();
@@ -63,14 +65,14 @@ class LeaseController extends Controller
             return response()->json(['message' => 'You can only create leases for your own properties.'], 403);
         }
 
-        if ($property->status === 'renovation') {
+        if ($property->status === PropertyStatus::Renovation) {
             return response()->json(['message' => 'Cannot create lease for a property under renovation.'], 422);
         }
 
         $existingActive = Lease::query()
             ->where('property_id', $request->validated('property_id'))
             ->where('tenant_id', $request->validated('tenant_id'))
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->exists();
 
         if ($existingActive) {
@@ -82,8 +84,8 @@ class LeaseController extends Controller
 
         LeaseCreated::dispatch($lease);
 
-        if ($property->status === 'available') {
-            $property->update(['status' => 'occupied']);
+        if ($property->status === PropertyStatus::Available) {
+            $property->update(['status' => PropertyStatus::Occupied]);
         }
 
         return response()->json(new LeaseResource($lease), 201);
@@ -98,15 +100,15 @@ class LeaseController extends Controller
         $lease->update($request->validated());
 
         $newStatus = $lease->status;
-        if ($oldStatus === 'active' && in_array($newStatus, ['ended', 'terminated'])) {
+        if ($oldStatus === LeaseStatus::Active && in_array($newStatus, [LeaseStatus::Ended, LeaseStatus::Terminated], true)) {
             $property = $lease->property;
             if ($property) {
                 $hasOtherActive = $property->leases()
                     ->where('id', '!=', $lease->id)
-                    ->where('status', 'active')
+                    ->where('status', LeaseStatus::Active)
                     ->exists();
                 if (! $hasOtherActive) {
-                    $property->update(['status' => 'available']);
+                    $property->update(['status' => PropertyStatus::Available]);
                 }
             }
         }
@@ -130,13 +132,13 @@ class LeaseController extends Controller
         $property = $lease->property;
         $lease->delete();
 
-        if ($property && $property->status === 'occupied') {
+        if ($property && $property->status === PropertyStatus::Occupied) {
             $hasOtherActive = $property->leases()
                 ->where('id', '!=', $lease->id)
-                ->where('status', 'active')
+                ->where('status', LeaseStatus::Active)
                 ->exists();
             if (! $hasOtherActive) {
-                $property->update(['status' => 'available']);
+                $property->update(['status' => PropertyStatus::Available]);
             }
         }
 

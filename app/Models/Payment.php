@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,12 +13,12 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $lease_id
- * @property string $type
+ * @property PaymentType $type
  * @property float $amount
  * @property Carbon $due_date
  * @property Carbon|null $paid_date
  * @property string|null $variable_symbol
- * @property string $status
+ * @property PaymentStatus $status
  * @property string|null $note
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -33,8 +35,8 @@ class Payment extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'type' => 'rent',
-        'status' => 'unpaid',
+        'type' => PaymentType::Rent->value,
+        'status' => PaymentStatus::Unpaid->value,
     ];
 
     protected $fillable = [
@@ -56,6 +58,8 @@ class Payment extends Model
     protected function casts(): array
     {
         return [
+            'type' => PaymentType::class,
+            'status' => PaymentStatus::class,
             'amount' => 'decimal:2',
             'due_date' => 'date',
             'paid_date' => 'date',

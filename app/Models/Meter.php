@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MeterType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $property_id
- * @property string $meter_type
+ * @property MeterType $meter_type
  * @property string|null $serial_number
  * @property string|null $location
  * @property Carbon $created_at
@@ -30,7 +31,7 @@ class Meter extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'meter_type' => 'electricity',
+        'meter_type' => MeterType::Electricity->value,
     ];
 
     protected $fillable = [
@@ -39,6 +40,16 @@ class Meter extends Model
         'serial_number',
         'location',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'meter_type' => MeterType::class,
+        ];
+    }
 
     public function property(): BelongsTo
     {

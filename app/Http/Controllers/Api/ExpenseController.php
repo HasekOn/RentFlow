@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LeaseStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\UpdateExpenseRequest;
@@ -22,11 +23,11 @@ class ExpenseController extends Controller
 
         $user = $request->user();
 
-        if ($user->role === 'landlord') {
+        if ($user->isLandlord()) {
             $propertyIds = $user->ownedProperties()->pluck('id');
         } else {
             $propertyIds = $user->leases()
-                ->where('status', 'active')
+                ->where('status', LeaseStatus::Active)
                 ->pluck('property_id');
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PropertyStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property float|null $size
  * @property string|null $disposition
  * @property int|null $floor
- * @property string $status
+ * @property PropertyStatus $status
  * @property float|null $purchase_price
  * @property string|null $description
  * @property Carbon $created_at
@@ -46,7 +47,7 @@ class Property extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'status' => 'available',
+        'status' => PropertyStatus::Available->value,
     ];
 
     protected $fillable = [
@@ -115,6 +116,7 @@ class Property extends Model
     protected function casts(): array
     {
         return [
+            'status' => PropertyStatus::class,
             'size' => 'decimal:2',
             'purchase_price' => 'decimal:2',
         ];

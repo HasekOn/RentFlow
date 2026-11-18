@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RatingCategory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $lease_id
  * @property int $rated_by
- * @property string $category
+ * @property RatingCategory $category
  * @property int $score
  * @property string|null $comment
  * @property Carbon $created_at
@@ -29,7 +30,7 @@ class Rating extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'category' => 'overall',
+        'category' => RatingCategory::Overall->value,
     ];
 
     protected $fillable = [
@@ -39,6 +40,16 @@ class Rating extends Model
         'score',
         'comment',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'category' => RatingCategory::class,
+        ];
+    }
 
     public function lease(): BelongsTo
     {

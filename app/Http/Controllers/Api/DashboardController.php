@@ -2,6 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LeaseStatus;
+use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
+use App\Enums\PropertyStatus;
+use App\Enums\Role;
+use App\Enums\TicketStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Expense;
 use App\Models\Lease;
@@ -19,9 +25,9 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role === 'landlord') {
+        if ($user->isLandlord()) {
             $propertyIds = $user->ownedProperties()->pluck('id');
-        } elseif ($user->role === 'manager') {
+        } elseif ($user->isManager()) {
             $propertyIds = $user->managedProperties()->pluck('properties.id');
         } else {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -30,28 +36,28 @@ class DashboardController extends Controller
         $leaseIds = Lease::query()->whereIn('property_id', $propertyIds)->pluck('id');
 
         // Property stats — use propertyIds for manager compatibility
-        $totalProperties = $user->role === 'landlord'
+        $totalProperties = $user->isLandlord()
             ? $user->ownedProperties()->count()
             : $user->managedProperties()->count();
 
-        $occupiedProperties = $user->role === 'landlord'
-            ? $user->ownedProperties()->where('status', 'occupied')->count()
-            : $user->managedProperties()->where('properties.status', 'occupied')->count();
+        $occupiedProperties = $user->isLandlord()
+            ? $user->ownedProperties()->where('status', PropertyStatus::Occupied)->count()
+            : $user->managedProperties()->where('properties.status', PropertyStatus::Occupied)->count();
 
-        $availableProperties = $user->role === 'landlord'
-            ? $user->ownedProperties()->where('status', 'available')->count()
-            : $user->managedProperties()->where('properties.status', 'available')->count();
+        $availableProperties = $user->isLandlord()
+            ? $user->ownedProperties()->where('status', PropertyStatus::Available)->count()
+            : $user->managedProperties()->where('properties.status', PropertyStatus::Available)->count();
 
-        $renovationProperties = $user->role === 'landlord'
-            ? $user->ownedProperties()->where('status', 'renovation')->count()
-            : $user->managedProperties()->where('properties.status', 'renovation')->count();
+        $renovationProperties = $user->isLandlord()
+            ? $user->ownedProperties()->where('status', PropertyStatus::Renovation)->count()
+            : $user->managedProperties()->where('properties.status', PropertyStatus::Renovation)->count();
 
         // Financial stats — current month
         $monthStart = now()->startOfMonth()->toDateString();
         $monthEnd = now()->endOfMonth()->toDateString();
 
         $monthlyIncome = Payment::query()->whereIn('lease_id', $leaseIds)
-            ->where('status', 'paid')
+            ->where('status', PaymentStatus::Paid)
             ->whereBetween('paid_date', [$monthStart, $monthEnd])
             ->sum('amount');
 
@@ -61,23 +67,23 @@ class DashboardController extends Controller
 
         // Overdue payments — only those already marked overdue by scheduler
         $overduePayments = Payment::query()->whereIn('lease_id', $leaseIds)
-            ->where('status', 'overdue')
+            ->where('status', PaymentStatus::Overdue)
             ->count();
 
         // Active leases
         $activeLeases = Lease::query()->whereIn('property_id', $propertyIds)
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->count();
 
         // Leases ending within 30 days
         $expiringLeases = Lease::query()->whereIn('property_id', $propertyIds)
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->whereBetween('end_date', [now(), now()->addDays(30)])
             ->count();
 
         // Open tickets
         $openTickets = Ticket::query()->whereIn('property_id', $propertyIds)
-            ->whereIn('status', ['new', 'in_progress'])
+            ->whereIn('status', [TicketStatus::New, TicketStatus::InProgress])
             ->count();
 
         return response()->json([
@@ -111,9 +117,9 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role === 'landlord') {
+        if ($user->isLandlord()) {
             $propertyIds = $user->ownedProperties()->pluck('id');
-        } elseif ($user->role === 'manager') {
+        } elseif ($user->isManager()) {
             $propertyIds = $user->managedProperties()->pluck('properties.id');
         } else {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -129,7 +135,7 @@ class DashboardController extends Controller
             $monthEnd = $date->copy()->endOfMonth()->toDateString();
 
             $income = Payment::query()->whereIn('lease_id', $leaseIds)
-                ->where('status', 'paid')
+                ->where('status', PaymentStatus::Paid)
                 ->whereBetween('paid_date', [$monthStart, $monthEnd])
                 ->sum('amount');
 
@@ -157,17 +163,17 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role === 'landlord') {
+        if ($user->isLandlord()) {
             $query = $user->ownedProperties();
-        } elseif ($user->role === 'manager') {
+        } elseif ($user->isManager()) {
             $query = $user->managedProperties();
         } else {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $occupied = (clone $query)->where('status', 'occupied')->count();
-        $available = (clone $query)->where('status', 'available')->count();
-        $renovation = (clone $query)->where('status', 'renovation')->count();
+        $occupied = (clone $query)->where('status', PropertyStatus::Occupied)->count();
+        $available = (clone $query)->where('status', PropertyStatus::Available)->count();
+        $renovation = (clone $query)->where('status', PropertyStatus::Renovation)->count();
 
         return response()->json([
             ['label' => 'Occupied', 'value' => $occupied],
@@ -182,7 +188,7 @@ class DashboardController extends Controller
      */
     public function trustScore(Request $request, string $id): JsonResponse
     {
-        $tenant = User::query()->whereIn('role', ['tenant', 'manager'])->findOrFail($id);
+        $tenant = User::query()->whereIn('role', [Role::Tenant, Role::Manager])->findOrFail($id);
 
         $service = new TrustScoreService;
         $score = $service->calculate($tenant);
@@ -190,12 +196,12 @@ class DashboardController extends Controller
         $leaseIds = $tenant->leases()->pluck('id');
 
         $totalPayments = Payment::query()->whereIn('lease_id', $leaseIds)
-            ->where('type', 'rent')
+            ->where('type', PaymentType::Rent)
             ->count();
 
         $onTimePayments = Payment::query()->whereIn('lease_id', $leaseIds)
-            ->where('type', 'rent')
-            ->where('status', 'paid')
+            ->where('type', PaymentType::Rent)
+            ->where('status', PaymentStatus::Paid)
             ->whereColumn('paid_date', '<=', 'due_date')
             ->count();
 

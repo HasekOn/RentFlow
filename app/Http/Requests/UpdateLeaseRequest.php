@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\LeaseStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateLeaseRequest extends FormRequest
 {
@@ -20,7 +22,7 @@ class UpdateLeaseRequest extends FormRequest
             'deposit_amount' => ['nullable', 'numeric', 'min:0'],
             'utility_advances' => ['nullable', 'numeric', 'min:0'],
             'variable_symbol' => ['nullable', 'string', 'max:20', 'unique:leases,variable_symbol,'.$this->route('lease')],
-            'status' => ['sometimes', 'in:active,ended,terminated'],
+            'status' => ['sometimes', Rule::enum(LeaseStatus::class)],
         ];
     }
 }

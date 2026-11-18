@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\LeaseStatus;
 use App\Models\Expense;
 use App\Models\User;
 
@@ -32,7 +33,7 @@ class ExpensePolicy
 
         return $user->leases()
             ->where('property_id', $expense->property_id)
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->exists();
     }
 
@@ -41,7 +42,7 @@ class ExpensePolicy
      */
     public function create(User $user): bool
     {
-        return $user->role === 'landlord';
+        return $user->isLandlord();
     }
 
     public function delete(User $user, Expense $expense): bool

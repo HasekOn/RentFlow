@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\PaymentStatus;
 use App\Models\Payment;
 use App\Models\User;
 
@@ -31,7 +32,7 @@ class PaymentPolicy
         }
 
         // Manager manages this property — can view payments (read-only)
-        if ($user->role === 'manager') {
+        if ($user->isManager()) {
             return $user->managedProperties()
                 ->where('properties.id', $lease->property_id)
                 ->exists();
@@ -42,7 +43,7 @@ class PaymentPolicy
 
     public function create(User $user): bool
     {
-        return $user->role === 'landlord';
+        return $user->isLandlord();
     }
 
     public function update(User $user, Payment $payment): bool
@@ -54,7 +55,7 @@ class PaymentPolicy
 
     public function delete(User $user, Payment $payment): bool
     {
-        if ($payment->status === 'paid') {
+        if ($payment->status === PaymentStatus::Paid) {
             return false;
         }
 

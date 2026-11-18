@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -18,7 +19,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
-            'role' => 'tenant',
+            'role' => Role::Tenant,
             'trust_score' => fake()->randomFloat(2, 30, 100),
             'phone' => fake()->phoneNumber(),
         ];
@@ -27,7 +28,7 @@ class UserFactory extends Factory
     public function landlord(): static
     {
         return $this->state(fn () => [
-            'role' => 'landlord',
+            'role' => Role::Landlord,
             'trust_score' => 0,
         ]);
     }
@@ -35,7 +36,7 @@ class UserFactory extends Factory
     public function manager(): static
     {
         return $this->state(fn () => [
-            'role' => 'manager',
+            'role' => Role::Manager,
             'trust_score' => 0,
         ]);
     }
@@ -43,7 +44,7 @@ class UserFactory extends Factory
     public function tenant(): static
     {
         return $this->state(fn () => [
-            'role' => 'tenant',
+            'role' => Role::Tenant,
         ]);
     }
 }

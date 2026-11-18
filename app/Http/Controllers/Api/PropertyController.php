@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LeaseStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
@@ -23,11 +24,11 @@ class PropertyController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->role === 'landlord') {
+        if ($user->isLandlord()) {
             $query = $user->ownedProperties()->with(['leases.tenant', 'images'])->getQuery();
-        } elseif ($user->role === 'manager') {
+        } elseif ($user->isManager()) {
             $managedIds = $user->managedProperties()->pluck('properties.id');
-            $leaseIds = $user->leases()->where('status', 'active')->pluck('property_id');
+            $leaseIds = $user->leases()->where('status', LeaseStatus::Active)->pluck('property_id');
             $allIds = $managedIds->merge($leaseIds)->unique();
 
             $query = Property::query()
@@ -35,7 +36,7 @@ class PropertyController extends Controller
                 ->with(['leases.tenant', 'images']);
         } else {
             $query = Property::query()->whereIn('id',
-                $user->leases()->where('status', 'active')->pluck('property_id')
+                $user->leases()->where('status', LeaseStatus::Active)->pluck('property_id')
             )->with('images');
         }
 

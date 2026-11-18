@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\InventoryCondition;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $property_id
  * @property string $name
  * @property string|null $category
- * @property string $condition
+ * @property InventoryCondition $condition
  * @property Carbon|null $purchase_date
  * @property float|null $purchase_price
  * @property string|null $note
@@ -32,7 +33,7 @@ class InventoryItem extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'condition' => 'good',
+        'condition' => InventoryCondition::Good->value,
     ];
 
     protected $fillable = [
@@ -53,6 +54,7 @@ class InventoryItem extends Model
     protected function casts(): array
     {
         return [
+            'condition' => InventoryCondition::class,
             'purchase_date' => 'date',
             'purchase_price' => 'decimal:2',
         ];

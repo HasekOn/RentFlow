@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\TicketCategory;
+use App\Enums\TicketPriority;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreTicketRequest extends FormRequest
 {
@@ -17,8 +20,8 @@ class StoreTicketRequest extends FormRequest
             'property_id' => ['required', 'exists:properties,id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'min:10'],
-            'category' => ['sometimes', 'in:plumbing,electrical,heating,structural,appliance,other'],
-            'priority' => ['sometimes', 'in:low,medium,high,urgent'],
+            'category' => ['sometimes', Rule::enum(TicketCategory::class)],
+            'priority' => ['sometimes', Rule::enum(TicketPriority::class)],
         ];
     }
 

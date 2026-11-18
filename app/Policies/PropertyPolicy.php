@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\LeaseStatus;
 use App\Models\Property;
 use App\Models\User;
 
@@ -26,7 +27,7 @@ class PropertyPolicy
             return true;
         }
 
-        if ($user->role === 'manager') {
+        if ($user->isManager()) {
             if ($property->managers()->where('user_id', $user->id)->exists()) {
                 return true;
             }
@@ -34,7 +35,7 @@ class PropertyPolicy
 
         return $user->leases()
             ->where('property_id', $property->id)
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->exists();
     }
 
@@ -44,7 +45,7 @@ class PropertyPolicy
      */
     public function create(User $user): bool
     {
-        return $user->role === 'landlord';
+        return $user->isLandlord();
     }
 
     /**

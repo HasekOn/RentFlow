@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePaymentRequest extends FormRequest
 {
@@ -15,12 +18,12 @@ class StorePaymentRequest extends FormRequest
     {
         return [
             'lease_id' => ['required', 'exists:leases,id'],
-            'type' => ['required', 'in:rent,utilities,deposit,other'],
+            'type' => ['required', Rule::enum(PaymentType::class)],
             'amount' => ['required', 'numeric', 'min:0'],
             'due_date' => ['required', 'date'],
             'paid_date' => ['nullable', 'date'],
             'variable_symbol' => ['nullable', 'string', 'max:20'],
-            'status' => ['sometimes', 'in:paid,unpaid,overdue'],
+            'status' => ['sometimes', Rule::enum(PaymentStatus::class)],
             'note' => ['nullable', 'string'],
         ];
     }

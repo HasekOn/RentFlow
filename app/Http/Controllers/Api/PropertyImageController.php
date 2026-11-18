@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\PropertyImageType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePropertyImageRequest;
 use App\Http\Requests\UpdatePropertyImageRequest;
@@ -37,7 +38,7 @@ class PropertyImageController extends Controller
         $image = PropertyImage::query()->create([
             'property_id' => $property->id,
             'image_path' => $path,
-            'type' => $request->validated('type', 'marketing'),
+            'type' => $request->validated('type', PropertyImageType::Marketing->value),
             'uploaded_by' => $request->user()->id,
             'description' => $request->validated('description'),
             'sort_order' => $request->validated('sort_order', 0),

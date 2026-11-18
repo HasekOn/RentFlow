@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdatePaymentRequest extends FormRequest
 {
@@ -14,12 +17,12 @@ class UpdatePaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['sometimes', 'in:rent,utilities,deposit,other'],
+            'type' => ['sometimes', Rule::enum(PaymentType::class)],
             'amount' => ['sometimes', 'numeric', 'min:0'],
             'due_date' => ['sometimes', 'date'],
             'paid_date' => ['nullable', 'date'],
             'variable_symbol' => ['nullable', 'string', 'max:20'],
-            'status' => ['sometimes', 'in:paid,unpaid,overdue'],
+            'status' => ['sometimes', Rule::enum(PaymentStatus::class)],
             'note' => ['nullable', 'string'],
         ];
     }

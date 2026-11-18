@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\Property;
 use App\Models\User;
@@ -18,17 +19,20 @@ class ManagerController extends Controller
     {
         $landlord = $request->user();
 
-        if ($landlord->role !== 'landlord') {
+        if (! $landlord->isLandlord()) {
             return response()->json(['message' => 'Only landlords can promote managers.'], 403);
         }
 
-        $user = User::query()->findOrFail($userId);
+        $user = User::query()->find($userId);
+        if ($user === null) {
+            abort(404);
+        }
 
-        if ($user->role === 'landlord') {
+        if ($user->isLandlord()) {
             return response()->json(['message' => 'Cannot promote a landlord.'], 422);
         }
 
-        $user->update(['role' => 'manager']);
+        $user->forceFill(['role' => Role::Manager])->save();
 
         return response()->json(['message' => 'User promoted to manager.', 'user' => $user]);
     }
@@ -41,19 +45,22 @@ class ManagerController extends Controller
     {
         $landlord = $request->user();
 
-        if ($landlord->role !== 'landlord') {
+        if (! $landlord->isLandlord()) {
             return response()->json(['message' => 'Only landlords can demote managers.'], 403);
         }
 
-        $user = User::query()->findOrFail($userId);
+        $user = User::query()->find($userId);
+        if ($user === null) {
+            abort(404);
+        }
 
-        if ($user->role !== 'manager') {
+        if (! $user->isManager()) {
             return response()->json(['message' => 'User is not a manager.'], 422);
         }
 
         // Remove all property assignments
         $user->managedProperties()->detach();
-        $user->update(['role' => 'tenant']);
+        $user->forceFill(['role' => Role::Tenant])->save();
 
         return response()->json(['message' => 'Manager demoted to tenant.', 'user' => $user]);
     }
@@ -75,7 +82,7 @@ class ManagerController extends Controller
 
         $manager = User::query()->findOrFail($request->input('user_id'));
 
-        if ($manager->role !== 'manager') {
+        if (! $manager->isManager()) {
             return response()->json(['message' => 'User must be a manager first.'], 422);
         }
 

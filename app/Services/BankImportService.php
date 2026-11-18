@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PaymentStatus;
 use App\Models\Lease;
 use App\Models\Payment;
 
@@ -81,7 +82,7 @@ class BankImportService
             // Match by amount first for accuracy, then by VS on payment if set
             $paymentQuery = Payment::query()
                 ->where('lease_id', $leaseId)
-                ->whereIn('status', ['unpaid', 'overdue'])
+                ->whereIn('status', [PaymentStatus::Unpaid, PaymentStatus::Overdue])
                 ->whereNotIn('id', $matchedPaymentIds);
 
             // Try exact amount match first (most reliable)
@@ -101,7 +102,7 @@ class BankImportService
                 // Check if there's a paid payment with same VS and date to detect duplicate import
                 $alreadyImported = Payment::query()
                     ->where('lease_id', $leaseId)
-                    ->where('status', 'paid')
+                    ->where('status', PaymentStatus::Paid)
                     ->where('note', 'LIKE', '%CSV import%')
                     ->when($date, fn ($q) => $q->where('paid_date', $date))
                     ->where('amount', $amount)
@@ -128,7 +129,7 @@ class BankImportService
             // Match — mark as paid
             $payment->update([
                 'paid_date' => $date ?: now()->toDateString(),
-                'status' => 'paid',
+                'status' => PaymentStatus::Paid,
                 'variable_symbol' => $vs,
                 'note' => 'Auto-matched from bank CSV import'.($amountMismatch
                         ? ' (CSV amount: '.number_format($amount, 2).', expected: '.number_format((float) $payment->amount, 2).')'

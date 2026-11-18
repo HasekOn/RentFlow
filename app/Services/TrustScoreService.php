@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
 use App\Models\Payment;
 use App\Models\Rating;
 use App\Models\User;
@@ -29,7 +31,7 @@ class TrustScoreService
         $totalScore = max(0, min(100, round($totalScore, 2)));
 
         // Save to user
-        $user->update(['trust_score' => $totalScore]);
+        $user->forceFill(['trust_score' => $totalScore])->save();
 
         return $totalScore;
     }
@@ -49,7 +51,7 @@ class TrustScoreService
         $leaseIds = $user->leases()->pluck('id');
 
         $payments = Payment::query()->whereIn('lease_id', $leaseIds)
-            ->where('type', 'rent')
+            ->where('type', PaymentType::Rent)
             ->get();
 
         if ($payments->isEmpty()) {
@@ -60,7 +62,7 @@ class TrustScoreService
         $maxPoints = $payments->count() * 10; // Best case: all on time
 
         foreach ($payments as $payment) {
-            if ($payment->status === 'unpaid' || $payment->paid_date === null) {
+            if ($payment->status === PaymentStatus::Unpaid || $payment->paid_date === null) {
                 $totalPoints -= 10;
 
                 continue;
