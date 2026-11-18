@@ -19,10 +19,8 @@ use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\TicketCommentController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketImageController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Resources\UserResource;
-use App\Models\Lease;
-use App\Models\Rating;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -41,25 +39,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', fn (Request $request) => new UserResource($request->user()));
 
-    // Ratings by user — parameter name must match route placeholder {user}
-    Route::get('users/{user}/ratings', function (string $user) {
-        $ratings = Rating::query()
-            ->whereIn('lease_id', Lease::withTrashed()->where('tenant_id', $user)->pluck('id'))
-            ->with(['ratedBy', 'lease.property'])
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(fn ($r) => [
-                'id' => $r->id,
-                'category' => $r->category,
-                'score' => $r->score,
-                'comment' => $r->comment,
-                'created_at' => $r->created_at->toDateTimeString(),
-                'rated_by' => $r->ratedBy ? ['id' => $r->ratedBy->id, 'name' => $r->ratedBy->name] : null,
-                'property' => $r->lease?->property ? ['address' => $r->lease->property->address] : null,
-            ]);
-
-        return response()->json($ratings);
-    });
+    // People (UserPolicy + User::visibleTo)
+    Route::get('users', [UserController::class, 'index']);
+    Route::get('users/lookup', [UserController::class, 'lookup'])->middleware('throttle:30,1');
+    Route::get('users/{user}/ratings', [UserController::class, 'ratings']);
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'show']);
@@ -120,17 +103,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Notifications
     Route::get('notifications', [DashboardController::class, 'notifications']);
     Route::put('notifications/{notification}/read', [DashboardController::class, 'markNotificationRead']);
-
-    // Users list (for People page + tenant self-lookup)
-    Route::get('/users', function (Request $request) {
-        $query = User::query();
-
-        if ($request->filled('role')) {
-            $query->where('role', $request->input('role'));
-        }
-
-        return response()->json($query->get(['id', 'name', 'email', 'role', 'phone', 'trust_score', 'created_at']));
-    });
 
     // ─── READ routes accessible to all authenticated users ───
     // Expenses (read)

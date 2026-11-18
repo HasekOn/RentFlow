@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\Role;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Models\Property;
 use App\Models\User;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class ManagerController extends Controller
 {
+    use FindsProperty;
+
     /**
      * Promote user to manager role
      * POST /api/v1/users/{user}/promote-manager
@@ -121,7 +124,9 @@ class ManagerController extends Controller
      */
     public function list(Request $request, string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        // kontakty správců jen vlastníkovi (#18)
+        $this->authorize('update', $property);
 
         return response()->json(
             $property->managers()->get(['users.id', 'users.name', 'users.email', 'users.phone'])

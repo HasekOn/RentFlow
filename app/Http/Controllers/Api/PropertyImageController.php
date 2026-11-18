@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\PropertyImageType;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePropertyImageRequest;
 use App\Http\Requests\UpdatePropertyImageRequest;
 use App\Http\Resources\PropertyImageResource;
-use App\Models\Property;
 use App\Models\PropertyImage;
 use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
@@ -15,9 +15,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PropertyImageController extends Controller
 {
+    use FindsProperty;
+
     public function index(string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('view', $property);
 
         $images = $property->images()
             ->orderBy('sort_order')
@@ -28,7 +31,8 @@ class PropertyImageController extends Controller
 
     public function store(StorePropertyImageRequest $request, string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('create', [PropertyImage::class, $property]);
 
         $path = $request->file('image')->store('properties/'.$property->id, PrivateFile::DISK);
 
@@ -46,8 +50,8 @@ class PropertyImageController extends Controller
 
     public function file(string $id): StreamedResponse
     {
-        $image = PropertyImage::query()->with('property')->find($id);
-        if ($image === null || $image->property === null) {
+        $image = $this->findImage($id);
+        if ($image->property === null) {
             abort(404);
         }
 
@@ -58,7 +62,8 @@ class PropertyImageController extends Controller
 
     public function update(UpdatePropertyImageRequest $request, string $id): JsonResponse
     {
-        $image = PropertyImage::query()->findOrFail($id);
+        $image = $this->findImage($id);
+        $this->authorize('update', $image);
 
         $image->update($request->validated());
 
@@ -67,7 +72,8 @@ class PropertyImageController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $image = PropertyImage::query()->findOrFail($id);
+        $image = $this->findImage($id);
+        $this->authorize('delete', $image);
 
         PrivateFile::delete($image->image_path);
         $image->delete();
@@ -75,5 +81,15 @@ class PropertyImageController extends Controller
         return response()->json([
             'message' => 'Image deleted successfully.',
         ]);
+    }
+
+    private function findImage(string $id): PropertyImage
+    {
+        $image = PropertyImage::query()->with('property')->find($id);
+        if ($image === null) {
+            abort(404);
+        }
+
+        return $image;
     }
 }

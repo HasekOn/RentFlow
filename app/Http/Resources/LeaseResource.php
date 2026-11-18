@@ -24,7 +24,7 @@ class LeaseResource extends JsonResource
             'status' => $this->status,
             'created_at' => $this->created_at->toDateTimeString(),
             'property' => new PropertyResource($this->whenLoaded('property')),
-            'tenant' => new UserResource($this->whenLoaded('tenant')),
+            'tenant' => UserResource::nested($this->whenLoaded('tenant'), $request),
             'payments' => PaymentResource::collection($this->whenLoaded('payments')),
             'ratings' => RatingResource::collection($this->whenLoaded('ratings')),
         ];

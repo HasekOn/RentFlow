@@ -2,19 +2,23 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\FindsMeter;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMeterRequest;
 use App\Http\Requests\UpdateMeterRequest;
 use App\Http\Resources\MeterResource;
 use App\Models\Meter;
-use App\Models\Property;
 use Illuminate\Http\JsonResponse;
 
 class MeterController extends Controller
 {
+    use FindsMeter, FindsProperty;
+
     public function index(string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('view', $property);
 
         $meters = $property->meters()
             ->with(['readings' => function ($query) {
@@ -27,13 +31,8 @@ class MeterController extends Controller
 
     public function store(StoreMeterRequest $request, string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
-
-        if ($property->landlord_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only add meters to your own properties.',
-            ], 403);
-        }
+        $property = $this->findProperty($propertyId);
+        $this->authorize('create', [Meter::class, $property]);
 
         $meter = Meter::query()->create([
             ...$request->validated(),
@@ -47,14 +46,19 @@ class MeterController extends Controller
     {
         $meter = Meter::query()->with(['readings' => function ($query) {
             $query->orderBy('reading_date', 'desc');
-        }, 'property'])->findOrFail($id);
+        }, 'property'])->find($id);
+        if ($meter === null) {
+            abort(404);
+        }
+        $this->authorize('view', $meter);
 
         return response()->json(new MeterResource($meter));
     }
 
     public function update(UpdateMeterRequest $request, string $id): JsonResponse
     {
-        $meter = Meter::query()->findOrFail($id);
+        $meter = $this->findMeter($id);
+        $this->authorize('update', $meter);
 
         $meter->update($request->validated());
 
@@ -63,7 +67,8 @@ class MeterController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $meter = Meter::query()->findOrFail($id);
+        $meter = $this->findMeter($id);
+        $this->authorize('delete', $meter);
 
         $meter->delete();
 

@@ -370,7 +370,10 @@ Všechny endpointy pod prefixem `/api/v1/`. Autentizace přes Sanctum Bearer tok
 | GET    | `/property-images/{id}/file` | Stáhnout fotku nemovitosti |
 | GET    | `/properties/{id}/notices`   | Oznámení               |
 | GET    | `/notifications`             | Notifikace uživatele   |
-| GET    | `/tenants/{id}/trust-score`  | Trust score detail     |
+| GET    | `/tenants/{id}/trust-score`  | Trust score detail (jen koho vidím) |
+| GET    | `/users`                     | Lidé, které vidím (pronajímatel, správce) |
+| GET    | `/users/lookup?email=`       | Účet podle přesného e-mailu (pronajímatel) |
+| GET    | `/users/{id}/ratings`        | Hodnocení nájemníka (jen koho vidím) |
 | GET    | `/health`                    | Health check (veřejný) |
 
 ---
