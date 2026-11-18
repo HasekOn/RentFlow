@@ -18,15 +18,18 @@ Stav: `- [ ]` čeká, `- [x]` hotovo. Poznámky piš pod krok.
   - Akce zvednuté na `actions/checkout@v7`, `actions/cache@v6`, `actions/setup-node@v7`; `composer.json` `php: ^8.5`.
   - Workflow je **dočasně vypnutý** (jen `workflow_dispatch`). Zapnout spouštěče push/PR (v komentáři
     v souboru) nejpozději ve fázi 6 spolu s úpravou jobů (bez React jobu, `npm run build`, `composer analyse`).
-- [ ] Merge `chore/upgrade-deps` → `main`, založit větev `v2`
-  - Merge hotový (PR #1). Zbývá založit `v2`.
+- [x] Merge `chore/upgrade-deps` → `main`, založit větev `v2`
+  - Merge hotový (PR #1), větev `v2` existuje (i na `origin`).
 - [x] `CLAUDE.md`, `.claude/` (settings, skills) a tento plán
 
 ## Fáze 1 – audit (jen čtení, nic neměnit)
 
-- [ ] `docs/REVIEW.md`: bezpečnost, autorizace, N+1, validace, uploady, mrtvý kód, chybějící testy
-- [ ] `docs/FEATURES.md`: inventář funkcí **každé** React stránky (tlačítka, filtry, řazení, stránkování, modaly,
+- [x] `docs/REVIEW.md`: bezpečnost, autorizace, N+1, validace, uploady, mrtvý kód, chybějící testy
+  - 58 nálezů (4 critical, 13 high, 21 medium, 20 low; #58 doplněn při plánování fáze 2). Všechna podezření níže
+    ověřena (tabulka v REVIEW). Otázky z REVIEW jsou rozhodnuté ve fázi 2 („Rozhodnutí z auditu“).
+- [x] `docs/FEATURES.md`: inventář funkcí **každé** React stránky (tlačítka, filtry, řazení, stránkování, modaly,
       prázdné stavy, toasty, polling, rozdíly podle role). Podle něj se ve fázi 5 kontroluje, že nic nechybí.
+  - Obsahuje i API, které React nevolá, a návrh URL včetně záložek detailu nemovitosti jako samostatných URL.
 
 **Podezření z prvního průchodu (ověřit, nebrat jako hotový fakt):**
 
@@ -56,24 +59,129 @@ Na konci shrnutí: počty nálezů podle závažnosti a 5 nejdůležitějších.
 
 ## Fáze 2 – backend (API a testy musí zůstat zelené)
 
-Postup pro každou oblast: skill `rentflow-backend`. Tvar JSON odpovědí API se nemění (React ho ještě používá).
+Postup pro každý krok: skill `rentflow-backend`. Každý krok je jeden PR do `v2`.
 
-- [ ] Nástroje: `larastan/larastan` (level 5 → postupně 7), `laravel-lang/common` (dev), skripty `composer analyse`
-      a `composer check` jako v JaTime, `pint.json`
-- [ ] `AppServiceProvider`: `Model::shouldBeStrict()` mimo produkci, `Carbon::setLocale('cs')`, rate limiter
-      přihlášení. `config/app.php`: `timezone` `Europe/Prague`, `APP_LOCALE=cs`, `lang/cs`
-- [ ] `App\Enums\Role` (+ cast na `User`), enumy pro statusy (property, lease, payment, ticket) a typy
-- [ ] Scope `visibleTo(User $user)` na Property, Lease, Payment, Ticket, Document… a jejich použití v API `index`
-- [ ] Policies pro všechny modely a oprava rozporů s maticí v README. Testy na každou roli.
-- [ ] Opravy critical/high z `docs/REVIEW.md` (dokumenty na privátní disk + autorizovaný download, `/users`, ratings…)
-- [ ] Actions pro zápisové operace (vytvořit/upravit/smazat nemovitost, smlouva + PDF, označit platbu, generovat
-      platby, CSV import, tiket + komentáře, měřiče a odečty, správci…). Controllery jen volají Action.
-- [ ] Indexy a FK podle nálezů, migrace jen přidávající
-- [ ] `composer check` zelený, Larastan bez baseline (nebo s malou a zdůvodněnou)
+Tvar JSON odpovědí API se nemění, protože React ho ještě používá. Výjimka je oprava autorizace: role pak dostane
+méně dat nebo 403. Takovou změnu napiš do PR i s testem.
+
+Čísla `#` jsou nálezy z `docs/REVIEW.md`. U kroku jsou uvedené nálezy, které krok opravuje, a každý z nich musí
+pokrýt test.
+
+### Rozhodnutí z auditu (7. 10. 2026, otázky z REVIEW)
+
+- **Správce:**
+  - Oprávnění správce se odvozují z přiřazení k nemovitosti (`property_manager`), ne z globální role.
+    Policies a scopes se ptají, jestli je uživatel přiřazený k této nemovitosti, a nepíšou `role === 'manager'`.
+  - Promote = přiřazení uživatele k nemovitosti pronajímatele.
+  - Demote odebere jen přiřazení k nemovitostem toho pronajímatele.
+  - `users.role = manager` se přepočítává podle toho, jestli má uživatel aspoň jedno přiřazení (kvůli
+    kompatibilitě s Reactem).
+
+  (#14, #24)
+- **Nájemník do smlouvy:** existující účet se vyhledá podle přesného e-mailu. Seznam všech uživatelů pronajímatel
+  nedostane. Pozvánka e-mailem přijde později, mimo fázi 2. (#4)
+- **Smlouvy:** na jedné nemovitosti nesmí být překrývající se aktivní smlouvy. Kontroluje se při vytvoření, úpravě
+  dat a reaktivaci. (#22, #53)
+- **Tikety:** autor smí ve stavu `new` upravit název a popis. Ostatní pole upravuje jen pronajímatel a přiřazený
+  správce. (#46)
+- **Nemovitost:** `properties.size` a `disposition` jsou volitelné, takže migrace na `nullable`. Je to výjimka
+  z pravidla „migrace jen přidávající“: `->change()` bez ztráty dat. (#29)
+- **URL:** přihlášení a odhlášení zůstávají na `/login` a `/logout` (Laravel standard, skills s tím počítají).
+  Ostatní URL jsou česky (`/registrace`, `/zapomenute-heslo`, `/nemovitosti` …). Mapování je v `docs/FEATURES.md`.
+
+### Kroky
+
+- [ ] **2.1 Nástroje a základ** (#26)
+  - `larastan/larastan` (level 5, postupně 7), `laravel-lang/common` (dev), skripty `composer analyse`
+    a `composer check` jako v JaTime, `pint.json`.
+  - `AppServiceProvider`: `Model::shouldBeStrict()` mimo produkci, `Carbon::setLocale('cs')`.
+  - `config/app.php`: `timezone` `Europe/Prague`, `APP_LOCALE=cs`, `lang/cs`.
+  - Rate limiter přihlášení přijde s webovým loginem ve fázi 4 (#25).
+- [ ] **2.2 Enumy a role** (#21, #40, #58)
+  - `App\Enums\Role` (+ cast na `User`), enumy pro statusy (property, lease, payment, ticket) a typy.
+  - `User::$fillable` bez `role` a `trust_score`. Nastavují se jen explicitně v registraci, u správců
+    a v `TrustScoreService`.
+  - Registrace jen `landlord` nebo `tenant`.
+- [ ] **2.3 Soubory** (#1, #2, #3, #15, #43, #55)
+  - Dokumenty, PDF smluv a fotky tiketů na privátní disk, existující soubory přesunout (příkaz nebo migrace).
+  - Whitelist typů (`mimes` + `max`, žádné SVG ani HTML).
+  - `DocumentPolicy` + `Document::visibleTo` (role, vlastnictví nebo přiřazení, `visibility`).
+  - Stažení jen autorizovanou routou s `Content-Disposition: attachment` a `nosniff`.
+  - PDF smlouvy streamem nebo z privátního disku, `visibility` přes `Rule::in`.
+  - Cesty (`invoice_path`, `photo_proof`) nebrat od klienta.
+- [ ] **2.4 Uživatelé** (#4, #5, #19)
+  - `UserPolicy` + `User::visibleTo`:
+    - pronajímatel: nájemníci jeho smluv a správci jeho nemovitostí,
+    - správce: nájemníci spravovaných nemovitostí,
+    - nájemník: jen sám sebe.
+  - Vyhledání účtu podle přesného e-mailu pro novou smlouvu.
+  - `users/{user}/ratings` do controlleru s policy, trust score jen přes `UserPolicy::view`.
+  - **Vědomě:** React `CreateLeaseModal` pak nabídne jen nájemníky, které pronajímatel už zná. Smlouvu s novým
+    nájemníkem v Reactu nezaloží. Půjde to až v Livewire stránce Smlouvy (hledání podle e-mailu).
+
+**Kroky 2.5–2.10 jsou policies a `visibleTo()` po oblastech.** Každá akce má testy pro všechny role, cizí data
+(jiný pronajímatel), nepřiřazeného správce a nájemníka bez aktivní smlouvy (#38).
+
+- [ ] **2.5 Nemovitosti a fotky** (#6, #18, #20, #35, #39)
+  - `PropertyPolicy` (včetně `restore`), `Property::visibleTo` (správce přes přiřazení), `PropertyImagePolicy`.
+  - Společná kontrola `view` nemovitosti pro čtecí endpointy pod ní (#18, oblasti dál v 2.6–2.10).
+  - Resource podle role: nájemník jen svou smlouvu, `purchase_price` jen vlastník.
+  - Smazání nemovitosti s aktivní smlouvou vrátí 422.
+- [ ] **2.6 Měřiče a odečty** (#7, #8)
+  - `MeterPolicy` a `MeterReadingPolicy`: zápis odečtu vlastník a přiřazený správce, úpravy a mazání vlastník.
+- [ ] **2.7 Inventář, oznámení, náklady** (#9, #16)
+  - `InventoryItemPolicy`, `NoticePolicy`, `ExpensePolicy` + `Expense::visibleTo` (jen vlastník).
+  - Skupinu `role:landlord,manager` v `routes/api.php` nahradit policies.
+- [ ] **2.8 Smlouvy a hodnocení** (#13, #22, #30)
+  - `LeasePolicy` + `Lease::visibleTo`, `RatingPolicy` (vlastník nemovitosti).
+  - Kontrola překryvu aktivních smluv. `tenant_id` jen nájemník nebo správce.
+  - `end_date` se porovnává s uloženým `start_date`.
+- [ ] **2.9 Platby** (#12, #17, #41)
+  - `PaymentPolicy` + `Payment::visibleTo`. Správce nevidí platby, částky smluv ani finance na dashboardu.
+  - `lease_id` jen z vlastních smluv.
+  - Mazání zaplacené platby vrátí 422 (stav), ne 403.
+- [ ] **2.10 Tikety, komentáře, fotky** (#10, #11, #23, #24, #46)
+  - `TicketPolicy` v pořadí: autor, nájemník s aktivní smlouvou, přiřazený správce, vlastník.
+  - `Ticket::visibleTo`, `create(User, Property)`, `TicketCommentPolicy`, `TicketImagePolicy`.
+  - `assigned_to` jen správce přiřazený k nemovitosti.
+  - Autor upraví název a popis ve stavu `new`.
+- [ ] **2.11 Správci** (#14)
+  - Promote a demote podle rozhodnutí výše.
+  - Přepočet `users.role` po přiřazení a odebrání.
+  - Testy na správce u dvou pronajímatelů.
+- [ ] **2.12 Data a datumy** (#27, #28, #29)
+  - Sloupce `date` ukládat bez času (cast nebo mutator a úprava existujících hodnot).
+  - Rozsahy `>=` a `<` ve filtrech, dashboardu a CSV importu.
+  - `size` a `disposition` nullable.
+- [ ] **2.13 Actions a byznys logika** (#31–#37, #53, #54)
+  - Actions pro zápisové operace: nemovitost, smlouva + PDF, platby a generování, CSV import, tiket + komentáře,
+    měřiče a odečty, hodnocení, správci. Controllery jen volají Action.
+  - Transakce, events po commitu, notifikace `ShouldQueue`.
+  - Generování plateb jen pro platné smlouvy, jedna Action pro příkaz i API.
+  - Notifikace o konci smlouvy jen jednou, robustní kontrola plateb po splatnosti.
+  - Přepočet trust score po hodnocení a změně platby.
+  - CSV import páruje podle VS platby.
+  - Přechody stavů smlouvy a tiketu na jednom místě.
+- [ ] **2.14 Výkon, peníze, indexy, robustnost, úklid** (#42, #44, #45, #47–#52, #56)
+  - Indexy na FK (přidávající migrace), agregace místo dotazů v cyklu a test na počet dotazů.
+  - Peníze přes `SUM` v DB nebo v haléřích.
+  - Validace filtrů, `/health` bez detailů výjimek.
+  - `toArray()` notifikací (klíče, česky), výběrové scopy bez stránkování.
+  - Typ nákladu `utility` (rozhodnout), `download_url`, mrtvý kód.
+- [ ] **Hotovo, když:** `composer check` je zelený, Larastan bez baseline (nebo s malou a zdůvodněnou) a všechny
+      nálezy kroků 2.1–2.14 mají opravu s testem.
+
+**Nálezy mimo fázi 2:**
+
+| Nález | Fáze | Co |
+| --- | --- | --- |
+| #25 | 4 | Rate limiter `login`, změna hesla odhlásí ostatní zařízení. Expirace Sanctum tokenů podle rozhodnutí o API ve fázi 6. |
+| #57 | 6 | CORS se odstraní spolu se SPA. |
 
 ```text
-Fáze 2 z docs/REWRITE_PLAN.md, krok „<název kroku>“. Postupuj podle skillu rentflow-backend.
-Tvar JSON odpovědí API neměň. Nejdřív plán (soubory, testy), pak implementace, kontroly (rentflow-checks).
+Fáze 2 z docs/REWRITE_PLAN.md, krok „2.x <název kroku>“. Postupuj podle skillu rentflow-backend.
+Oprav nálezy z docs/REVIEW.md uvedené u kroku a každý pokryj testem. Tvar JSON odpovědí API neměň
+(výjimka: oprava autorizace, napiš ji). Nejdřív plán (soubory, testy), pak implementace, kontroly (rentflow-checks).
 Na konci odškrtni krok v plánu.
 ```
 
@@ -100,9 +208,10 @@ vzhled uprav pro RentFlow podle schváleného návrhu. Nepřidávej závislosti 
 
 ## Fáze 4 – autentizace (session)
 
-- [ ] Přihlášení, registrace, odhlášení, zapomenuté heslo (vzor `LoginController` z JaTime, rate limiter `login`)
+- [ ] Přihlášení `/login`, registrace `/registrace`, odhlášení `/logout`, zapomenuté heslo `/zapomenute-heslo`
+      (vzor `LoginController` z JaTime, rate limiter `login` podle e-mailu a IP, #25)
 - [ ] Middleware `role:` pro web (redirect/403 stránka místo JSON), `$middleware->authenticateSessions()`
-- [ ] Profil a změna hesla (`/nastaveni`), změna hesla odhlásí ostatní zařízení
+- [ ] Profil a změna hesla (`/nastaveni`), změna hesla odhlásí ostatní zařízení (#25)
 - [ ] Sanctum a API nechat beze změny (React běží dál)
 
 ## Fáze 5 – stránky (každá = PR, skill `rentflow-page`)
@@ -134,7 +243,7 @@ vědomé vynechání napiš. Nejdřív plán, pak implementace, testy, rentflow-
 
 ## Fáze 6 – úklid
 
-- [ ] Smazat `frontend/`, proxy, CORS konfiguraci pro SPA a `unlighthouse.config.ts` přepsat na nové URL
+- [ ] Smazat `frontend/`, proxy, CORS konfiguraci pro SPA (#57) a `unlighthouse.config.ts` přepsat na nové URL
 - [ ] Rozhodnout API: ponechat (veřejné API s tokeny a testy), nebo odstranit i se Sanctum
 - [ ] CI: odstranit frontend job, přidat `npm run build` v kořeni, `composer analyse`, audity
 - [ ] README (architektura, instalace přes Herd, screenshoty), `CHANGELOG.md`
