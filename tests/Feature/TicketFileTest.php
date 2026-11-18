@@ -50,6 +50,11 @@ class TicketFileTest extends TestCase
         $this->assertSame(route('api.ticket-images.file', [$this->ticket->id, $image->id]), $response->json('image_url'));
         Storage::disk(PrivateFile::DISK)->assertExists($image->image_path);
         Storage::disk('public')->assertMissing($image->image_path);
+        $this->actingAs($this->tenant)
+            ->getJson($this->apiUrl("/tickets/{$this->ticket->id}"))
+            ->assertStatus(200)
+            ->assertJsonMissingPath('images.0.image_path')
+            ->assertJsonPath('images.0.image_url', $response->json('image_url'));
 
         $url = $this->apiUrl("/tickets/{$this->ticket->id}/images/{$image->id}/file");
         $this->actingAs($this->tenant)->get($url)->assertStatus(200)->assertHeader('X-Content-Type-Options', 'nosniff');

@@ -186,6 +186,24 @@ pokrýt test.
     - Vědomě nechané: `findOrFail` v nedotčených metodách a autorizace zápisu fotek nemovitostí (#6) → 2.5;
       autorizace `index`/`store` komentářů a fotek tiketů (#10) → 2.10.
     - `HealthController` zkouší zápis na `PrivateFile::DISK` místo disku `public`.
+  - *Opravy po review 18.&nbsp;11.&nbsp;2026:*
+    - Jméno souboru ke stažení skládá server (`PrivateFile::downloadName`): `/` a `\` nahrazené, přípona z uložené
+      cesty. Dřív dokument „Smlouva 1/2025“ vracel 500. `DocumentResource` vrací `extension`.
+    - Stažení posílá navíc `Content-Security-Policy: default-src 'none'; sandbox`. Disk `local` má
+      `serve => false`, takže podepsaná `/storage/…` URL mimo policies neexistuje.
+    - `rentflow:move-files-to-private` zapisuje streamem a kontroluje výsledek i hash. Při chybě veřejný soubor
+      nemaže a vrátí `FAILURE`. Když na privátním disku leží jiný soubor se stejnou cestou, nechá oba a ohlásí
+      konflikt (také `FAILURE`). Smazané dokumenty nehlásí jako chybějící.
+    - `TicketResource` už nevrací `images[].image_path`. Seeder generuje PNG místo SVG, `storage:link`
+      z README pryč. `config/dompdf.php`: `enable_remote => false`.
+    - **Neplatné UTF-8:** middleware `RejectInvalidUtf8` v API skupině vrátí 422 pro neplatný text v query stringu
+      i ve formulářovém a multipart těle. Dřív se takový komentář uložil a detail tiketu pak padal všem (500).
+      `BankImportService::import()` odmítne CSV, které není v UTF-8 (export banky v cp1250), srozumitelnou
+      chybou 422 místo 500. Převod z cp1250 se nedělá.
+    - **GIF a BMP záměrně nepovolené** (dřív je pouštělo pravidlo `image`): u fotek stačí jpg, png a webp.
+    - Staré `.doc` a `.xls`: soubory uložené z Wordu a Excelu (97–2003) i soubory z instalace Office finfo pozná
+      jako `application/msword` / `application/vnd.ms-excel`, nikdy jako `x-ole-storage` nebo `CDFV2`. Výjimka
+      ve whitelistu proto není potřeba. Hlídá to test s fixturami `tests/fixtures/legacy.doc` a `legacy.xls`.
 - [ ] **2.4 Uživatelé** (#4, #5, #19)
   - `UserPolicy` + `User::visibleTo`:
     - pronajímatel: nájemníci jeho smluv a správci jeho nemovitostí,
@@ -206,9 +224,13 @@ pokrýt test.
   - Smazání nemovitosti s aktivní smlouvou vrátí 422.
 - [ ] **2.6 Měřiče a odečty** (#7, #8)
   - `MeterPolicy` a `MeterReadingPolicy`: zápis odečtu vlastník a přiřazený správce, úpravy a mazání vlastník.
+  - `photo_proof` v `MeterReadingResource` vynulovat nebo nevracet (z 2.3: staré hodnoty od klienta, mohou být
+    `javascript:` URL).
 - [ ] **2.7 Inventář, oznámení, náklady** (#9, #16)
   - `InventoryItemPolicy`, `NoticePolicy`, `ExpensePolicy` + `Expense::visibleTo` (jen vlastník).
   - Skupinu `role:landlord,manager` v `routes/api.php` nahradit policies.
+  - `invoice_path` v `ExpenseResource` vynulovat nebo nevracet (z 2.3: staré hodnoty od klienta, mohou být
+    `javascript:` URL).
 - [ ] **2.8 Smlouvy a hodnocení** (#13, #22, #30)
   - `LeasePolicy` + `Lease::visibleTo`, `RatingPolicy` (vlastník nemovitosti).
   - Kontrola překryvu aktivních smluv. `tenant_id` jen nájemník nebo správce.
@@ -322,6 +344,8 @@ vzhled uprav pro RentFlow podle schváleného návrhu. Nepřidávej závislosti 
 - [ ] Webové routy pro soubory se session auth (dokument, fotka nemovitosti, fotka a příloha tiketu, PDF smlouvy):
       stejné policies a `PrivateFile::download()` jako API z 2.3. API routy chtějí Bearer token, takže
       `<img src>` v Livewire je nepoužije.
+- [ ] Neplatné UTF-8 i ve webových formulářích: `RejectInvalidUtf8` z 2.3 je zatím jen v API skupině. Rozhodnout,
+      jestli ho dát globálně, nebo do `web` skupiny (Livewire posílá JSON, ten neplatné UTF-8 nedekóduje).
 
 ## Fáze 5 – stránky (každá = PR, skill `rentflow-page`)
 
@@ -382,6 +406,10 @@ vědomé vynechání napiš. Nejdřív plán, pak implementace, testy, rentflow-
 - [ ] Rozhodnout `ShouldQueue` pro notifikace + queue worker v produkci (teď se posílají synchronně při requestu)
 - [ ] Při prvním nasazení po 2.3 spustit `php artisan rentflow:move-files-to-private` (soubory z `public`
       na privátní disk). Do `rentflow-release`.
+  - Poznámka k vydání: **rollback** na verzi před 2.3 po spuštění příkazu vyžaduje zpětný přesun souborů
+    z `storage/app/private` do `storage/app/public` (stará verze čte z `public`). Reverzní příkaz neexistuje.
+  - Příkaz končí `FAILURE`, když soubor nejde zapsat nebo na privátním disku leží jiný soubor se stejnou cestou.
+    Veřejný soubor pak zůstane na místě a je potřeba ho vyřešit ručně.
 - [ ] Skill `rentflow-release` podle `jatime-release`, až po rozhodnutí o produkci.
   - Verze + `CHANGELOG.md` + README.
   - Připravenost na produkci: `env()` mimo config, `autoload-dev` v běhovém kódu, migrace bez modelů, simulace

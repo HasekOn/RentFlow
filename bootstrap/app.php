@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\RejectInvalidUtf8;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -29,6 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->api(prepend: [
             ThrottleRequests::class.':200,1',
+        ], append: [
+            RejectInvalidUtf8::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -32,7 +32,6 @@ class TicketResource extends JsonResource
             'comments' => TicketCommentResource::collection($this->whenLoaded('comments')),
             'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($img) => [
                 'id' => $img->id,
-                'image_path' => $img->image_path,
                 'image_url' => $img->image_url,
                 'description' => $img->description,
                 'created_at' => $img->created_at->toDateTimeString(),

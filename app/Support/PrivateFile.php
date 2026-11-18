@@ -18,7 +18,7 @@ final class PrivateFile
     public const int IMAGE_MAX_KB = 5120;
 
     /**
-     * Stažení jako příloha s nosniff, aby prohlížeč soubor nikdy nevykreslil jako HTML.
+     * Stažení jako příloha s nosniff a sandbox CSP, aby prohlížeč soubor nikdy nevykreslil jako HTML.
      */
     public static function download(string $path, string $name): StreamedResponse
     {
@@ -26,9 +26,34 @@ final class PrivateFile
             abort(404);
         }
 
-        return Storage::disk(self::DISK)->download($path, $name, [
+        return Storage::disk(self::DISK)->download($path, self::downloadName($path, $name), [
             'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; sandbox",
         ]);
+    }
+
+    /**
+     * Jméno souboru ke stažení skládá server: bez lomítek a řídicích znaků (Symfony je v hlavičce nepřijme)
+     * a s příponou uloženého souboru.
+     */
+    public static function downloadName(string $path, string $name): string
+    {
+        $name = trim((string) preg_replace('/[\x00-\x1F\x7F]/u', '', str_replace(['/', '\\'], '-', $name)));
+        $extension = self::extension($path);
+
+        if ($name === '') {
+            return basename($path);
+        }
+        if ($extension !== '' && ! str_ends_with(mb_strtolower($name), '.'.$extension)) {
+            $name .= '.'.$extension;
+        }
+
+        return $name;
+    }
+
+    public static function extension(string $path): string
+    {
+        return strtolower(pathinfo($path, PATHINFO_EXTENSION));
     }
 
     public static function delete(?string $path): void

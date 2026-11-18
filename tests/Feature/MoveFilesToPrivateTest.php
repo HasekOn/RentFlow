@@ -10,6 +10,7 @@ use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\TicketImage;
 use App\Support\PrivateFile;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -52,7 +53,7 @@ class MoveFilesToPrivateTest extends TestCase
         $lease->forceFill(['contract_path' => 'contracts/contract_lease_1.pdf'])->save();
 
         $this->artisan('rentflow:move-files-to-private')
-            ->expectsOutput('Moved: 5, missing: 1')
+            ->expectsOutput('Moved: 5, already private: 0, conflicts: 0, failed: 0, missing: 1')
             ->assertSuccessful();
 
         foreach ($paths as $path) {
@@ -64,8 +65,65 @@ class MoveFilesToPrivateTest extends TestCase
         $this->assertNull($lease->refresh()->contract_path);
 
         $this->artisan('rentflow:move-files-to-private')
-            ->expectsOutput('Moved: 0, missing: 1')
+            ->expectsOutput('Moved: 0, already private: 0, conflicts: 0, failed: 0, missing: 1')
             ->assertSuccessful();
         $this->assertSame('obsah '.$paths[0], $private->get($paths[0]));
+    }
+
+    public function test_same_private_copy_is_reused_and_different_one_is_kept_as_conflict(): void
+    {
+        $public = Storage::fake('public');
+        $private = Storage::fake(PrivateFile::DISK);
+        $public->put('documents/1/stejny.pdf', 'stejny obsah');
+        $private->put('documents/1/stejny.pdf', 'stejny obsah');
+        $public->put('documents/1/jiny.pdf', 'verejna verze');
+        $private->put('documents/1/jiny.pdf', 'privatni verze');
+
+        $this->artisan('rentflow:move-files-to-private')
+            ->expectsOutputToContain('Conflict, different private file kept, public file left in place: documents/1/jiny.pdf')
+            ->expectsOutput('Moved: 0, already private: 1, conflicts: 1, failed: 0, missing: 0')
+            ->assertFailed();
+
+        $public->assertMissing('documents/1/stejny.pdf');
+        $this->assertSame('verejna verze', $public->get('documents/1/jiny.pdf'));
+        $this->assertSame('privatni verze', $private->get('documents/1/jiny.pdf'));
+    }
+
+    public function test_failed_write_keeps_public_file_and_fails(): void
+    {
+        $public = Storage::fake('public');
+        $fake = Storage::fake(PrivateFile::DISK);
+        $public->put('tickets/1/priloha.png', 'obsah');
+        // disk s 'throw' => false: selhaný zápis jen vrátí false
+        Storage::set(PrivateFile::DISK, new class($fake->getDriver(), $fake->getAdapter(), $fake->getConfig()) extends FilesystemAdapter
+        {
+            public function writeStream($path, $resource, array $options = [])
+            {
+                return false;
+            }
+        });
+
+        $this->artisan('rentflow:move-files-to-private')
+            ->expectsOutputToContain('Failed, public file left in place: tickets/1/priloha.png')
+            ->expectsOutput('Moved: 0, already private: 0, conflicts: 0, failed: 1, missing: 0')
+            ->assertFailed();
+
+        $this->assertSame('obsah', $public->get('tickets/1/priloha.png'));
+        $fake->assertMissing('tickets/1/priloha.png');
+    }
+
+    public function test_soft_deleted_document_without_file_is_not_reported_missing(): void
+    {
+        Storage::fake('public');
+        Storage::fake(PrivateFile::DISK);
+        $property = Property::factory()->create();
+        Document::query()->create([
+            'property_id' => $property->id, 'document_type' => 'contract', 'name' => 'Smazany',
+            'file_path' => 'documents/1/smazany.pdf', 'uploaded_by' => $property->landlord_id,
+        ])->delete();
+
+        $this->artisan('rentflow:move-files-to-private')
+            ->expectsOutput('Moved: 0, already private: 0, conflicts: 0, failed: 0, missing: 0')
+            ->assertSuccessful();
     }
 }

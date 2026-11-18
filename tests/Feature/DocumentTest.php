@@ -57,6 +57,45 @@ class DocumentTest extends TestCase
         $this->assertSoftDeleted($private);
     }
 
+    public function test_download_name_is_built_on_server_with_stored_extension(): void
+    {
+        $cases = [
+            ['Smlouva 1/2025', 'pdf', 'Smlouva 1-2025.pdf'],
+            ['Fotka', 'png', 'Fotka.png'],
+            ['Revize\\kotel.PDF', 'pdf', 'Revize-kotel.PDF'],
+        ];
+
+        foreach ($cases as [$name, $extension, $expected]) {
+            $path = "documents/{$this->property->id}/".uniqid().'.'.$extension;
+            Storage::disk(PrivateFile::DISK)->put($path, 'obsah');
+            $document = Document::query()->create([
+                'property_id' => $this->property->id, 'document_type' => 'other', 'name' => $name,
+                'file_path' => $path, 'uploaded_by' => $this->landlord->id,
+            ]);
+
+            $this->actingAs($this->landlord)
+                ->get($this->apiUrl("/documents/{$document->id}/download"))
+                ->assertStatus(200)
+                ->assertHeader('X-Content-Type-Options', 'nosniff')
+                ->assertHeader('Content-Security-Policy', "default-src 'none'; sandbox")
+                ->assertDownload($expected);
+        }
+
+        $extensions = $this->actingAs($this->landlord)
+            ->getJson($this->apiUrl("/properties/{$this->property->id}/documents"))
+            ->json('*.extension');
+        $this->assertContains('png', $extensions);
+        $this->assertContains('pdf', $extensions);
+    }
+
+    public function test_private_disk_has_no_storage_url(): void
+    {
+        $document = $this->documents['all'];
+
+        $this->get('/storage/'.$document->file_path)->assertStatus(404);
+        $this->actingAs($this->landlord)->get('/storage/'.$document->file_path)->assertStatus(404);
+    }
+
     public function test_other_landlord_has_no_access(): void
     {
         $other = User::factory()->landlord()->create();
@@ -137,7 +176,8 @@ class DocumentTest extends TestCase
             'name' => 'Smlouva',
         ])->assertStatus(201)
             ->assertJsonMissingPath('file_path')
-            ->assertJsonPath('visibility', 'landlord_only');
+            ->assertJsonPath('visibility', 'landlord_only')
+            ->assertJsonPath('extension', 'pdf');
 
         $document = Document::query()->findOrFail($response->json('id'));
         $this->assertSame(route('api.documents.download', $document->id), $response->json('download_url'));
@@ -163,6 +203,18 @@ class DocumentTest extends TestCase
         }
 
         $this->assertSame(4, Document::query()->count());
+    }
+
+    public function test_upload_accepts_real_legacy_word_and_excel_files(): void
+    {
+        // fixtury uložené z Wordu a Excelu jako „97–2003“: finfo je pozná jako msword / vnd.ms-excel
+        foreach (['legacy.doc', 'legacy.xls'] as $fixture) {
+            $this->actingAs($this->landlord)->postJson($this->apiUrl("/properties/{$this->property->id}/documents"), [
+                'file' => new UploadedFile(base_path('tests/fixtures/'.$fixture), $fixture, null, null, true),
+                'document_type' => 'other',
+                'name' => 'Starý formát',
+            ])->assertStatus(201)->assertJsonPath('extension', pathinfo($fixture, PATHINFO_EXTENSION));
+        }
     }
 
     public function test_upload_rejects_unknown_visibility(): void

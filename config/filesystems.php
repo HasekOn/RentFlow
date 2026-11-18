@@ -33,7 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // soubory od uživatelů se stahují jen autorizovanými routami (PrivateFile), ne podepsanou /storage URL
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
