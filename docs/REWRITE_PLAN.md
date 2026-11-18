@@ -128,11 +128,20 @@ pokrýt test.
     - Ostatní skills z JaTime jsou rozplánované do fází: po 2.2 `CodeHygieneTest`, po fázi 2 `rentflow-security`,
       ve fázi 3 `cdp.mjs`, `rentflow-design` a `ThemeTest`, ve fázích 5–7 dlouhé texty a `rentflow-release`.
       `jatime-module` se nepřebírá (RentFlow nemá vypínatelné moduly).
-- [ ] **2.2 Enumy a role** (#21, #40, #58)
+- [x] **2.2 Enumy a role** (#21, #40, #58)
   - `App\Enums\Role` (+ cast na `User`), enumy pro statusy (property, lease, payment, ticket) a typy.
   - `User::$fillable` bez `role` a `trust_score`. Nastavují se jen explicitně v registraci, u správců
     a v `TrustScoreService`.
   - Registrace jen `landlord` nebo `tenant`.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - 14 enumů v `app/Enums` (i `ExpenseType`, `InventoryCondition`, `MeterType`, `RatingCategory`,
+      `PropertyImageType`, `DocumentVisibility` místo `Document::VISIBILITY_OPTIONS`) a `Rule::enum()` ve validaci.
+    - Vědomě bez `label()`, tónu a ikon. Přijdou s UI ve fázi 3/5.
+    - `RoleMiddleware` vrací jen `Access denied.` (#40). `User::isLandlord()` / `isManager()` / `isTenant()`.
+    - Cast odhalil tiše rozbitá porovnání (stahování dokumentů nájemníkem a správcem, stav smlouvy při ukončení,
+      seeder). Opravena a pokrytá testy.
+    - Nově 422 při neplatné `visibility` u uploadu dokumentu (dřív tichý fallback na `landlord_only`).
+    - Seeder má data dál jako stringy (cast je převede). `findOrFail` zůstává mimo dotčené řádky, řeší 2.5+.
 - [ ] **Po 2.2: `CodeHygieneTest`** (vzor `tests/Feature/CodeHygieneTest.php` z JaTime)
   - Hlídá: ladicí výpisy (`dd`, `dump`, `ray`, `var_dump`), `TODO`/`FIXME`, holé stringy rolí a statusů
     v `app/` (`'landlord'`, `'paid'` … místo enumů z 2.2) a nepoužité Blade komponenty a partials (od fáze 3).

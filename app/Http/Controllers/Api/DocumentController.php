@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\DocumentVisibility;
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDocumentRequest;
 use App\Http\Resources\DocumentResource;
@@ -24,12 +26,12 @@ class DocumentController extends Controller
 
         // Filter by visibility based on role
         // Landlord always sees everything — no filter needed
-        if ($user->role === 'tenant') {
+        if ($user->isTenant()) {
             // Tenant sees: landlord_tenant + all
-            $query->whereIn('visibility', ['landlord_tenant', 'all']);
-        } elseif ($user->role === 'manager') {
+            $query->whereIn('visibility', [DocumentVisibility::LandlordTenant, DocumentVisibility::All]);
+        } elseif ($user->isManager()) {
             // Manager sees: landlord_manager + all
-            $query->whereIn('visibility', ['landlord_manager', 'all']);
+            $query->whereIn('visibility', [DocumentVisibility::LandlordManager, DocumentVisibility::All]);
         }
 
         $documents = $query->get();
@@ -47,12 +49,6 @@ class DocumentController extends Controller
             ], 403);
         }
 
-        // Validate visibility value
-        $visibility = $request->input('visibility', 'landlord_only');
-        if (! in_array($visibility, Document::VISIBILITY_OPTIONS)) {
-            $visibility = 'landlord_only';
-        }
-
         $path = $request->file('file')->store(
             'documents/'.$property->id,
             'public'
@@ -63,7 +59,7 @@ class DocumentController extends Controller
             'document_type' => $request->validated('document_type'),
             'name' => $request->validated('name'),
             'file_path' => $path,
-            'visibility' => $visibility,
+            'visibility' => $request->validated('visibility', DocumentVisibility::LandlordOnly->value),
             'uploaded_by' => $request->user()->id,
         ]);
 
@@ -78,10 +74,10 @@ class DocumentController extends Controller
         $user = $request->user();
 
         // Landlord always has access
-        if ($user->role !== 'landlord') {
+        if (! $user->isLandlord()) {
             $allowed = match ($user->role) {
-                'tenant' => in_array($document->visibility, ['landlord_tenant', 'all']),
-                'manager' => in_array($document->visibility, ['landlord_manager', 'all']),
+                Role::Tenant => in_array($document->visibility, [DocumentVisibility::LandlordTenant, DocumentVisibility::All], true),
+                Role::Manager => in_array($document->visibility, [DocumentVisibility::LandlordManager, DocumentVisibility::All], true),
                 default => false,
             };
 

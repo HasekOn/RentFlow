@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LeaseStatus;
+use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
 use App\Events\PaymentMarkedPaid;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePaymentRequest;
@@ -26,7 +29,7 @@ class PaymentController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->role === 'landlord') {
+        if ($user->isLandlord()) {
             $leaseIds = Lease::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
@@ -59,7 +62,7 @@ class PaymentController extends Controller
         $validated = $request->validated();
 
         if (! isset($validated['status'])) {
-            $validated['status'] = ! empty($validated['paid_date']) ? 'paid' : 'unpaid';
+            $validated['status'] = ! empty($validated['paid_date']) ? PaymentStatus::Paid : PaymentStatus::Unpaid;
         }
 
         $payment = Payment::query()->create($validated);
@@ -82,7 +85,7 @@ class PaymentController extends Controller
 
         $payment->update([
             'paid_date' => now()->toDateString(),
-            'status' => 'paid',
+            'status' => PaymentStatus::Paid,
         ]);
 
         PaymentMarkedPaid::dispatch($payment);
@@ -104,7 +107,7 @@ class PaymentController extends Controller
         $payment = Payment::query()->findOrFail($id);
         $this->authorize('delete', $payment);
 
-        if ($payment->status === 'paid') {
+        if ($payment->status === PaymentStatus::Paid) {
             return response()->json([
                 'message' => 'Cannot delete a paid payment. Only unpaid or overdue payments can be deleted.',
             ], 422);
@@ -147,7 +150,7 @@ class PaymentController extends Controller
         $user = $request->user();
         $propertyIds = $user->ownedProperties()->pluck('id');
         $activeLeases = Lease::query()->whereIn('property_id', $propertyIds)
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->get();
 
         $created = 0;
@@ -156,7 +159,7 @@ class PaymentController extends Controller
         foreach ($activeLeases as $lease) {
             $existingRent = Payment::query()
                 ->where('lease_id', $lease->id)
-                ->where('type', 'rent')
+                ->where('type', PaymentType::Rent)
                 ->whereYear('due_date', now()->year)
                 ->whereMonth('due_date', now()->month)
                 ->exists();
@@ -164,11 +167,11 @@ class PaymentController extends Controller
             if (! $existingRent) {
                 Payment::create([
                     'lease_id' => $lease->id,
-                    'type' => 'rent',
+                    'type' => PaymentType::Rent,
                     'amount' => $lease->rent_amount,
                     'due_date' => $dueDate,
                     'variable_symbol' => $lease->variable_symbol,
-                    'status' => 'unpaid',
+                    'status' => PaymentStatus::Unpaid,
                 ]);
                 $created++;
             }
@@ -176,7 +179,7 @@ class PaymentController extends Controller
             if ($lease->utility_advances > 0) {
                 $existingUtility = Payment::query()
                     ->where('lease_id', $lease->id)
-                    ->where('type', 'utilities')
+                    ->where('type', PaymentType::Utilities)
                     ->whereYear('due_date', now()->year)
                     ->whereMonth('due_date', now()->month)
                     ->exists();
@@ -184,11 +187,11 @@ class PaymentController extends Controller
                 if (! $existingUtility) {
                     Payment::create([
                         'lease_id' => $lease->id,
-                        'type' => 'utilities',
+                        'type' => PaymentType::Utilities,
                         'amount' => $lease->utility_advances,
                         'due_date' => $dueDate,
                         'variable_symbol' => $lease->variable_symbol ? $lease->variable_symbol.'1' : null,
-                        'status' => 'unpaid',
+                        'status' => PaymentStatus::Unpaid,
                     ]);
                     $created++;
                 }

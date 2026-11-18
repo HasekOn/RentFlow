@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\PropertyStatus;
 use App\Models\Document;
 use App\Models\Expense;
 use App\Models\InventoryItem;
@@ -505,7 +506,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($properties as $property) {
-            $count = $property->status === 'renovation' ? 2 : rand(3, 4);
+            $count = $property->status === PropertyStatus::Renovation ? 2 : rand(3, 4);
             for ($i = 0; $i < $count; $i++) {
                 $room = $rooms[$i % count($rooms)];
                 $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">'
@@ -523,7 +524,7 @@ class DatabaseSeeder extends Seeder
                     'property_id' => $property->id,
                     'uploaded_by' => $landlord->id,
                     'image_path' => $path,
-                    'type' => $i === 0 ? 'marketing' : ($property->status === 'renovation' ? 'defect' : 'marketing'),
+                    'type' => $i === 0 ? 'marketing' : ($property->status === PropertyStatus::Renovation ? 'defect' : 'marketing'),
                     'description' => $room['name'],
                     'sort_order' => $i + 1,
                 ]);

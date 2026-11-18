@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ExpenseType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $property_id
- * @property string $type
+ * @property ExpenseType $type
  * @property float $amount
  * @property Carbon $expense_date
  * @property string|null $description
@@ -31,7 +32,7 @@ class Expense extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'type' => 'other',
+        'type' => ExpenseType::Other->value,
     ];
 
     protected $fillable = [
@@ -51,6 +52,7 @@ class Expense extends Model
     protected function casts(): array
     {
         return [
+            'type' => ExpenseType::class,
             'amount' => 'decimal:2',
             'expense_date' => 'date',
         ];

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LeaseStatus;
+use App\Enums\TicketStatus;
 use App\Events\TicketCreated;
 use App\Events\TicketResolved;
 use App\Http\Controllers\Controller;
@@ -26,12 +28,12 @@ class TicketController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->role === 'landlord') {
+        if ($user->isLandlord()) {
             $query = Ticket::query()->whereIn(
                 'property_id',
                 $user->ownedProperties()->pluck('id')
             )->with(['property', 'tenant', 'assignedUser']);
-        } elseif ($user->role === 'manager') {
+        } elseif ($user->isManager()) {
             $managedPropertyIds = $user->managedProperties()->pluck('properties.id');
 
             $query = Ticket::query()
@@ -44,7 +46,7 @@ class TicketController extends Controller
             // Tenant: sees own tickets + all tickets on properties where they have an active lease
             $tenantPropertyIds = Lease::query()
                 ->where('tenant_id', $user->id)
-                ->where('status', 'active')
+                ->where('status', LeaseStatus::Active)
                 ->pluck('property_id');
 
             $query = Ticket::query()
@@ -77,7 +79,7 @@ class TicketController extends Controller
         $validated['tenant_id'] = $user->id;
 
         // Verify manager has access to this property
-        if ($user->role === 'manager') {
+        if ($user->isManager()) {
             $hasAccess = $user->managedProperties()
                 ->where('properties.id', $validated['property_id'])
                 ->exists();
@@ -120,15 +122,17 @@ class TicketController extends Controller
 
         $validated = $request->validated();
 
+        $resolved = ($validated['status'] ?? null) === TicketStatus::Resolved->value;
+
         // Auto-set resolved_at when status changes to resolved
-        if (isset($validated['status']) && $validated['status'] === 'resolved') {
+        if ($resolved) {
             $validated['resolved_at'] = now();
         }
 
         $ticket->update($validated);
 
         // Notify tenant when ticket is resolved
-        if (isset($validated['status']) && $validated['status'] === 'resolved') {
+        if ($resolved) {
             TicketResolved::dispatch($ticket);
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\PaymentStatus;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -22,7 +23,7 @@ class PaymentResource extends JsonResource
             'variable_symbol' => $this->variable_symbol,
             'status' => $this->status,
             'note' => $this->note,
-            'days_overdue' => $this->status !== 'paid' && $this->due_date->isPast()
+            'days_overdue' => $this->status !== PaymentStatus::Paid && $this->due_date->isPast()
                 ? $this->due_date->diffInDays(now())
                 : null,
             'created_at' => $this->created_at->toDateTimeString(),

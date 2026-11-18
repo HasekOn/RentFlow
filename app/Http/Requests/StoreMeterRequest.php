@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\MeterType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreMeterRequest extends FormRequest
 {
@@ -14,7 +16,7 @@ class StoreMeterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'meter_type' => ['required', 'in:water,electricity,gas,heat'],
+            'meter_type' => ['required', Rule::enum(MeterType::class)],
             'serial_number' => ['nullable', 'string', 'max:100'],
             'location' => ['nullable', 'string', 'max:255'],
         ];

@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\LeaseStatus;
+use App\Enums\PropertyStatus;
 use App\Models\Lease;
 use App\Models\Property;
 use App\Notifications\LeaseExpiringNotification;
@@ -18,7 +20,7 @@ class CheckExpiringLeases extends Command
     {
         // 1. Notify about leases expiring within 30 days
         $expiring = Lease::with(['property.landlord', 'tenant'])
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->whereNotNull('end_date')
             ->whereBetween('end_date', [now(), now()->addDays(30)])
             ->get();
@@ -38,13 +40,13 @@ class CheckExpiringLeases extends Command
 
         // 2. Auto-expire leases past end_date
         $expired = Lease::query()
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->whereNotNull('end_date')
             ->where('end_date', '<', now()->toDateString())
             ->get();
 
         foreach ($expired as $lease) {
-            $lease->update(['status' => 'ended']);
+            $lease->update(['status' => LeaseStatus::Ended]);
             $this->info("Lease #{$lease->id} auto-expired");
         }
 
@@ -52,18 +54,18 @@ class CheckExpiringLeases extends Command
 
         // 3. Auto-set properties without active lease to 'available'
         $occupiedProperties = Property::query()
-            ->where('status', 'occupied')
+            ->where('status', PropertyStatus::Occupied)
             ->get();
 
         $freed = 0;
 
         foreach ($occupiedProperties as $property) {
             $hasActiveLease = $property->leases()
-                ->where('status', 'active')
+                ->where('status', LeaseStatus::Active)
                 ->exists();
 
             if (! $hasActiveLease) {
-                $property->update(['status' => 'available']);
+                $property->update(['status' => PropertyStatus::Available]);
                 $freed++;
                 $this->info("Property #{$property->id} ({$property->address}) → available");
             }

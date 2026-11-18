@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\PropertyImageType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePropertyImageRequest extends FormRequest
 {
@@ -15,7 +17,7 @@ class StorePropertyImageRequest extends FormRequest
     {
         return [
             'image' => ['required', 'image', 'max:5120'],
-            'type' => ['sometimes', 'in:marketing,defect,document'],
+            'type' => ['sometimes', Rule::enum(PropertyImageType::class)],
             'description' => ['nullable', 'string'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ];

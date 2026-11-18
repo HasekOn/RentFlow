@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\LeaseStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  * @property float|null $utility_advances
  * @property string|null $variable_symbol
  * @property string|null $contract_path
- * @property string $status
+ * @property LeaseStatus $status
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Carbon|null $deleted_at
@@ -40,7 +41,7 @@ class Lease extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'status' => 'active',
+        'status' => LeaseStatus::Active->value,
     ];
 
     protected $fillable = [
@@ -79,6 +80,7 @@ class Lease extends Model
     protected function casts(): array
     {
         return [
+            'status' => LeaseStatus::class,
             'start_date' => 'date',
             'end_date' => 'date',
             'rent_amount' => 'decimal:2',

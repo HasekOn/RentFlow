@@ -2,6 +2,8 @@
 
 namespace App\Policies;
 
+use App\Enums\LeaseStatus;
+use App\Enums\Role;
 use App\Models\Lease;
 use App\Models\Ticket;
 use App\Models\User;
@@ -21,7 +23,7 @@ class TicketPolicy
         }
 
         // Manager assigned or manages property
-        if ($user->role === 'manager') {
+        if ($user->isManager()) {
             if ($ticket->assigned_to === $user->id) {
                 return true;
             }
@@ -39,11 +41,11 @@ class TicketPolicy
         }
 
         // Tenant has active lease on this property — can see all tickets for their unit
-        if ($user->role === 'tenant' && $ticket->property_id) {
+        if ($user->isTenant() && $ticket->property_id) {
             return Lease::query()
                 ->where('tenant_id', $user->id)
                 ->where('property_id', $ticket->property_id)
-                ->where('status', 'active')
+                ->where('status', LeaseStatus::Active)
                 ->exists();
         }
 
@@ -52,7 +54,7 @@ class TicketPolicy
 
     public function create(User $user): bool
     {
-        return in_array($user->role, ['tenant', 'landlord', 'manager']);
+        return in_array($user->role, Role::cases(), true);
     }
 
     public function update(User $user, Ticket $ticket): bool
@@ -61,7 +63,7 @@ class TicketPolicy
             return true;
         }
 
-        if ($user->role === 'manager') {
+        if ($user->isManager()) {
             // Assigned directly to this ticket
             if ($ticket->assigned_to === $user->id) {
                 return true;

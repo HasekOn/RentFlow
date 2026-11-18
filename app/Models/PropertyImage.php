@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PropertyImageType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $property_id
  * @property string $image_path
- * @property string $type
+ * @property PropertyImageType $type
  * @property int $uploaded_by
  * @property string|null $description
  * @property int $sort_order
@@ -30,7 +31,7 @@ class PropertyImage extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'type' => 'marketing',
+        'type' => PropertyImageType::Marketing->value,
         'sort_order' => 0,
     ];
 
@@ -42,6 +43,16 @@ class PropertyImage extends Model
         'description',
         'sort_order',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'type' => PropertyImageType::class,
+        ];
+    }
 
     public function property(): BelongsTo
     {

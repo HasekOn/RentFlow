@@ -25,7 +25,7 @@ class LeasePolicy
         }
 
         // Manager manages this property — can view lease details (read-only)
-        if ($user->role === 'manager' && $lease->property) {
+        if ($user->isManager() && $lease->property) {
             return $user->managedProperties()
                 ->where('properties.id', $lease->property_id)
                 ->exists();
@@ -36,7 +36,7 @@ class LeasePolicy
 
     public function create(User $user): bool
     {
-        return $user->role === 'landlord';
+        return $user->isLandlord();
     }
 
     public function update(User $user, Lease $lease): bool

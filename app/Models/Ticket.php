@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\TicketCategory;
+use App\Enums\TicketPriority;
+use App\Enums\TicketStatus;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,9 +19,9 @@ use Illuminate\Support\Carbon;
  * @property int $tenant_id
  * @property string $title
  * @property string $description
- * @property string|null $category
- * @property string $status
- * @property string|null $priority
+ * @property TicketCategory|null $category
+ * @property TicketStatus $status
+ * @property TicketPriority|null $priority
  * @property int|null $assigned_to
  * @property Carbon|null $resolved_at
  * @property Carbon $created_at
@@ -40,9 +43,9 @@ class Ticket extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'category' => 'other',
-        'status' => 'new',
-        'priority' => 'medium',
+        'category' => TicketCategory::Other->value,
+        'status' => TicketStatus::New->value,
+        'priority' => TicketPriority::Medium->value,
     ];
 
     protected $fillable = [
@@ -88,6 +91,9 @@ class Ticket extends Model
     protected function casts(): array
     {
         return [
+            'category' => TicketCategory::class,
+            'status' => TicketStatus::class,
+            'priority' => TicketPriority::class,
             'resolved_at' => 'datetime',
         ];
     }

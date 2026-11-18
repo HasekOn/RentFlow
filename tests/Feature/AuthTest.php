@@ -75,6 +75,43 @@ class AuthTest extends TestCase
             ->assertJsonPath('user.role', 'tenant');
     }
 
+    public function test_register_as_tenant_is_allowed(): void
+    {
+        $this->postJson($this->apiUrl('/register'), [
+            'name' => 'Tenant',
+            'email' => 'tenant@rentflow.cz',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'tenant',
+        ])->assertStatus(201)->assertJsonPath('user.role', 'tenant');
+    }
+
+    public function test_register_as_manager_is_rejected(): void
+    {
+        $this->postJson($this->apiUrl('/register'), [
+            'name' => 'Wannabe Manager',
+            'email' => 'manager@rentflow.cz',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'manager',
+        ])->assertStatus(422)->assertJsonValidationErrors('role');
+
+        $this->assertDatabaseMissing('users', ['email' => 'manager@rentflow.cz']);
+    }
+
+    public function test_register_ignores_trust_score(): void
+    {
+        $this->postJson($this->apiUrl('/register'), [
+            'name' => 'Cheater',
+            'email' => 'cheater@rentflow.cz',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'trust_score' => 100,
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('users', ['email' => 'cheater@rentflow.cz', 'trust_score' => 50]);
+    }
+
     public function test_user_can_login(): void
     {
         User::factory()->create([

@@ -2,6 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\LeaseStatus;
+use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
 use App\Models\Lease;
 use App\Models\Payment;
 use Illuminate\Console\Command;
@@ -15,7 +18,7 @@ class GenerateMonthlyPayments extends Command
     public function handle(): int
     {
         $activeLeases = Lease::query()
-            ->where('status', 'active')
+            ->where('status', LeaseStatus::Active)
             ->with('property')
             ->get();
 
@@ -26,7 +29,7 @@ class GenerateMonthlyPayments extends Command
             // Rent
             $existsRent = Payment::query()
                 ->where('lease_id', $lease->id)
-                ->where('type', 'rent')
+                ->where('type', PaymentType::Rent)
                 ->whereYear('due_date', now()->year)
                 ->whereMonth('due_date', now()->month)
                 ->exists();
@@ -34,11 +37,11 @@ class GenerateMonthlyPayments extends Command
             if (! $existsRent) {
                 Payment::create([
                     'lease_id' => $lease->id,
-                    'type' => 'rent',
+                    'type' => PaymentType::Rent,
                     'amount' => $lease->rent_amount,
                     'due_date' => $dueDate,
                     'variable_symbol' => $lease->variable_symbol,
-                    'status' => 'unpaid',
+                    'status' => PaymentStatus::Unpaid,
                 ]);
                 $created++;
                 $this->info("Rent for lease #{$lease->id} ({$lease->property?->address})");
@@ -48,7 +51,7 @@ class GenerateMonthlyPayments extends Command
             if ($lease->utility_advances > 0) {
                 $existsUtility = Payment::query()
                     ->where('lease_id', $lease->id)
-                    ->where('type', 'utilities')
+                    ->where('type', PaymentType::Utilities)
                     ->whereYear('due_date', now()->year)
                     ->whereMonth('due_date', now()->month)
                     ->exists();
@@ -56,11 +59,11 @@ class GenerateMonthlyPayments extends Command
                 if (! $existsUtility) {
                     Payment::create([
                         'lease_id' => $lease->id,
-                        'type' => 'utilities',
+                        'type' => PaymentType::Utilities,
                         'amount' => $lease->utility_advances,
                         'due_date' => $dueDate,
                         'variable_symbol' => $lease->variable_symbol ? $lease->variable_symbol.'1' : null,
-                        'status' => 'unpaid',
+                        'status' => PaymentStatus::Unpaid,
                     ]);
                     $created++;
                 }

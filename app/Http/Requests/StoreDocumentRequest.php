@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\DocumentVisibility;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreDocumentRequest extends FormRequest
 {
@@ -17,6 +19,7 @@ class StoreDocumentRequest extends FormRequest
             'file' => ['required', 'file', 'max:10240'],
             'document_type' => ['required', 'string', 'max:100'],
             'name' => ['required', 'string', 'max:255'],
+            'visibility' => ['sometimes', Rule::enum(DocumentVisibility::class)],
         ];
     }
 
