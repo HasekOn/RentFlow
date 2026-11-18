@@ -2,17 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\LeaseStatus;
+use App\Actions\Payments\GenerateMonthlyPayments;
 use App\Enums\PaymentStatus;
-use App\Enums\PaymentType;
 use App\Events\PaymentMarkedPaid;
+use App\Http\Controllers\Api\Concerns\FindsLease;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePaymentRequest;
 use App\Http\Requests\UpdatePaymentRequest;
 use App\Http\Resources\PaymentResource;
-use App\Models\Lease;
 use App\Models\Payment;
-use App\Models\User;
 use App\Services\BankImportService;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
@@ -20,30 +18,15 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-    use Filterable;
+    use Filterable, FindsLease;
 
     public function index(Request $request)
     {
         $this->authorize('viewAny', Payment::class);
 
-        /** @var User $user */
-        $user = $request->user();
-
-        if ($user->isLandlord()) {
-            $leaseIds = Lease::query()->whereIn(
-                'property_id',
-                $user->ownedProperties()->pluck('id')
-            )->pluck('id');
-
-            $query = Payment::query()->whereIn('lease_id', $leaseIds)
-                ->with(['lease.tenant', 'lease.property']);
-        } else {
-            // Both manager and tenant: see only own payments
-            $query = Payment::query()->whereIn(
-                'lease_id',
-                $user->leases()->pluck('id')
-            )->with(['lease.tenant', 'lease.property']);
-        }
+        $query = Payment::query()
+            ->visibleTo($request->user())
+            ->with(['lease.tenant', 'lease.property']);
 
         $this->applyFilters(
             $query,
@@ -57,7 +40,8 @@ class PaymentController extends Controller
 
     public function store(StorePaymentRequest $request): JsonResponse
     {
-        $this->authorize('create', Payment::class);
+        $lease = $this->findLease((string) $request->validated('lease_id'));
+        $this->authorize('create', [Payment::class, $lease]);
 
         $validated = $request->validated();
 
@@ -72,7 +56,10 @@ class PaymentController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $payment = Payment::query()->with(['lease.tenant', 'lease.property'])->findOrFail($id);
+        $payment = Payment::query()->with(['lease.tenant', 'lease.property'])->find($id);
+        if ($payment === null) {
+            abort(404);
+        }
         $this->authorize('view', $payment);
 
         return response()->json(new PaymentResource($payment));
@@ -80,8 +67,8 @@ class PaymentController extends Controller
 
     public function markPaid(string $id): JsonResponse
     {
-        $payment = Payment::query()->findOrFail($id);
-        $this->authorize('update', $payment);
+        $payment = $this->findPayment($id);
+        $this->authorize('markPaid', $payment);
 
         $payment->update([
             'paid_date' => now()->toDateString(),
@@ -95,7 +82,7 @@ class PaymentController extends Controller
 
     public function update(UpdatePaymentRequest $request, string $id): JsonResponse
     {
-        $payment = Payment::query()->findOrFail($id);
+        $payment = $this->findPayment($id);
         $this->authorize('update', $payment);
         $payment->update($request->validated());
 
@@ -104,7 +91,7 @@ class PaymentController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $payment = Payment::query()->findOrFail($id);
+        $payment = $this->findPayment($id);
         $this->authorize('delete', $payment);
 
         if ($payment->status === PaymentStatus::Paid) {
@@ -120,7 +107,7 @@ class PaymentController extends Controller
 
     public function importCsv(Request $request): JsonResponse
     {
-        $this->authorize('create', Payment::class);
+        $this->authorize('import', Payment::class);
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
@@ -128,6 +115,7 @@ class PaymentController extends Controller
 
         $content = file_get_contents($request->file('file')->getRealPath());
 
+        // páruje jen smlouvy nemovitostí přihlášeného pronajímatele
         $service = new BankImportService;
         $results = $service->import($content, $request->user()->id);
 
@@ -143,65 +131,26 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function generateMonthly(Request $request): JsonResponse
+    public function generateMonthly(Request $request, GenerateMonthlyPayments $generate): JsonResponse
     {
-        $this->authorize('create', Payment::class);
+        $this->authorize('generate', Payment::class);
 
-        $user = $request->user();
-        $propertyIds = $user->ownedProperties()->pluck('id');
-        $activeLeases = Lease::query()->whereIn('property_id', $propertyIds)
-            ->where('status', LeaseStatus::Active)
-            ->get();
-
-        $created = 0;
-        $dueDate = now()->startOfMonth()->addDays(14);
-
-        foreach ($activeLeases as $lease) {
-            $existingRent = Payment::query()
-                ->where('lease_id', $lease->id)
-                ->where('type', PaymentType::Rent)
-                ->whereYear('due_date', now()->year)
-                ->whereMonth('due_date', now()->month)
-                ->exists();
-
-            if (! $existingRent) {
-                Payment::create([
-                    'lease_id' => $lease->id,
-                    'type' => PaymentType::Rent,
-                    'amount' => $lease->rent_amount,
-                    'due_date' => $dueDate,
-                    'variable_symbol' => $lease->variable_symbol,
-                    'status' => PaymentStatus::Unpaid,
-                ]);
-                $created++;
-            }
-
-            if ($lease->utility_advances > 0) {
-                $existingUtility = Payment::query()
-                    ->where('lease_id', $lease->id)
-                    ->where('type', PaymentType::Utilities)
-                    ->whereYear('due_date', now()->year)
-                    ->whereMonth('due_date', now()->month)
-                    ->exists();
-
-                if (! $existingUtility) {
-                    Payment::create([
-                        'lease_id' => $lease->id,
-                        'type' => PaymentType::Utilities,
-                        'amount' => $lease->utility_advances,
-                        'due_date' => $dueDate,
-                        'variable_symbol' => $lease->variable_symbol ? $lease->variable_symbol.'1' : null,
-                        'status' => PaymentStatus::Unpaid,
-                    ]);
-                    $created++;
-                }
-            }
-        }
+        $created = $generate->handle($request->user(), now());
 
         return response()->json([
             'message' => "Generated {$created} payments for current month.",
             'created' => $created,
         ]);
+    }
+
+    private function findPayment(string $id): Payment
+    {
+        $payment = Payment::query()->with('lease.property')->find($id);
+        if ($payment === null) {
+            abort(404);
+        }
+
+        return $payment;
     }
 
     protected function getDateField(): string

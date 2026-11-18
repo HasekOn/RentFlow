@@ -9,10 +9,12 @@ use App\Enums\PropertyStatus;
 use App\Models\Lease;
 use App\Models\Payment;
 use App\Models\Property;
+use App\Models\User;
 use App\Notifications\LeaseExpiringNotification;
 use App\Notifications\PaymentOverdueNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -85,5 +87,56 @@ class SchedulerCommandsTest extends TestCase
         $this->assertSame(PaymentStatus::Unpaid, $payments->first()->status);
         $this->assertSame('2026-03-15', $payments->first()->due_date->toDateString());
         $this->assertSame(0, Payment::query()->where('lease_id', $ended->id)->count());
+    }
+
+    public function test_api_and_command_share_generation_and_api_covers_only_own_leases(): void
+    {
+        Carbon::setTestNow('2026-03-01 06:00');
+        $landlord = User::factory()->landlord()->create();
+        $own = Lease::factory()->create([
+            'property_id' => Property::factory()->create(['landlord_id' => $landlord->id])->id,
+            'utility_advances' => 0,
+        ]);
+        $foreign = Lease::factory()->create();
+
+        $this->actingAs($landlord)
+            ->postJson($this->apiUrl('/payments/generate-monthly'))
+            ->assertStatus(200)
+            ->assertJsonPath('created', 1);
+        $this->assertSame(0, Payment::query()->where('lease_id', $foreign->id)->count());
+
+        // příkaz potom doplní jen cizí smlouvu, API znovu nic
+        $this->artisan('rentflow:generate-payments')->assertSuccessful();
+        $this->actingAs($landlord)->postJson($this->apiUrl('/payments/generate-monthly'))->assertJsonPath('created', 0);
+
+        $this->assertSame(1, Payment::query()->where('lease_id', $own->id)->count());
+        $this->assertSame(2, Payment::query()->where('lease_id', $foreign->id)->count());
+    }
+
+    public function test_generation_reads_do_not_depend_on_lease_count(): void
+    {
+        Carbon::setTestNow('2026-03-01 06:00');
+        Lease::factory()->count(2)->create();
+        $this->artisan('rentflow:generate-payments')->assertSuccessful();
+        $few = $this->countSelectsOfGeneration();
+
+        Lease::factory()->count(5)->create();
+        $this->artisan('rentflow:generate-payments')->assertSuccessful();
+
+        $this->assertSame($few, $this->countSelectsOfGeneration());
+    }
+
+    /**
+     * Opakované generování (vše už existuje): jen čtecí dotazy, bez vkládání.
+     */
+    private function countSelectsOfGeneration(): int
+    {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->artisan('rentflow:generate-payments')->assertSuccessful();
+        $queries = array_column(DB::getQueryLog(), 'query');
+        DB::disableQueryLog();
+
+        return count(array_filter($queries, fn (string $sql) => str_starts_with(strtolower($sql), 'select')));
     }
 }

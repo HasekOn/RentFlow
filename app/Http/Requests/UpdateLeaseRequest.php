@@ -17,6 +17,7 @@ class UpdateLeaseRequest extends FormRequest
     {
         return [
             'start_date' => ['sometimes', 'date'],
+            // proti uloženému start_date kontroluje LeaseController až po autorizaci (#30)
             'end_date' => ['nullable', 'date', 'after:start_date'],
             'rent_amount' => ['sometimes', 'numeric', 'min:0'],
             'deposit_amount' => ['nullable', 'numeric', 'min:0'],

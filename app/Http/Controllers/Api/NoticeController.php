@@ -2,21 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreNoticeRequest;
 use App\Http\Requests\UpdateNoticeRequest;
 use App\Http\Resources\NoticeResource;
 use App\Models\Notice;
-use App\Models\Property;
 use Illuminate\Http\JsonResponse;
 
 class NoticeController extends Controller
 {
+    use FindsProperty;
+
     public function index(string $propertyId): JsonResponse
     {
-        $this->authorize('viewAny', Notice::class);
-
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('view', $property);
 
         $notices = $property->notices()
             ->with('createdBy')
@@ -28,15 +29,8 @@ class NoticeController extends Controller
 
     public function store(StoreNoticeRequest $request, string $propertyId): JsonResponse
     {
-        $this->authorize('create', Notice::class);
-
-        $property = Property::query()->findOrFail($propertyId);
-
-        if ($property->landlord_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only create notices for your own properties.',
-            ], 403);
-        }
+        $property = $this->findProperty($propertyId);
+        $this->authorize('create', [Notice::class, $property]);
 
         $notice = Notice::query()->create([
             ...$request->validated(),
@@ -51,8 +45,7 @@ class NoticeController extends Controller
 
     public function update(UpdateNoticeRequest $request, string $id): JsonResponse
     {
-        $notice = Notice::query()->findOrFail($id);
-
+        $notice = $this->findNotice($id);
         $this->authorize('update', $notice);
 
         $notice->update($request->validated());
@@ -62,8 +55,7 @@ class NoticeController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        $notice = Notice::query()->findOrFail($id);
-
+        $notice = $this->findNotice($id);
         $this->authorize('delete', $notice);
 
         $notice->delete();
@@ -71,5 +63,15 @@ class NoticeController extends Controller
         return response()->json([
             'message' => 'Notice deleted successfully.',
         ]);
+    }
+
+    private function findNotice(string $id): Notice
+    {
+        $notice = Notice::query()->with('property')->find($id);
+        if ($notice === null) {
+            abort(404);
+        }
+
+        return $notice;
     }
 }

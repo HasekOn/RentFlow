@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\LeaseStatus;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -56,6 +58,36 @@ class Lease extends Model
         'contract_path',
         'status',
     ];
+
+    /**
+     * Kdo smlouvu vidí: vlastník nemovitosti, nájemník smlouvy a přiřazený správce, ten jen aktivní smlouvy
+     * (stejně jako nájemníky v User::visibleTo). Smazané smlouvy řeší volající přes withTrashed().
+     *
+     * @param  Builder<Lease>  $query
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $query->where(fn (Builder $visible) => $visible
+            ->where('tenant_id', $user->id)
+            ->orWhereHas('property', fn (Builder $property) => $property->where('landlord_id', $user->id))
+            ->orWhere(fn (Builder $managed) => $managed
+                ->where('status', LeaseStatus::Active)
+                ->whereHas('property.managers', fn (Builder $manager) => $manager->whereKey($user->id))));
+    }
+
+    /**
+     * Smlouvy, jejichž období se překrývá s daným (oba konce včetně, bez konce = na dobu neurčitou).
+     *
+     * @param  Builder<Lease>  $query
+     */
+    public function scopeOverlapping(Builder $query, CarbonInterface $start, ?CarbonInterface $end): void
+    {
+        $query
+            ->when($end !== null, fn (Builder $lease) => $lease->where('start_date', '<=', $end?->copy()->startOfDay()))
+            ->where(fn (Builder $lease) => $lease
+                ->whereNull('end_date')
+                ->orWhere('end_date', '>=', $start->copy()->startOfDay()));
+    }
 
     public function property(): BelongsTo
     {

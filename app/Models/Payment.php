@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PaymentStatus;
 use App\Enums\PaymentType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,6 +50,31 @@ class Payment extends Model
         'status',
         'note',
     ];
+
+    /**
+     * Kdo platbu vidí: vlastník nemovitosti, nájemník smlouvy a přiřazený správce u aktivních smluv (potvrzuje
+     * platby ručně, appka není napojená na banku). Stejný výřez smluv jako Lease::visibleTo.
+     *
+     * @param  Builder<Payment>  $query
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $query->whereIn('lease_id', Lease::query()->visibleTo($user)->select('id'));
+    }
+
+    /**
+     * Celé dny po splatnosti u nezaplacené platby, jinak null (splatná dnes ještě není po splatnosti).
+     * Jeden výpočet pro API i UI.
+     */
+    public function daysOverdue(): ?int
+    {
+        if ($this->status === PaymentStatus::Paid || ! $this->due_date->lt(today())) {
+            return null;
+        }
+
+        // Carbon 3 vrací float; mezi dvěma půlnocemi jde o celé dny, round jen pro jistotu kolem změny času
+        return (int) round($this->due_date->copy()->startOfDay()->diffInDays(today()));
+    }
 
     public function lease(): BelongsTo
     {

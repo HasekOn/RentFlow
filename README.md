@@ -206,8 +206,11 @@ User (landlord/manager/tenant)
 - ✅ Řeší tickety (status, komentáře) pro přiřazené properties
 - ✅ Loguje meter odečty na přiřazených properties
 - ✅ Vytváří tickety pro přiřazené properties
-- ✅ Dual dashboard: Manager View + My Tenancy
-- ❌ Nevidí finance (expenses, cashflow)
+- ✅ Vidí platby, nájemné, zálohy a VS aktivních smluv přiřazených properties a ručně je označí jako zaplacené
+  (ne svou vlastní platbu, kde je nájemníkem; platby ukončených smluv potvrzuje jen landlord)
+- ✅ Dual dashboard: Manager View (nezaplacené a po splatnosti) + My Tenancy
+- ❌ Nevidí finance (expenses, cashflow), kauce ani PDF smluv
+- ❌ Negeneruje, neimportuje, nezakládá ani nemaže platby
 - ❌ Nemůže editovat properties, inventory, documents
 
 ### Tenant (Nájemník)
@@ -229,14 +232,15 @@ User (landlord/manager/tenant)
 | Create ticket        |    ✅     |   ✅*    |  ✅**   |
 | Resolve ticket       |    ✅     |   ✅*    |   ❌    |
 | Log meter reading    |    ✅     |   ✅*    |   ❌    |
-| View payments        |    ✅     |    ❌    | ✅ own  |
-| Mark paid            |    ✅     |    ❌    |   ❌    |
+| View payments        |    ✅     |   ✅*    | ✅ own  |
+| Mark paid            |   ✅ †    |  ✅* ‡   |   ❌    |
+| Generate/import/delete payments | ✅ |   ❌    |   ❌    |
 | Upload documents     |    ✅     |    ❌    |   ❌    |
 | Rate tenant          |    ✅     |    ❌    |   ❌    |
 | View People          |    ✅     |    ✅    |   ❌    |
 | Promote/demote       |    ✅     |    ❌    |   ❌    |
 
-\* jen přiřazené properties | \*\* jen s aktivní smlouvou
+\* jen přiřazené properties | \*\* jen s aktivní smlouvou | † i u ukončené smlouvy (poslední nájem, nedoplatky) | ‡ jen aktivní smlouvy, ne svou platbu (správce, který je jinde nájemníkem)
 
 ---
 

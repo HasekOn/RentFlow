@@ -12,8 +12,6 @@ use App\Models\Property;
 use App\Models\User;
 use App\Traits\Filterable;
 use Closure;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -128,15 +126,12 @@ class PropertyController extends Controller
     }
 
     /**
-     * Smlouvy v nemovitosti: vlastník nemovitosti všechny, ostatní jen svou (#20). Ve 2.8 nahradí Lease::visibleTo.
+     * Smlouvy v nemovitosti podle Lease::visibleTo (#20): vlastník všechny, nájemník svou, přiřazený správce
+     * aktivní (částky skryje LeaseResource).
      */
     private function visibleLeases(User $user): Closure
     {
-        return fn (HasMany $leases) => $leases
-            ->where(fn (Builder $lease) => $lease
-                ->where('tenant_id', $user->id)
-                ->orWhereHas('property', fn (Builder $property) => $property->where('landlord_id', $user->id)))
-            ->with('tenant');
+        return fn ($leases) => $leases->visibleTo($user)->with('tenant');
     }
 
     protected function getDateField(): string

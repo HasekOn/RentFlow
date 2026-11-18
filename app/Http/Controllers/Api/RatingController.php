@@ -3,19 +3,26 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\LeaseStatus;
+use App\Http\Controllers\Api\Concerns\FindsLease;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRatingRequest;
 use App\Http\Resources\RatingResource;
 use App\Models\Lease;
 use App\Models\Rating;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class RatingController extends Controller
 {
+    use FindsLease;
+
     public function index(string $leaseId): JsonResponse
     {
-        $lease = Lease::query()->findOrFail($leaseId);
+        // hodnocení zůstávají i u smazané smlouvy (historie nájemníka)
+        $lease = Lease::withTrashed()->find($leaseId);
+        if ($lease === null) {
+            abort(404);
+        }
+        $this->authorize('viewAny', [Rating::class, $lease]);
 
         $ratings = $lease->ratings()
             ->with('ratedBy')
@@ -26,14 +33,8 @@ class RatingController extends Controller
 
     public function store(StoreRatingRequest $request, string $leaseId): JsonResponse
     {
-        $lease = Lease::query()->findOrFail($leaseId);
-
-        // Only landlord can rate
-        if (! $request->user()->isLandlord()) {
-            return response()->json([
-                'message' => 'Only landlords can rate tenants.',
-            ], 403);
-        }
+        $lease = $this->findLease($leaseId);
+        $this->authorize('create', [Rating::class, $lease]);
 
         // Only ended leases
         if ($lease->status === LeaseStatus::Active) {
@@ -65,15 +66,15 @@ class RatingController extends Controller
         return response()->json(new RatingResource($rating), 201);
     }
 
-    public function destroy(Request $request, string $id): JsonResponse
+    public function destroy(string $id): JsonResponse
     {
-        $rating = Rating::query()->findOrFail($id);
-
-        if ($rating->rated_by !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only delete your own ratings.',
-            ], 403);
+        $rating = Rating::query()->find($id);
+        if ($rating === null) {
+            abort(404);
         }
+        // smlouvu i smazanou (index hodnocení je ukazuje), pro RatingPolicy::delete
+        $rating->setRelation('lease', Lease::withTrashed()->with('property')->find($rating->lease_id));
+        $this->authorize('delete', $rating);
 
         $rating->delete();
 

@@ -104,21 +104,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('notifications', [DashboardController::class, 'notifications']);
     Route::put('notifications/{notification}/read', [DashboardController::class, 'markNotificationRead']);
 
-    // ─── READ routes accessible to all authenticated users ───
-    // Expenses (read)
+    // Expenses (ExpensePolicy, jen vlastník)
     Route::get('expenses', [ExpenseController::class, 'index']);
+    Route::post('expenses', [ExpenseController::class, 'store']);
     Route::get('expenses/{expense}', [ExpenseController::class, 'show']);
+    Route::put('expenses/{expense}', [ExpenseController::class, 'update']);
+    Route::patch('expenses/{expense}', [ExpenseController::class, 'update']);
+    Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy']);
 
-    // Inventory (read)
+    // Inventory (InventoryItemPolicy)
     Route::get('properties/{property}/inventory', [InventoryItemController::class, 'index']);
+    Route::post('properties/{property}/inventory', [InventoryItemController::class, 'store']);
     Route::get('inventory/{item}', [InventoryItemController::class, 'show']);
+    Route::put('inventory/{item}', [InventoryItemController::class, 'update']);
+    Route::delete('inventory/{item}', [InventoryItemController::class, 'destroy']);
 
-    // Documents (read + download)
+    // Documents (DocumentPolicy)
     Route::get('properties/{property}/documents', [DocumentController::class, 'index']);
+    Route::post('properties/{property}/documents', [DocumentController::class, 'store']);
+    Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
     Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('api.documents.download');
 
-    // Ratings (read)
+    // Ratings (RatingPolicy: čte kdo vidí smlouvu, zapisuje vlastník nemovitosti)
     Route::get('leases/{lease}/ratings', [RatingController::class, 'index']);
+    Route::post('leases/{lease}/ratings', [RatingController::class, 'store']);
+    Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
 
     // Trust score (read)
     Route::get('tenants/{tenant}/trust-score', [DashboardController::class, 'trustScore']);
@@ -134,26 +144,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('dashboard/finance-chart', [DashboardController::class, 'financeChart']);
     Route::get('dashboard/occupancy-chart', [DashboardController::class, 'occupancyChart']);
-
-    // ─── Landlord-only WRITE routes ───
-    Route::middleware('role:landlord,manager')->group(function () {
-        // Expenses (write)
-        Route::post('expenses', [ExpenseController::class, 'store']);
-        Route::put('expenses/{expense}', [ExpenseController::class, 'update']);
-        Route::patch('expenses/{expense}', [ExpenseController::class, 'update']);
-        Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy']);
-
-        // Inventory (write)
-        Route::post('properties/{property}/inventory', [InventoryItemController::class, 'store']);
-        Route::put('inventory/{item}', [InventoryItemController::class, 'update']);
-        Route::delete('inventory/{item}', [InventoryItemController::class, 'destroy']);
-
-        // Documents (write)
-        Route::post('properties/{property}/documents', [DocumentController::class, 'store']);
-        Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
-
-        // Ratings (write)
-        Route::post('leases/{lease}/ratings', [RatingController::class, 'store']);
-        Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
-    });
 });

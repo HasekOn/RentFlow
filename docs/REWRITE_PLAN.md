@@ -255,21 +255,54 @@ pokrýt test.
       není v jejich `User::visibleTo`). Rozhodnout ve fázi 5 u detailu nemovitosti, jestli kontakt ukázat záměrně.
     - Návrh: e-mail normalizovat (malá písmena) při registraci a změně profilu + migrace. Teď `unique:users`
       a `/users/lookup` na SQLite rozlišují velikost písmen, na MariaDB ne.
-- [ ] **2.7 Inventář, oznámení, náklady** (#9, #16)
+- [x] **2.7 Inventář, oznámení, náklady** (#9, #16)
   - `InventoryItemPolicy`, `NoticePolicy`, `ExpensePolicy` + `Expense::visibleTo` (jen vlastník).
   - Skupinu `role:landlord,manager` v `routes/api.php` nahradit policies.
   - `invoice_path` v `ExpenseResource` vynulovat nebo nevracet (z 2.3: staré hodnoty od klienta, mohou být
     `javascript:` URL).
+  - *Hotovo 18.&nbsp;11.&nbsp;2026 (spolu s 2.8 a 2.9):*
+    - `InventoryItemPolicy` a `NoticePolicy`: čtení jako nemovitost (nově i přiřazený správce u oznámení), zápis
+      vlastník. `ExpensePolicy` + `Expense::visibleTo` jen vlastník, `/expenses` pro správce i nájemníka 403.
+    - Skupina `role:landlord,manager` je pryč (ve 2.8 i hodnocení), `RoleMiddleware` zůstává zaregistrovaný jako
+      hrubé síto, jeho test běží nad testovací routou. `invoice_path` se nevrací.
+    - `purchase_price` inventáře dál vidí všichni, kdo vidí inventář (rozhodnutí při plánu).
+    - Návrh (fáze 5): neaktivní oznámení nájemníkům neukazovat (dnes vidí i neaktivní).
 - [ ] **2.8 Smlouvy a hodnocení** (#13, #22, #30)
   - `LeasePolicy` + `Lease::visibleTo`, `RatingPolicy` (vlastník nemovitosti).
   - Kontrola překryvu aktivních smluv. `tenant_id` jen nájemník nebo správce.
   - `end_date` se porovnává s uloženým `start_date`.
   - Vnořený `tenant` ve smlouvě a `rated_by` v hodnocení už jdou přes `UserResource::nested()` (2.4–2.6), krok
     řeší jen `Lease::visibleTo` a výřez částek pro správce.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `Lease::visibleTo`: vlastník, nájemník smlouvy a přiřazený správce jen **aktivní** smlouvy (rozhodnutí při
+      plánu, stejně jako `User::visibleTo`). `LeasePolicy::view` přes scope, `viewFinance` (vlastník a nájemník)
+      pro PDF smlouvy (správce 403). Nahradilo `PropertyController::visibleLeases()` z 2.5.
+    - **Změna rozhodnutí** (platby párují správci ručně, appka není napojená na banku): `LeaseResource` vrací
+      přiřazenému správci u aktivních smluv nájemné, zálohy, VS a platby, **kauci ne**. Řazení podle `rent_amount`
+      proto smí všichni. PDF smlouvy a hodnocení beze změny.
+    - Seznam `/leases` vrací smazané smlouvy jen s filtrem `tenant_id` (dřív nájemníkovi vždy).
+    - `create(User, Property)`, `tenant_id` jen účet nájemníka nebo správce, překryv aktivních smluv na nemovitosti
+      (scope `Lease::overlapping`) při založení, změně období a reaktivaci → 422. `end_date` proti uloženému
+      `start_date` kontroluje controller až po autorizaci (hláška by cizímu prozradila datum).
+    - `RatingPolicy`: seznam kdo vidí smlouvu, hodnotí a maže vlastník nemovitosti (i u smazané smlouvy).
 - [ ] **2.9 Platby** (#12, #17, #41)
-  - `PaymentPolicy` + `Payment::visibleTo`. Správce nevidí platby, částky smluv ani finance na dashboardu.
+  - `PaymentPolicy` + `Payment::visibleTo`. Správce nevidí finance na dashboardu (platby viz změna rozhodnutí níž).
   - `lease_id` jen z vlastních smluv.
   - Mazání zaplacené platby vrátí 422 (stav), ne 403.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `Payment::visibleTo` = platby smluv z `Lease::visibleTo` (vlastník, nájemník smlouvy, přiřazený správce
+      u aktivních smluv). `PaymentPolicy`: `create(User, Lease)` jen na smlouvu vlastní nemovitosti, `update`
+      vlastník, `delete` bez kontroly stavu (zaplacená → 422 v controlleru), `generate` a `import` pronajímatel.
+    - **Změna rozhodnutí:** `markPaid` smí vlastník v jakémkoli stavu smlouvy (poslední nájem a nedoplatky
+      chodí po konci) a přiřazený správce jen u aktivní smlouvy (včetně přepočtu trust
+      score), **nikdy nájemník té smlouvy** (správce, který je jinde nájemníkem, nepotvrdí svou platbu).
+    - Dashboard: správce místo sekce `finance` dostane `payments` (počet a součet nezaplacených a po splatnosti
+      u aktivních smluv přiřazených nemovitostí), `finance-chart` jen pronajímatel.
+    - `days_overdue` jako celé číslo přes `Payment::daysOverdue()` (přesunuto z fáze 6). Splatná dnes → `null`.
+    - **Odchylka:** generování plateb je už jedna Action `App\Actions\Payments\GenerateMonthlyPayments` pro příkaz
+      i API (položka 2.13), kvůli idempotenci obou cest: `Cache::lock` + transakce, existující platby měsíce
+      jedním dotazem v rozsahu `>=` / `<`. Příkaz už nevypisuje řádek na každou smlouvu, jen součet.
+    - CSV import páruje jen smlouvy nemovitostí pronajímatele (i ne smazané nemovitosti), pokryto testem.
 - [ ] **2.10 Tikety, komentáře, fotky** (#10, #11, #23, #24, #46)
   - `TicketPolicy` v pořadí: autor, nájemník s aktivní smlouvou, přiřazený správce, vlastník.
   - `Ticket::visibleTo`, `create(User, Property)`, `TicketCommentPolicy`, `TicketImagePolicy`.
@@ -289,7 +322,7 @@ pokrýt test.
   - Actions pro zápisové operace: nemovitost, smlouva + PDF, platby a generování, CSV import, tiket + komentáře,
     měřiče a odečty, hodnocení, správci. Controllery jen volají Action.
   - Transakce, events po commitu, notifikace `ShouldQueue`.
-  - Generování plateb jen pro platné smlouvy, jedna Action pro příkaz i API.
+  - Generování plateb jen pro platné smlouvy (jedna Action pro příkaz i API už je z 2.9).
   - Notifikace o konci smlouvy jen jednou, robustní kontrola plateb po splatnosti.
   - Přepočet trust score po hodnocení a změně platby.
   - CSV import páruje podle VS platby.
@@ -332,6 +365,8 @@ Na konci odškrtni krok v plánu.
 
 ## Fáze 3 – Livewire, design systém, layout
 
+- [ ] ROZHODNOUT jazyk UI – jen čeština, nebo lokalizace cs + en (texty přes __() / lang/, přepínač jazyka
+      v nastavení uživatele)
 - [ ] `livewire/livewire` ^4 (stejná verze jako JaTime), Alpine přes Livewire, `@tailwindcss/forms`, fonty přes
       `@fontsource-variable/*` (bez CDN)
 - [ ] Návrh vzhledu: 2–3 klíčové obrazovky (přehled, seznam a detail nemovitosti) jako mockup ke schválení
@@ -424,8 +459,9 @@ vědomé vynechání napiš. Nejdřív plán, pak implementace, testy, rentflow-
   do kroku 2.1.
 - [ ] Rozhodnout API: ponechat (veřejné API s tokeny a testy), nebo odstranit i se Sanctum. Podle toho nastavit CORS
       (`config/cors.php`, teď vypnutý).
-- [ ] `days_overdue` v `PaymentResource` jako celé číslo (review 2.2: Carbon 3 vrací z `diffInDays` float, např.
+- [x] `days_overdue` v `PaymentResource` jako celé číslo (review 2.2: Carbon 3 vrací z `diffInDays` float, např.
       `10.707…`). Podle rozhodnutí o API, s testem. Stejný výpočet pro UI fáze 5 přes jeden helper.
+      *Přesunuto do 2.9 a hotovo (`Payment::daysOverdue()`).*
 - [ ] CI: zapnout spouštěče push/PR, přidat `npm run build` v kořeni a audity (`composer analyse` už je od 2.1)
 - [ ] Odstranit worktree s React předlohou (`herd unlink rentflow-main`, `git worktree remove ../rentflow-main`)
 - [ ] README (architektura, instalace přes Herd, screenshoty), `CHANGELOG.md`

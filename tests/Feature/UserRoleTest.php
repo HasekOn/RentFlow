@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class UserRoleTest extends TestCase
@@ -70,12 +71,18 @@ class UserRoleTest extends TestCase
             ->assertStatus(404);
     }
 
+    /**
+     * API routy od 2.7 middleware role nepoužívají (rozhodují policies), middleware zůstává jako hrubé síto.
+     * Proto testovací routa místo dřívějšího POST /expenses.
+     */
     public function test_role_middleware_does_not_reveal_required_roles(): void
     {
+        Route::middleware(['api', 'auth:sanctum', 'role:landlord'])->get('/_test/role-middleware', fn () => 'ok');
         $tenant = User::factory()->tenant()->create();
 
-        $response = $this->actingAs($tenant)->postJson($this->apiUrl('/expenses'), []);
+        $response = $this->actingAs($tenant)->getJson('/_test/role-middleware');
 
         $response->assertStatus(403)->assertExactJson(['message' => 'Access denied.']);
+        $this->actingAs(User::factory()->landlord()->create())->get('/_test/role-middleware')->assertOk();
     }
 }
