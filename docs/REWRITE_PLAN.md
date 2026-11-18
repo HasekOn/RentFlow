@@ -204,7 +204,7 @@ pokrýt test.
     - Staré `.doc` a `.xls`: soubory uložené z Wordu a Excelu (97–2003) i soubory z instalace Office finfo pozná
       jako `application/msword` / `application/vnd.ms-excel`, nikdy jako `x-ole-storage` nebo `CDFV2`. Výjimka
       ve whitelistu proto není potřeba. Hlídá to test s fixturami `tests/fixtures/legacy.doc` a `legacy.xls`.
-- [ ] **2.4 Uživatelé** (#4, #5, #19)
+- [x] **2.4 Uživatelé** (#4, #5, #19)
   - `UserPolicy` + `User::visibleTo`:
     - pronajímatel: nájemníci jeho smluv a správci jeho nemovitostí,
     - správce: nájemníci spravovaných nemovitostí,
@@ -213,19 +213,48 @@ pokrýt test.
   - `users/{user}/ratings` do controlleru s policy, trust score jen přes `UserPolicy::view`.
   - **Vědomě:** smlouvu s novým nájemníkem (účtem, který pronajímatel ještě nezná) půjde založit až v Livewire
     stránce Smlouvy (hledání podle e-mailu). React se po 2.1 už nespouští, takže se to netýká.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026 (spolu s 2.5 a 2.6):*
+    - `User::visibleTo`: sám sebe, nájemníci všech smluv (i ukončených) na mých nemovitostech, správci mých
+      nemovitostí; jako správce nájemníci aktivních smluv a **spolusprávci** přiřazených nemovitostí (rozhodnutí
+      při plánu, rozšíření oproti textu výše, kvůli sekci „Ostatní správci“ na stránce Lidé).
+    - `UserPolicy`: `viewAny` pronajímatel nebo správce s přiřazením (nájemník 403), `view` přes scope, `lookup`
+      jen pronajímatel. `UserController`: `/users` (filtr `role` přes `Rule::enum`), `/users/lookup?email=`
+      (přesná shoda, jen nájemník/správce, minimum údajů, `throttle:30,1`), `/users/{id}/ratings`.
+    - Hodnocení vrací stejný tvar jako dřív, ne `RatingResource` (ten by přidal e-mail a telefon hodnotitele).
+    - `tenants/{id}/trust-score` přes `UserPolicy::view`.
 
 **Kroky 2.5–2.10 jsou policies a `visibleTo()` po oblastech.** Každá akce má testy pro všechny role, cizí data
 (jiný pronajímatel), nepřiřazeného správce a nájemníka bez aktivní smlouvy (#38).
 
-- [ ] **2.5 Nemovitosti a fotky** (#6, #18, #20, #35, #39)
+- [x] **2.5 Nemovitosti a fotky** (#6, #18, #20, #35, #39)
   - `PropertyPolicy` (včetně `restore`), `Property::visibleTo` (správce přes přiřazení), `PropertyImagePolicy`.
   - Společná kontrola `view` nemovitosti pro čtecí endpointy pod ní (#18, oblasti dál v 2.6–2.10).
   - Resource podle role: nájemník jen svou smlouvu, `purchase_price` jen vlastník.
   - Smazání nemovitosti s aktivní smlouvou vrátí 422.
-- [ ] **2.6 Měřiče a odečty** (#7, #8)
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `Property::visibleTo` (vlastník, přiřazený správce, nájemník s aktivní smlouvou), `PropertyPolicy::view`
+      přes scope, bez větve `isManager()`. `restore` = vlastník.
+    - Smlouvy v `/properties` a detailu: vlastník všechny, ostatní jen svou (správce tedy žádnou cizí, nájemníky
+      bere z `/users`). Podmínka je v `PropertyController::visibleLeases()`, ve 2.8 ji nahradí `Lease::visibleTo`.
+      `purchase_price` jen vlastníkovi.
+    - `PropertyImagePolicy` (zápis vlastník), seznam fotek přes `view`. `GET /properties/{id}/managers` jen
+      vlastník (rozhodnutí při plánu). Traity `Api\Concerns\FindsProperty` a `FindsMeter` (find + 404).
+    - Řazení `/properties` podle `purchase_price` jen tomu, kdo má v seznamu jen vlastní nemovitosti, ostatním se
+      `sort` ignoruje (pořadí by ceny prozradilo).
+- [x] **2.6 Měřiče a odečty** (#7, #8)
   - `MeterPolicy` a `MeterReadingPolicy`: zápis odečtu vlastník a přiřazený správce, úpravy a mazání vlastník.
   - `photo_proof` v `MeterReadingResource` vynulovat nebo nevracet (z 2.3: staré hodnoty od klienta, mohou být
     `javascript:` URL).
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `MeterPolicy` (čtení přes nemovitost, zápis vlastník), `MeterReadingPolicy` (zápis vlastník a přiřazený
+      správce, mazání vlastník). Odečet z jiného měřiče v URL → 404. `photo_proof` se nevrací.
+    - **Vnoření uživatelé** (všechny Resources: tiket, komentář, smlouva, hodnocení, nemovitost, dokument, fotka,
+      odečet, oznámení): `UserResource::nested()` vrací celý profil (e-mail, telefon, trust score) jen tomu, kdo
+      osobu vidí podle `UserPolicy::view`, jinak `UserSummaryResource` (`id`, `name`, `role`). Viditelná id se
+      načtou jednou za request. Důsledek: nájemník ani správce nevidí kontakt na pronajímatele (pronajímatel
+      není v jejich `User::visibleTo`). Rozhodnout ve fázi 5 u detailu nemovitosti, jestli kontakt ukázat záměrně.
+    - Návrh: e-mail normalizovat (malá písmena) při registraci a změně profilu + migrace. Teď `unique:users`
+      a `/users/lookup` na SQLite rozlišují velikost písmen, na MariaDB ne.
 - [ ] **2.7 Inventář, oznámení, náklady** (#9, #16)
   - `InventoryItemPolicy`, `NoticePolicy`, `ExpensePolicy` + `Expense::visibleTo` (jen vlastník).
   - Skupinu `role:landlord,manager` v `routes/api.php` nahradit policies.
@@ -235,6 +264,8 @@ pokrýt test.
   - `LeasePolicy` + `Lease::visibleTo`, `RatingPolicy` (vlastník nemovitosti).
   - Kontrola překryvu aktivních smluv. `tenant_id` jen nájemník nebo správce.
   - `end_date` se porovnává s uloženým `start_date`.
+  - Vnořený `tenant` ve smlouvě a `rated_by` v hodnocení už jdou přes `UserResource::nested()` (2.4–2.6), krok
+    řeší jen `Lease::visibleTo` a výřez částek pro správce.
 - [ ] **2.9 Platby** (#12, #17, #41)
   - `PaymentPolicy` + `Payment::visibleTo`. Správce nevidí platby, částky smluv ani finance na dashboardu.
   - `lease_id` jen z vlastních smluv.
@@ -244,6 +275,8 @@ pokrýt test.
   - `Ticket::visibleTo`, `create(User, Property)`, `TicketCommentPolicy`, `TicketImagePolicy`.
   - `assigned_to` jen správce přiřazený k nemovitosti.
   - Autor upraví název a popis ve stavu `new`.
+  - Vnořený `tenant`, `assigned_user` a autor komentáře už jdou přes `UserResource::nested()` (2.4–2.6). Fotky
+    tiketu (`images[].uploader`) vrací jen id a jméno.
 - [ ] **2.11 Správci** (#14)
   - Promote a demote podle rozhodnutí výše.
   - Přepočet `users.role` po přiřazení a odebrání.

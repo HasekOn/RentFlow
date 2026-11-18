@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\LeaseStatus;
 use App\Enums\Role;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Services\TrustScoreService;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -113,6 +115,30 @@ class User extends Authenticatable
     public function managedProperties(): BelongsToMany
     {
         return $this->belongsToMany(Property::class, 'property_manager');
+    }
+
+    /**
+     * Koho uživatel vidí (Lidé, detail osoby, trust score, hodnocení). Podle vztahu k nemovitostem, ne podle role:
+     * sebe, nájemníky smluv na svých nemovitostech (i ukončených) a jejich správce; jako správce nájemníky aktivních
+     * smluv a spolusprávce přiřazených nemovitostí.
+     *
+     * @param  Builder<User>  $query
+     */
+    public function scopeVisibleTo(Builder $query, User $viewer): void
+    {
+        $managedByViewer = fn (Builder $property) => $property->whereHas(
+            'managers',
+            fn (Builder $manager) => $manager->whereKey($viewer->id),
+        );
+
+        $query->where(fn (Builder $visible) => $visible
+            ->whereKey($viewer->id)
+            ->orWhereHas('leases.property', fn (Builder $property) => $property->where('landlord_id', $viewer->id))
+            ->orWhereHas('managedProperties', fn (Builder $property) => $property->where('landlord_id', $viewer->id))
+            ->orWhereHas('leases', fn (Builder $lease) => $lease
+                ->where('status', LeaseStatus::Active)
+                ->whereHas('property', $managedByViewer))
+            ->orWhereHas('managedProperties', $managedByViewer));
     }
 
     /**

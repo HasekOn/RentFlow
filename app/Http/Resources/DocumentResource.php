@@ -22,7 +22,7 @@ class DocumentResource extends JsonResource
             'extension' => PrivateFile::extension($this->file_path),
             'download_url' => route('api.documents.download', $this->id),
             'created_at' => $this->created_at->toDateTimeString(),
-            'uploaded_by' => new UserResource($this->whenLoaded('uploadedBy')),
+            'uploaded_by' => UserResource::nested($this->whenLoaded('uploadedBy'), $request),
         ];
     }
 }

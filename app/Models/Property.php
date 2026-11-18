@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\LeaseStatus;
 use App\Enums\PropertyStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -62,6 +64,21 @@ class Property extends Model
         'purchase_price',
         'description',
     ];
+
+    /**
+     * Kdo nemovitost vidí: vlastník, přiřazený správce a nájemník s aktivní smlouvou (podle vztahu, ne role).
+     *
+     * @param  Builder<Property>  $query
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $query->where(fn (Builder $visible) => $visible
+            ->where('landlord_id', $user->id)
+            ->orWhereHas('managers', fn (Builder $manager) => $manager->whereKey($user->id))
+            ->orWhereHas('leases', fn (Builder $lease) => $lease
+                ->where('tenant_id', $user->id)
+                ->where('status', LeaseStatus::Active)));
+    }
 
     public function landlord(): BelongsTo
     {

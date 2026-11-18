@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\DocumentVisibility;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Models\Document;
-use App\Models\Property;
 use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +15,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentController extends Controller
 {
+    use FindsProperty;
+
     public function index(Request $request, string $propertyId): JsonResponse
     {
         $property = $this->findProperty($propertyId);
@@ -69,16 +71,6 @@ class DocumentController extends Controller
         return response()->json([
             'message' => 'Document deleted successfully.',
         ]);
-    }
-
-    private function findProperty(string $id): Property
-    {
-        $property = Property::query()->find($id);
-        if ($property === null) {
-            abort(404);
-        }
-
-        return $property;
     }
 
     private function findDocument(string $id): Document

@@ -20,12 +20,7 @@ class TicketCommentResource extends JsonResource
                 ? route('api.ticket-comments.attachment', [$this->ticket_id, $this->id])
                 : null,
             'created_at' => $this->created_at,
-            'user' => $this->whenLoaded('user', fn () => [
-                'id' => $this->user->id,
-                'name' => $this->user->name,
-                'email' => $this->user->email,
-                'role' => $this->user->role,
-            ]),
+            'user' => UserResource::nested($this->whenLoaded('user'), $request),
         ];
     }
 }

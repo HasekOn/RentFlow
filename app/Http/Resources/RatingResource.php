@@ -19,7 +19,7 @@ class RatingResource extends JsonResource
             'score' => $this->score,
             'comment' => $this->comment,
             'created_at' => $this->created_at->toDateTimeString(),
-            'rated_by' => new UserResource($this->whenLoaded('ratedBy')),
+            'rated_by' => UserResource::nested($this->whenLoaded('ratedBy'), $request),
             'lease' => new LeaseResource($this->whenLoaded('lease')),
         ];
     }

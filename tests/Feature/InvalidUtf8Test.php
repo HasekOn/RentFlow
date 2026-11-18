@@ -41,7 +41,8 @@ class InvalidUtf8Test extends TestCase
             ->post($url, ['message' => self::INVALID], ['Accept' => 'application/json'])
             ->assertStatus(422)
             ->assertJsonPath('error', 'validation_error')
-            ->assertJsonValidationErrors(['message' => 'UTF-8']);
+            // přesný text z lang/cs.json (hlídá přepsání při lang:update)
+            ->assertJsonPath('errors.message.0', 'Pole message musí být platný text v kódování UTF-8.');
         $this->assertDatabaseCount('ticket_comments', 0);
 
         $this->actingAs($this->tenant)
@@ -81,6 +82,6 @@ class InvalidUtf8Test extends TestCase
                 'file' => UploadedFile::fake()->createWithContent('vypis.csv', $csv),
             ])
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['file' => 'UTF-8']);
+            ->assertJsonPath('errors.file.0', 'Soubor CSV musí být v kódování UTF-8. Uložte výpis z banky v UTF-8 a nahrajte ho znovu.');
     }
 }

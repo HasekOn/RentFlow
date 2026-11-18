@@ -27,8 +27,8 @@ class TicketResource extends JsonResource
                 : null,
             'created_at' => $this->created_at->toDateTimeString(),
             'property' => new PropertyResource($this->whenLoaded('property')),
-            'tenant' => new UserResource($this->whenLoaded('tenant')),
-            'assigned_user' => new UserResource($this->whenLoaded('assignedUser')),
+            'tenant' => UserResource::nested($this->whenLoaded('tenant'), $request),
+            'assigned_user' => UserResource::nested($this->whenLoaded('assignedUser'), $request),
             'comments' => TicketCommentResource::collection($this->whenLoaded('comments')),
             'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($img) => [
                 'id' => $img->id,

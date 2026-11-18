@@ -22,10 +22,11 @@ class PropertyResource extends JsonResource
             'disposition' => $this->disposition,
             'floor' => $this->floor,
             'status' => $this->status,
-            'purchase_price' => $this->purchase_price,
+            // finance nemovitosti jen vlastníkovi (#20)
+            'purchase_price' => $this->when($request->user()?->id === $this->landlord_id, $this->purchase_price),
             'description' => $this->description,
             'created_at' => $this->created_at->toDateTimeString(),
-            'landlord' => new UserResource($this->whenLoaded('landlord')),
+            'landlord' => UserResource::nested($this->whenLoaded('landlord'), $request),
             'leases' => LeaseResource::collection($this->whenLoaded('leases')),
             'meters' => MeterResource::collection($this->whenLoaded('meters')),
             'images' => PropertyImageResource::collection($this->whenLoaded('images')),

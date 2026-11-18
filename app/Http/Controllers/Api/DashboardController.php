@@ -188,7 +188,11 @@ class DashboardController extends Controller
      */
     public function trustScore(Request $request, string $id): JsonResponse
     {
-        $tenant = User::query()->whereIn('role', [Role::Tenant, Role::Manager])->findOrFail($id);
+        $tenant = User::query()->whereIn('role', [Role::Tenant, Role::Manager])->find($id);
+        if ($tenant === null) {
+            abort(404);
+        }
+        $this->authorize('view', $tenant);
 
         $service = new TrustScoreService;
         $score = $service->calculate($tenant);
