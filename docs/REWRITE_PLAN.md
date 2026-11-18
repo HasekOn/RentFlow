@@ -359,6 +359,7 @@ vědomé vynechání napiš. Nejdřív plán, pak implementace, testy, rentflow-
 - [ ] Unlighthouse (výkon, přístupnost) na hlavních stránkách: nový `unlighthouse.config.ts` pro `rentflow.test`
       a české URL (starý pro React smazán ve 2.1)
 - [ ] Rozhodnout produkci (Coolify na Hetzneru jako JaTime? SQLite vs MariaDB), Dockerfile, zálohy
+- [ ] Rozhodnout `ShouldQueue` pro notifikace + queue worker v produkci (teď se posílají synchronně při requestu)
 - [ ] Skill `rentflow-release` podle `jatime-release`, až po rozhodnutí o produkci.
   - Verze + `CHANGELOG.md` + README.
   - Připravenost na produkci: `env()` mimo config, `autoload-dev` v běhovém kódu, migrace bez modelů, simulace

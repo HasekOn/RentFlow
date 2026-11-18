@@ -91,7 +91,8 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
 - `env()` jen v `config/*.php`. Novou proměnnou prostředí výslovně nahlas.
 - Pint: `! $x` s mezerou. V docblocku nepiš `@slovo` na začátku slova (Pint to bere jako anotaci).
 - Scheduler (`routes/console.php`): generování plateb (1. v měsíci), po splatnosti (denně) a končící smlouvy (denně).
-  Notifikace jdou do DB a e-mailem přes frontu `database`.
+  Notifikace jdou do DB a e-mailem **synchronně při requestu** (žádná neimplementuje `ShouldQueue`). O frontě
+  a workeru se rozhodne ve fázi 7.
 - Listenery se registrují **jen auto-discovery** z `app/Listeners` podle typu události v `handle(Event $e)`
   (výchozí Laravel 13, jako JaTime). Nepiš `$listen` ani vlastní `EventServiceProvider`, jinak běží každý listener
   dvakrát. Kontrola `php artisan event:list`, hlídá `EventListenersTest`.
