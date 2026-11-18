@@ -358,6 +358,8 @@ Všechny endpointy pod prefixem `/api/v1/`. Autentizace přes Sanctum Bearer tok
 | GET    | `/tickets`               | Seznam (filtry: status, priority, category) |
 | POST   | `/tickets/{id}/comments` | Přidat komentář (+ příloha)                 |
 | POST   | `/tickets/{id}/images`   | Přidat fotku k ticketu                      |
+| GET    | `/tickets/{id}/images/{image}/file` | Stáhnout fotku tiketu (autorizovaně) |
+| GET    | `/tickets/{id}/comments/{comment}/attachment` | Stáhnout přílohu komentáře |
 
 ### Další
 
@@ -365,6 +367,8 @@ Všechny endpointy pod prefixem `/api/v1/`. Autentizace přes Sanctum Bearer tok
 |--------|------------------------------|------------------------|
 | GET    | `/properties/{id}/meters`    | Měřiče nemovitosti     |
 | GET    | `/properties/{id}/documents` | Dokumenty              |
+| GET    | `/documents/{id}/download`   | Stáhnout dokument (podle visibility) |
+| GET    | `/property-images/{id}/file` | Stáhnout fotku nemovitosti |
 | GET    | `/properties/{id}/notices`   | Oznámení               |
 | GET    | `/notifications`             | Notifikace uživatele   |
 | GET    | `/tenants/{id}/trust-score`  | Trust score detail     |

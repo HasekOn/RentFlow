@@ -75,6 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('properties/{property}/images', [PropertyImageController::class, 'store']);
     Route::put('property-images/{image}', [PropertyImageController::class, 'update']);
     Route::delete('property-images/{image}', [PropertyImageController::class, 'destroy']);
+    Route::get('property-images/{image}/file', [PropertyImageController::class, 'file'])->name('api.property-images.file');
 
     // Leases
     Route::apiResource('leases', LeaseController::class);
@@ -91,11 +92,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('tickets/{ticket}/comments', [TicketCommentController::class, 'index']);
     Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store']);
     Route::delete('tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy']);
+    Route::get('tickets/{ticket}/comments/{comment}/attachment', [TicketCommentController::class, 'attachment'])
+        ->name('api.ticket-comments.attachment');
 
     // Ticket images
     Route::get('tickets/{ticket}/images', [TicketImageController::class, 'index']);
     Route::post('tickets/{ticket}/images', [TicketImageController::class, 'store']);
     Route::delete('tickets/{ticket}/images/{image}', [TicketImageController::class, 'destroy']);
+    Route::get('tickets/{ticket}/images/{image}/file', [TicketImageController::class, 'file'])->name('api.ticket-images.file');
 
     // Meters (read for all, write checked in controller)
     Route::get('properties/{property}/meters', [MeterController::class, 'index']);
@@ -139,7 +143,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Documents (read + download)
     Route::get('properties/{property}/documents', [DocumentController::class, 'index']);
-    Route::get('documents/{document}/download', [DocumentController::class, 'download']);
+    Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('api.documents.download');
 
     // Ratings (read)
     Route::get('leases/{lease}/ratings', [RatingController::class, 'index']);

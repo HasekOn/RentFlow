@@ -21,7 +21,6 @@ class StoreExpenseRequest extends FormRequest
             'amount' => ['required', 'numeric', 'min:0'],
             'expense_date' => ['required', 'date'],
             'description' => ['nullable', 'string'],
-            'invoice_path' => ['nullable', 'string'],
         ];
     }
 

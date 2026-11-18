@@ -17,8 +17,8 @@ class DocumentResource extends JsonResource
             'id' => $this->id,
             'document_type' => $this->document_type,
             'name' => $this->name,
-            'file_path' => $this->file_path,
-            'download_url' => url('api/documents/'.$this->id.'/download'),
+            'visibility' => $this->visibility,
+            'download_url' => route('api.documents.download', $this->id),
             'created_at' => $this->created_at->toDateTimeString(),
             'uploaded_by' => new UserResource($this->whenLoaded('uploadedBy')),
         ];

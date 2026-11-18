@@ -82,8 +82,11 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
 - Dialogy `<x-modal>`. `$store.confirm` uvnitř `<x-modal>` nefunguje → potvrzení druhým kliknutím. Po úspěchu
   zavírej modal serverovým eventem, ne optimisticky.
 - Alpine: `x-show` přepíná až v dalším snímku. Když hned potom fokusuješ, použij `x-bind:hidden`.
-- **Soubory:** dokumenty k nemovitostem jsou citlivé. Nikdy je nevystavuj přes veřejnou URL, stahují se jen
-  autorizovanou routou. Upload: `mimes` + `max`, žádné SVG/HTML od uživatelů.
+- **Soubory:** všechny soubory od uživatelů (dokumenty, fotky nemovitostí i tiketů, přílohy) leží jen na privátním
+  disku `App\Support\PrivateFile::DISK` a stahují se autorizovanou routou přes policy a `PrivateFile::download()`
+  (`attachment` + `nosniff`). Disk `public` ani `Storage::url()` pro ně nepoužívej, cestu (`*_path`) neposílej
+  v JSON ani ji neber od klienta. Upload: whitelist `mimes` + `max` (`Document::MIMES`, `PrivateFile::IMAGE_MIMES`),
+  žádné SVG/HTML. PDF smluv se generují za běhu a neukládají.
 - Peníze: sloupce `decimal`. Součty počítej v DB (`SUM`) nebo v haléřích (`int`), nikdy přes float.
   Formát „12&nbsp;500&nbsp;Kč“ přes jeden helper nebo komponentu (`<x-money>`).
 - Data: SQLite ukládá datum s časem → rozsahy `>=` a `<` (ne `<=` konec dne). Časová zóna `Europe/Prague`.

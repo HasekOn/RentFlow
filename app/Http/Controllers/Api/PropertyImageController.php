@@ -9,8 +9,9 @@ use App\Http\Requests\UpdatePropertyImageRequest;
 use App\Http\Resources\PropertyImageResource;
 use App\Models\Property;
 use App\Models\PropertyImage;
+use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PropertyImageController extends Controller
 {
@@ -29,11 +30,7 @@ class PropertyImageController extends Controller
     {
         $property = Property::query()->findOrFail($propertyId);
 
-        // Store file in storage/app/public/properties/{id}/
-        $path = $request->file('image')->store(
-            'properties/'.$property->id,
-            'public'
-        );
+        $path = $request->file('image')->store('properties/'.$property->id, PrivateFile::DISK);
 
         $image = PropertyImage::query()->create([
             'property_id' => $property->id,
@@ -45,6 +42,18 @@ class PropertyImageController extends Controller
         ]);
 
         return response()->json(new PropertyImageResource($image), 201);
+    }
+
+    public function file(string $id): StreamedResponse
+    {
+        $image = PropertyImage::query()->with('property')->find($id);
+        if ($image === null || $image->property === null) {
+            abort(404);
+        }
+
+        $this->authorize('view', $image->property);
+
+        return PrivateFile::download($image->image_path, basename($image->image_path));
     }
 
     public function update(UpdatePropertyImageRequest $request, string $id): JsonResponse
@@ -60,9 +69,7 @@ class PropertyImageController extends Controller
     {
         $image = PropertyImage::query()->findOrFail($id);
 
-        // Delete file from storage
-        Storage::disk('public')->delete($image->image_path);
-
+        PrivateFile::delete($image->image_path);
         $image->delete();
 
         return response()->json([

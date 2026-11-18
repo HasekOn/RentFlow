@@ -17,6 +17,7 @@ use App\Models\Rating;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\User;
+use App\Support\PrivateFile;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 
@@ -24,10 +25,6 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        Storage::disk('public')->makeDirectory('properties');
-        Storage::disk('public')->makeDirectory('documents');
-        Storage::disk('public')->makeDirectory('tickets');
-
         // ─── USERS ────────────────────────────────
         $landlord = User::factory()->landlord()->create([
             'name' => 'Jan Novák',
@@ -430,7 +427,7 @@ class DatabaseSeeder extends Seeder
             $docs = collect($docTemplates)->random($count);
             foreach ($docs as $doc) {
                 $path = 'documents/'.$property->id.'/'.str_replace(' ', '_', $doc['name']);
-                Storage::disk('public')->put($path, '%PDF-1.4 dummy document content for '.$doc['name']);
+                Storage::disk(PrivateFile::DISK)->put($path, '%PDF-1.4 dummy document content for '.$doc['name']);
 
                 Document::create([
                     'property_id' => $property->id,
@@ -518,7 +515,7 @@ class DatabaseSeeder extends Seeder
 
                 $filename = 'property_'.$property->id.'_'.($i + 1).'.svg';
                 $path = 'properties/'.$property->id.'/'.$filename;
-                Storage::disk('public')->put($path, $svg);
+                Storage::disk(PrivateFile::DISK)->put($path, $svg);
 
                 PropertyImage::factory()->create([
                     'property_id' => $property->id,

@@ -6,7 +6,9 @@ use App\Enums\PropertyStatus;
 use App\Models\Lease;
 use App\Models\Property;
 use App\Models\User;
+use App\Support\PrivateFile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class LeaseTest extends TestCase
@@ -186,6 +188,31 @@ class LeaseTest extends TestCase
         $response = $this->actingAs($tenant)->getJson($this->apiUrl('/leases/'.$lease->id));
 
         $response->assertStatus(403);
+    }
+
+    public function test_contract_pdf_is_streamed_without_storing(): void
+    {
+        Storage::fake('public');
+        Storage::fake(PrivateFile::DISK);
+        $tenant = User::factory()->tenant()->create();
+        $lease = Lease::factory()->create(['property_id' => $this->property->id, 'tenant_id' => $tenant->id]);
+        $url = $this->apiUrl("/leases/{$lease->id}/generate-pdf");
+
+        foreach ([$this->landlord, $tenant] as $user) {
+            $this->actingAs($user)->get($url)
+                ->assertStatus(200)
+                ->assertHeader('Content-Type', 'application/pdf')
+                ->assertDownload("contract_lease_{$lease->id}.pdf");
+        }
+
+        $this->actingAs(User::factory()->tenant()->create())->get($url)->assertStatus(403);
+
+        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk(PrivateFile::DISK)->allFiles());
+        $this->assertNull($lease->refresh()->contract_path);
+        $this->actingAs($this->landlord)
+            ->getJson($this->apiUrl("/leases/{$lease->id}"))
+            ->assertJsonMissingPath('contract_path');
     }
 
     public function test_landlord_can_update_lease(): void

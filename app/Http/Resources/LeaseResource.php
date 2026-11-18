@@ -21,7 +21,6 @@ class LeaseResource extends JsonResource
             'deposit_amount' => $this->deposit_amount,
             'utility_advances' => $this->utility_advances,
             'variable_symbol' => $this->variable_symbol,
-            'contract_path' => $this->contract_path,
             'status' => $this->status,
             'created_at' => $this->created_at->toDateTimeString(),
             'property' => new PropertyResource($this->whenLoaded('property')),
