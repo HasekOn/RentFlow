@@ -50,9 +50,13 @@ class TicketTest extends TestCase
             ->assertJsonCount(2, 'data');
     }
 
-    public function test_manager_sees_assigned_and_managed_property_tickets(): void
+    /**
+     * Od 2.10 přístup jen přes přiřazení k nemovitosti (rozhodnutí z auditu, #23): tiket s assigned_to na nemovitosti,
+     * kterou správce nespravuje, už nevidí (dřív ano).
+     */
+    public function test_manager_sees_only_managed_property_tickets(): void
     {
-        // Ticket directly assigned to manager
+        // assigned_to bez přiřazení k nemovitosti přístup nedává
         Ticket::factory()->create([
             'property_id' => $this->property->id,
             'tenant_id' => $this->tenant->id,
@@ -76,7 +80,7 @@ class TicketTest extends TestCase
         $response = $this->actingAs($this->manager)->getJson($this->apiUrl('/tickets'));
 
         $response->assertStatus(200)
-            ->assertJsonCount(2, 'data');
+            ->assertJsonCount(1, 'data');
     }
 
     public function test_tenant_can_create_ticket(): void
@@ -183,6 +187,8 @@ class TicketTest extends TestCase
 
     public function test_landlord_can_update_ticket_status(): void
     {
+        // řešitel musí být správce přiřazený k nemovitosti (#23)
+        $this->property->managers()->attach($this->manager->id);
         $ticket = Ticket::factory()->open()->create([
             'property_id' => $this->property->id,
             'tenant_id' => $this->tenant->id,
@@ -199,6 +205,8 @@ class TicketTest extends TestCase
 
     public function test_assigned_manager_can_update_ticket(): void
     {
+        // řeší ho správce přiřazený k nemovitosti, samotné assigned_to nestačí (#23)
+        $this->property->managers()->attach($this->manager->id);
         $ticket = Ticket::factory()->create([
             'property_id' => $this->property->id,
             'tenant_id' => $this->tenant->id,

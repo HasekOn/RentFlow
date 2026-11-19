@@ -2,13 +2,21 @@
 
 namespace App\Policies;
 
-use App\Enums\LeaseStatus;
-use App\Models\Lease;
+use App\Enums\TicketStatus;
+use App\Models\Property;
 use App\Models\Ticket;
 use App\Models\User;
 
+/**
+ * Tikety podle vztahu k nemovitosti, ne podle role (#24): vidí autor a kdo vidí nemovitost (Ticket::visibleTo),
+ * zakládá vlastník, přiřazený správce a nájemník s aktivní smlouvou (#11), řeší vlastník a přiřazený správce,
+ * autor ve stavu new upraví jen název a popis (#46), maže vlastník.
+ */
 class TicketPolicy
 {
+    /**
+     * Seznam vidí každý přihlášený, obsah omezuje Ticket::visibleTo.
+     */
     public function viewAny(User $user): bool
     {
         return true;
@@ -16,74 +24,38 @@ class TicketPolicy
 
     public function view(User $user, Ticket $ticket): bool
     {
-        // Landlord owns the property
-        if ($ticket->property && $ticket->property->landlord_id === $user->id) {
-            return true;
-        }
-
-        // Manager assigned or manages property
-        if ($user->isManager()) {
-            if ($ticket->assigned_to === $user->id) {
-                return true;
-            }
-
-            if ($ticket->property) {
-                return $user->managedProperties()
-                    ->where('properties.id', $ticket->property_id)
-                    ->exists();
-            }
-        }
-
-        // Tenant created this ticket
-        if ($ticket->tenant_id === $user->id) {
-            return true;
-        }
-
-        // Tenant has active lease on this property — can see all tickets for their unit
-        if ($user->isTenant() && $ticket->property_id) {
-            return Lease::query()
-                ->where('tenant_id', $user->id)
-                ->where('property_id', $ticket->property_id)
-                ->where('status', LeaseStatus::Active)
-                ->exists();
-        }
-
-        return false;
+        return $ticket->tenant_id === $user->id
+            || Ticket::query()->visibleTo($user)->whereKey($ticket->id)->exists();
     }
 
-    public function create(User $user): bool
+    public function create(User $user, Property $property): bool
     {
-        // Tiket smí založit každá role. Kontrolu nemovitosti (zatím jen u správce v TicketController::store)
-        // doplní policies v krocích 2.5+.
-        return true;
+        return $user->can('view', $property);
     }
 
+    /**
+     * Všechna pole včetně stavu a řešitele (matice „Resolve ticket“).
+     */
     public function update(User $user, Ticket $ticket): bool
     {
-        if ($ticket->property && $ticket->property->landlord_id === $user->id) {
-            return true;
-        }
+        $property = $ticket->property;
 
-        if ($user->isManager()) {
-            // Assigned directly to this ticket
-            if ($ticket->assigned_to === $user->id) {
-                return true;
-            }
+        return $property !== null
+            && ($property->landlord_id === $user->id || $property->managers()->whereKey($user->id)->exists());
+    }
 
-            // Manages this property
-            if ($ticket->property) {
-                return $user->managedProperties()
-                    ->where('properties.id', $ticket->property_id)
-                    ->exists();
-            }
-        }
-
-        return false;
+    /**
+     * Jen název a popis: kdo tiket řeší, nebo autor, dokud je tiket nový (#46).
+     */
+    public function updateDetails(User $user, Ticket $ticket): bool
+    {
+        return ($ticket->tenant_id === $user->id && $ticket->status === TicketStatus::New)
+            || $this->update($user, $ticket);
     }
 
     public function delete(User $user, Ticket $ticket): bool
     {
-        return $ticket->property && $ticket->property->landlord_id === $user->id;
+        return $ticket->property?->landlord_id === $user->id;
     }
 
     public function restore(User $user, Ticket $ticket): bool

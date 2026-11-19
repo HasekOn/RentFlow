@@ -128,6 +128,9 @@ class Property extends Model
         return $this->hasMany(Notice::class);
     }
 
+    /**
+     * @return BelongsToMany<User, $this>
+     */
     public function managers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'property_manager');

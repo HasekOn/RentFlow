@@ -29,4 +29,24 @@ class UserPolicy
     {
         return $user->isLandlord();
     }
+
+    /**
+     * Povýšení na správce (přiřazení k vlastní nemovitosti, #14): jen pronajímatel a jen koho už vidí (nájemníci
+     * jeho smluv, jeho správci), ne pronajímatel ani on sám. Cizí účet podle id → 403, ať id neprozradí kontakty.
+     */
+    public function promote(User $user, User $model): bool
+    {
+        return $user->isLandlord()
+            && ! $model->isLandlord()
+            && ! $user->is($model)
+            && $this->view($user, $model);
+    }
+
+    /**
+     * Sesazení odebere jen přiřazení k nemovitostem tohoto pronajímatele, stejné pravidlo jako povýšení.
+     */
+    public function demote(User $user, User $model): bool
+    {
+        return $this->promote($user, $model);
+    }
 }

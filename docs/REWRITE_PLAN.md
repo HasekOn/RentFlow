@@ -159,10 +159,18 @@ pokrýt test.
       `TicketResolved` a `LeaseCreated`. U `PaymentMarkedPaid` 1 přepočet. Notifikaci neposílá, protože
       `SendPaymentMarkedNotification` je zatím prázdný placeholder (výše uvedené „dvakrát notifikuje“ neplatilo).
     - Testy byly před opravou červené (2×), po ní zelené.
-- [ ] **Po 2.2: `CodeHygieneTest`** (vzor `tests/Feature/CodeHygieneTest.php` z JaTime)
+- [x] **Po 2.2: `CodeHygieneTest`** (vzor `tests/Feature/CodeHygieneTest.php` z JaTime)
   - Hlídá: ladicí výpisy (`dd`, `dump`, `ray`, `var_dump`), `TODO`/`FIXME`, holé stringy rolí a statusů
     v `app/` (`'landlord'`, `'paid'` … místo enumů z 2.2) a nepoužité Blade komponenty a partials (od fáze 3).
   - Výjimky jen vědomě, s komentářem v testu. Checklist „Čistota kódu“ v `rentflow-review` odkáže na test.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026 (spolu s 2.10 a 2.11):*
+    - Tři testy: ladicí výpisy a `TODO` (`app`, `config`, `database`, `routes`, `resources`), holé hodnoty `Role`
+      a stavů smlouvy, platby, nemovitosti a tiketu v `app/`, nepoužité třídy v `app/`. Dnes vše čisté, kód se
+      neměnil.
+    - Výjimky: názvy relací `tenant` / `landlord` ve `with()`, `load()`, `whenLoaded()`, `compact()` a komentáře;
+      u nepoužitých tříd adresáře s auto-discovery (`Policies`, `Listeners`, `Console/Commands`, `Providers`).
+      Prázdný listener `SendPaymentMarkedNotification` tak test nehlásí, řeší ho 2.13.
+    - Blade komponenty a partials přibudou s fází 3 (zatím žádné nejsou).
 - [x] **2.3 Soubory** (#1, #2, #3, #15, #43, #55)
   - Dokumenty, PDF smluv a fotky tiketů na privátní disk, existující soubory přesunout (příkaz nebo migrace).
   - Whitelist typů (`mimes` + `max`, žádné SVG ani HTML).
@@ -303,17 +311,40 @@ pokrýt test.
       i API (položka 2.13), kvůli idempotenci obou cest: `Cache::lock` + transakce, existující platby měsíce
       jedním dotazem v rozsahu `>=` / `<`. Příkaz už nevypisuje řádek na každou smlouvu, jen součet.
     - CSV import páruje jen smlouvy nemovitostí pronajímatele (i ne smazané nemovitosti), pokryto testem.
-- [ ] **2.10 Tikety, komentáře, fotky** (#10, #11, #23, #24, #46)
+- [x] **2.10 Tikety, komentáře, fotky** (#10, #11, #23, #24, #46)
   - `TicketPolicy` v pořadí: autor, nájemník s aktivní smlouvou, přiřazený správce, vlastník.
   - `Ticket::visibleTo`, `create(User, Property)`, `TicketCommentPolicy`, `TicketImagePolicy`.
   - `assigned_to` jen správce přiřazený k nemovitosti.
   - Autor upraví název a popis ve stavu `new`.
   - Vnořený `tenant`, `assigned_user` a autor komentáře už jdou přes `UserResource::nested()` (2.4–2.6). Fotky
     tiketu (`images[].uploader`) vrací jen id a jméno.
-- [ ] **2.11 Správci** (#14)
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:*
+    - `Ticket::visibleTo`: autor (i po skončení smlouvy) a kdo vidí nemovitost (`Property::visibleTo`). Nájemník
+      s aktivní smlouvou vidí všechny tikety bytu (rozhodnutí při plánu). **Změna:** samotné `assigned_to` už přístup
+      nedává (dřív ano), jen přiřazení k nemovitosti.
+    - `TicketPolicy`: `create(User, Property)` = kdo vidí nemovitost (#11, správce-nájemník i ve svém bytě, #24),
+      `update` vlastník a přiřazený správce, `updateDetails` navíc autor ve stavu `new` jen pro název a popis (#46),
+      `delete` vlastník. `TicketCommentPolicy` a `TicketImagePolicy`: číst a přidávat smí kdo vidí tiket (#10),
+      komentář maže autor, fotku kdo ji nahrál nebo vlastník nemovitosti.
+    - `assigned_to` (#23): jen správce přiřazený k nemovitosti tiketu nebo `null`, měnit ho smí vlastník
+      i přiřazený správce (rozhodnutí při plánu). Kontrola po autorizaci v controlleru.
+    - `TicketImageResource` pro detail tiketu i `/tickets/{id}/images` (**změna tvaru:** seznam a upload fotky
+      dřív vracely surový model s `ticket_id` a `uploaded_by`). Trait `FindsTicket`, find + 404.
+- [x] **2.11 Správci** (#14)
   - Promote a demote podle rozhodnutí výše.
   - Přepočet `users.role` po přiřazení a odebrání.
   - Testy na správce u dvou pronajímatelů.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:*
+    - Actions `App\Actions\Managers\AssignManager`, `RemoveManager`, `SyncManagerRole` (role = `manager`, když
+      spravuje aspoň jednu nesmazanou nemovitost, jinak `tenant`; pronajímatel beze změny).
+    - Povýšit smí pronajímatel jen toho, koho vidí (`User::visibleTo`, rozhodnutí při plánu), cizí účet → 403.
+      **Změna API:** `promote-manager` vyžaduje `property_id` vlastní nemovitosti, `assign-manager` přijme
+      i nájemníka (povýšení), odpovědi vrací uživatele přes `UserResource::nested`.
+    - `demote-manager` odebere jen přiřazení u přihlášeného pronajímatele (i u jeho smazaných nemovitostí),
+      `remove-manager` jen skutečně přiřazeného (jinak 404). Tikety, které na těch nemovitostech řešil, ztratí
+      řešitele.
+    - Návrh (2.13 / fáze 5): přiřazení ke smazané nemovitosti se nepočítá do role ani viditelnosti. Po obnovení
+      nemovitosti role přepočítat.
 - [ ] **2.12 Data a datumy** (#27, #28, #29)
   - Sloupce `date` ukládat bez času (cast nebo mutator a úprava existujících hodnot).
   - Rozsahy `>=` a `<` ve filtrech, dashboardu a CSV importu.

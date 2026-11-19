@@ -79,6 +79,10 @@ v `README.md` (sekce „Role a oprávnění“).
 
 ### Čistota kódu (závazný checklist – i před předáním každého kroku, viz rentflow-step)
 
+Strojově hlídá `tests/Feature/CodeHygieneTest.php`: ladicí výpisy a `TODO`, holé hodnoty rolí a stavů v `app/`,
+nepoužité třídy v `app/` (od fáze 3 i Blade komponenty a partials). Výjimky jen v testu s komentářem. Zbytek níž
+je na úsudku.
+
 - **DRY:** opakovaná logika do Action (`app/Actions/<Oblast>`), scope `visibleTo()`, policy, traitu
   (`app/Livewire/Concerns`), Blade komponenty nebo partialu. Než napíšeš nové, hledej existující: `TrustScoreService`,
   `BankImportService`, `Filterable`, scopy modelů, `cz_*` helpery (od fáze 3), `<x-…>` komponenty.

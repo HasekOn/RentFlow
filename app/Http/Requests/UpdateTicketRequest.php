@@ -23,14 +23,8 @@ class UpdateTicketRequest extends FormRequest
             'category' => ['sometimes', Rule::enum(TicketCategory::class)],
             'status' => ['sometimes', Rule::enum(TicketStatus::class)],
             'priority' => ['sometimes', Rule::enum(TicketPriority::class)],
-            'assigned_to' => ['nullable', 'exists:users,id'],
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'assigned_to.exists' => 'Selected user does not exist.',
+            // že jde o správce přiřazeného k nemovitosti, ověří TicketController po autorizaci (#23)
+            'assigned_to' => ['nullable', 'integer'],
         ];
     }
 }

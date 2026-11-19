@@ -34,6 +34,14 @@ class PropertyPolicy
         return $property->landlord_id === $user->id;
     }
 
+    /**
+     * Přiřazení a odebrání správce (i seznam správců s kontakty): jen vlastník (#14).
+     */
+    public function assignManager(User $user, Property $property): bool
+    {
+        return $property->landlord_id === $user->id;
+    }
+
     public function delete(User $user, Property $property): bool
     {
         return $property->landlord_id === $user->id;
