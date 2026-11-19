@@ -2,21 +2,23 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\FindsTicket;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTicketCommentRequest;
 use App\Http\Resources\TicketCommentResource;
-use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TicketCommentController extends Controller
 {
+    use FindsTicket;
+
     public function index(string $ticketId): JsonResponse
     {
-        $ticket = Ticket::query()->findOrFail($ticketId);
+        $ticket = $this->findTicket($ticketId);
+        $this->authorize('viewAny', [TicketComment::class, $ticket]);
 
         $comments = $ticket->comments()
             ->with('user')
@@ -28,7 +30,8 @@ class TicketCommentController extends Controller
 
     public function store(StoreTicketCommentRequest $request, string $ticketId): JsonResponse
     {
-        $ticket = Ticket::query()->findOrFail($ticketId);
+        $ticket = $this->findTicket($ticketId);
+        $this->authorize('create', [TicketComment::class, $ticket]);
 
         $attachmentPath = null;
 
@@ -60,17 +63,13 @@ class TicketCommentController extends Controller
         return PrivateFile::download($comment->attachment_path, basename($comment->attachment_path));
     }
 
-    public function destroy(Request $request, string $ticketId, string $commentId): JsonResponse
+    public function destroy(string $ticketId, string $commentId): JsonResponse
     {
-        $comment = TicketComment::query()->where('ticket_id', $ticketId)
-            ->findOrFail($commentId);
-
-        // Only the author can delete their comment
-        if ($comment->user_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only delete your own comments.',
-            ], 403);
+        $comment = TicketComment::query()->where('ticket_id', $ticketId)->find($commentId);
+        if ($comment === null) {
+            abort(404);
         }
+        $this->authorize('delete', $comment);
 
         PrivateFile::delete($comment->attachment_path);
         $comment->delete();

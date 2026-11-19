@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TicketCategory;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -59,6 +60,20 @@ class Ticket extends Model
         'assigned_to',
         'resolved_at',
     ];
+
+    /**
+     * Kdo tiket vidí: autor (i po skončení smlouvy) a každý, kdo vidí nemovitost (Property::visibleTo: vlastník,
+     * přiřazený správce, nájemník s aktivní smlouvou). Podle vztahu, ne podle role, takže správce, který je jinde
+     * nájemníkem, vidí tikety svého bytu i spravovaných nemovitostí (#24).
+     *
+     * @param  Builder<Ticket>  $query
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $query->where(fn (Builder $visible) => $visible
+            ->where('tenant_id', $user->id)
+            ->orWhereIn('property_id', Property::query()->visibleTo($user)->select('id')));
+    }
 
     public function property(): BelongsTo
     {

@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\FindsTicket;
 use App\Http\Controllers\Controller;
-use App\Models\Ticket;
+use App\Http\Resources\TicketImageResource;
 use App\Models\TicketImage;
 use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
@@ -12,21 +13,25 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TicketImageController extends Controller
 {
+    use FindsTicket;
+
     public function index(string $ticketId): JsonResponse
     {
-        $ticket = Ticket::query()->findOrFail($ticketId);
+        $ticket = $this->findTicket($ticketId);
+        $this->authorize('viewAny', [TicketImage::class, $ticket]);
 
         $images = $ticket->images()
-            ->with('uploader:id,name')
+            ->with('uploader')
             ->orderBy('created_at')
             ->get();
 
-        return response()->json($images);
+        return response()->json(TicketImageResource::collection($images));
     }
 
     public function store(Request $request, string $ticketId): JsonResponse
     {
-        $ticket = Ticket::query()->findOrFail($ticketId);
+        $ticket = $this->findTicket($ticketId);
+        $this->authorize('create', [TicketImage::class, $ticket]);
 
         $request->validate([
             'image' => ['required', 'file', PrivateFile::IMAGE_MIMES, 'max:'.PrivateFile::IMAGE_MAX_KB],
@@ -42,9 +47,9 @@ class TicketImageController extends Controller
             'description' => $request->input('description'),
         ]);
 
-        $image->load('uploader:id,name');
+        $image->load('uploader');
 
-        return response()->json($image, 201);
+        return response()->json(new TicketImageResource($image), 201);
     }
 
     public function file(string $ticketId, string $imageId): StreamedResponse
@@ -59,16 +64,13 @@ class TicketImageController extends Controller
         return PrivateFile::download($image->image_path, basename($image->image_path));
     }
 
-    public function destroy(Request $request, string $ticketId, string $imageId): JsonResponse
+    public function destroy(string $ticketId, string $imageId): JsonResponse
     {
-        $image = TicketImage::query()
-            ->where('ticket_id', $ticketId)
-            ->findOrFail($imageId);
-
-        // Only uploader or landlord can delete
-        if ($image->uploaded_by !== $request->user()->id && ! $request->user()->isLandlord()) {
-            return response()->json(['message' => 'You can only delete your own images.'], 403);
+        $image = TicketImage::query()->with('ticket.property')->where('ticket_id', $ticketId)->find($imageId);
+        if ($image === null) {
+            abort(404);
         }
+        $this->authorize('delete', $image);
 
         PrivateFile::delete($image->image_path);
         $image->delete();

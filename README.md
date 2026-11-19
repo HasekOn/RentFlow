@@ -196,16 +196,17 @@ User (landlord/manager/tenant)
 - ✅ Plný přístup ke všem vlastním nemovitostem
 - ✅ CRUD: properties, leases, payments, expenses, inventory, documents, notices
 - ✅ Hodnocení nájemníků, generování PDF smluv
-- ✅ Povýšení/degradace managerů, přiřazení ke properties
+- ✅ Povýšení/degradace managerů = přiřazení k vlastním properties (jen lidé, které vidí: nájemníci jeho smluv a jeho
+  správci); sesazení odebere jen jeho přiřazení, role se přepočítá
 - ✅ Dashboard: finance grafy, obsazenost, statistiky
 - ✅ CSV import plateb, generování měsíčních plateb
 
 ### Manager (Správce)
 
 - ✅ Vidí přiřazené properties + property kde je tenant
-- ✅ Řeší tickety (status, komentáře) pro přiřazené properties
+- ✅ Řeší tickety (status, řešitel, komentáře) pro přiřazené properties
 - ✅ Loguje meter odečty na přiřazených properties
-- ✅ Vytváří tickety pro přiřazené properties
+- ✅ Vytváří tickety pro přiřazené properties i ve svém bytě (kde je nájemníkem)
 - ✅ Vidí platby, nájemné, zálohy a VS aktivních smluv přiřazených properties a ručně je označí jako zaplacené
   (ne svou vlastní platbu, kde je nájemníkem; platby ukončených smluv potvrzuje jen landlord)
 - ✅ Dual dashboard: Manager View (nezaplacené a po splatnosti) + My Tenancy
@@ -216,7 +217,7 @@ User (landlord/manager/tenant)
 ### Tenant (Nájemník)
 
 - ✅ Vidí svůj byt, platby, smlouvy (read-only)
-- ✅ Vytváří tickety + komentáře s fotkami
+- ✅ Vytváří tickety + komentáře s fotkami (u tiketů svého bytu), název a popis svého tiketu upraví, dokud je nový
 - ✅ Vidí management tab (meters, inventory) — read-only
 - ✅ Dashboard: moje platby, tickety, trust score
 - ❌ Nevidí People, expenses, jiné nájemníky
@@ -231,6 +232,7 @@ User (landlord/manager/tenant)
 | Create lease         |    ✅     |    ❌    |   ❌    |
 | Create ticket        |    ✅     |   ✅*    |  ✅**   |
 | Resolve ticket       |    ✅     |   ✅*    |   ❌    |
+| Comment / photo      |    ✅     |   ✅*    |  ✅**   |
 | Log meter reading    |    ✅     |   ✅*    |   ❌    |
 | View payments        |    ✅     |   ✅*    | ✅ own  |
 | Mark paid            |   ✅ †    |  ✅* ‡   |   ❌    |
@@ -238,9 +240,9 @@ User (landlord/manager/tenant)
 | Upload documents     |    ✅     |    ❌    |   ❌    |
 | Rate tenant          |    ✅     |    ❌    |   ❌    |
 | View People          |    ✅     |    ✅    |   ❌    |
-| Promote/demote       |    ✅     |    ❌    |   ❌    |
+| Promote/demote       |   ✅ §    |    ❌    |   ❌    |
 
-\* jen přiřazené properties | \*\* jen s aktivní smlouvou | † i u ukončené smlouvy (poslední nájem, nedoplatky) | ‡ jen aktivní smlouvy, ne svou platbu (správce, který je jinde nájemníkem)
+\* jen přiřazené properties | \*\* jen s aktivní smlouvou | † i u ukončené smlouvy (poslední nájem, nedoplatky) | ‡ jen aktivní smlouvy, ne svou platbu (správce, který je jinde nájemníkem) | § jen vlastní properties a lidé, které vidí
 
 ---
 
