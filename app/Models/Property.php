@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $disposition
  * @property int|null $floor
  * @property PropertyStatus $status
- * @property float|null $purchase_price
+ * @property numeric-string|null $purchase_price
  * @property string|null $description
  * @property Carbon $created_at
  * @property Carbon $updated_at

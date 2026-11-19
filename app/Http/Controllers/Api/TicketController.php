@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\TicketStatus;
-use App\Events\TicketCreated;
-use App\Events\TicketResolved;
+use App\Actions\Tickets\CreateTicket;
+use App\Actions\Tickets\DeleteTicket;
+use App\Actions\Tickets\UpdateTicket;
 use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Api\Concerns\FindsTicket;
 use App\Http\Controllers\Controller;
@@ -16,7 +16,6 @@ use App\Models\User;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 class TicketController extends Controller
 {
@@ -47,15 +46,13 @@ class TicketController extends Controller
         return TicketResource::collection($query->paginate(15));
     }
 
-    public function store(StoreTicketRequest $request): JsonResponse
+    public function store(StoreTicketRequest $request, CreateTicket $create): JsonResponse
     {
         $property = $this->findProperty((string) $request->validated('property_id'));
         $this->authorize('create', [Ticket::class, $property]);
 
-        $ticket = Ticket::query()->create([...$request->validated(), 'tenant_id' => $request->user()->id]);
-        $ticket->load(['property', 'tenant']);
-
-        TicketCreated::dispatch($ticket);
+        $ticket = $create->handle($property, $request->user(), $request->validated());
+        $ticket->load('tenant');
 
         return response()->json(new TicketResource($ticket), 201);
     }
@@ -77,7 +74,7 @@ class TicketController extends Controller
         return response()->json(new TicketResource($ticket));
     }
 
-    public function update(UpdateTicketRequest $request, string $id): JsonResponse
+    public function update(UpdateTicketRequest $request, string $id, UpdateTicket $update): JsonResponse
     {
         $ticket = $this->findTicket($id);
         $validated = $request->validated();
@@ -85,45 +82,21 @@ class TicketController extends Controller
         $onlyDetails = array_diff(array_keys($validated), self::DETAIL_FIELDS) === [];
         $this->authorize($onlyDetails ? 'updateDetails' : 'update', $ticket);
 
-        // řešitel jen správce přiřazený k nemovitosti tiketu (#23); až po autorizaci, ať 422 cizímu nic neprozradí
-        $assignee = $validated['assigned_to'] ?? null;
-        if ($assignee !== null && ! $ticket->property?->managers()->whereKey($assignee)->exists()) {
-            throw ValidationException::withMessages([
-                'assigned_to' => 'Assignee must be a manager assigned to the ticket property.',
-            ]);
-        }
-
-        $resolved = ($validated['status'] ?? null) === TicketStatus::Resolved->value;
-
-        // Auto-set resolved_at when status changes to resolved
-        if ($resolved) {
-            $validated['resolved_at'] = now();
-        }
-
-        $ticket->update($validated);
-
-        // Notify tenant when ticket is resolved
-        if ($resolved) {
-            TicketResolved::dispatch($ticket);
-        }
+        // kontrola řešitele až po autorizaci, ať 422 cizímu nic neprozradí
+        $update->handle($ticket, $validated);
 
         return response()->json(new TicketResource($ticket));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteTicket $delete): JsonResponse
     {
         $ticket = $this->findTicket($id);
         $this->authorize('delete', $ticket);
 
-        $ticket->delete();
+        $delete->handle($ticket);
 
         return response()->json([
             'message' => 'Ticket deleted successfully.',
         ]);
-    }
-
-    protected function getDateField(): string
-    {
-        return 'created_at';
     }
 }

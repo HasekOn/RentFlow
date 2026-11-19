@@ -22,6 +22,9 @@ class SchedulerCommandsTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Factory dává náhodné období podle skutečného dne; generování bere jen smlouvy platné v měsíci (#32). */
+    private const array VALID_IN_MARCH = ['start_date' => '2025-06-01', 'end_date' => '2027-05-31'];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -58,8 +61,9 @@ class SchedulerCommandsTest extends TestCase
             'property_id' => $freed->id, 'start_date' => '2025-03-20', 'end_date' => '2026-03-19',
         ]);
         $stillRented = Property::factory()->occupied()->create();
+        // upozornění jen 30 a 7 dní před koncem (#33), dřív každý den
         $expiring = Lease::factory()->create([
-            'property_id' => $stillRented->id, 'start_date' => '2025-04-10', 'end_date' => '2026-04-10',
+            'property_id' => $stillRented->id, 'start_date' => '2025-04-19', 'end_date' => '2026-04-19',
         ]);
 
         $this->artisan('rentflow:check-expiring-leases')->assertSuccessful();
@@ -75,8 +79,8 @@ class SchedulerCommandsTest extends TestCase
     public function test_generate_payments_twice_does_not_create_duplicates(): void
     {
         Carbon::setTestNow('2026-03-01 06:00');
-        $active = Lease::factory()->create(['utility_advances' => 3000]);
-        $ended = Lease::factory()->ended()->create();
+        $active = Lease::factory()->create(['utility_advances' => 3000, ...self::VALID_IN_MARCH]);
+        $ended = Lease::factory()->ended()->create(self::VALID_IN_MARCH);
 
         $this->artisan('rentflow:generate-payments')->assertSuccessful();
         $this->artisan('rentflow:generate-payments')->assertSuccessful();
@@ -96,8 +100,9 @@ class SchedulerCommandsTest extends TestCase
         $own = Lease::factory()->create([
             'property_id' => Property::factory()->create(['landlord_id' => $landlord->id])->id,
             'utility_advances' => 0,
+            ...self::VALID_IN_MARCH,
         ]);
-        $foreign = Lease::factory()->create();
+        $foreign = Lease::factory()->create(self::VALID_IN_MARCH);
 
         $this->actingAs($landlord)
             ->postJson($this->apiUrl('/payments/generate-monthly'))
@@ -116,11 +121,11 @@ class SchedulerCommandsTest extends TestCase
     public function test_generation_reads_do_not_depend_on_lease_count(): void
     {
         Carbon::setTestNow('2026-03-01 06:00');
-        Lease::factory()->count(2)->create();
+        Lease::factory()->count(2)->create(self::VALID_IN_MARCH);
         $this->artisan('rentflow:generate-payments')->assertSuccessful();
         $few = $this->countSelectsOfGeneration();
 
-        Lease::factory()->count(5)->create();
+        Lease::factory()->count(5)->create(self::VALID_IN_MARCH);
         $this->artisan('rentflow:generate-payments')->assertSuccessful();
 
         $this->assertSame($few, $this->countSelectsOfGeneration());

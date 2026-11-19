@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Notices\DeleteNotice;
+use App\Actions\Notices\SaveNotice;
 use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreNoticeRequest;
@@ -27,38 +29,34 @@ class NoticeController extends Controller
         return response()->json(NoticeResource::collection($notices));
     }
 
-    public function store(StoreNoticeRequest $request, string $propertyId): JsonResponse
+    public function store(StoreNoticeRequest $request, string $propertyId, SaveNotice $save): JsonResponse
     {
         $property = $this->findProperty($propertyId);
         $this->authorize('create', [Notice::class, $property]);
 
-        $notice = Notice::query()->create([
-            ...$request->validated(),
-            'property_id' => $property->id,
-            'created_by' => $request->user()->id,
-        ]);
+        $notice = $save->handle($property, $request->user(), $request->validated());
 
         $notice->load('createdBy');
 
         return response()->json(new NoticeResource($notice), 201);
     }
 
-    public function update(UpdateNoticeRequest $request, string $id): JsonResponse
+    public function update(UpdateNoticeRequest $request, string $id, SaveNotice $save): JsonResponse
     {
         $notice = $this->findNotice($id);
         $this->authorize('update', $notice);
 
-        $notice->update($request->validated());
+        $save->handle($notice->property, $request->user(), $request->validated(), $notice);
 
         return response()->json(new NoticeResource($notice));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteNotice $delete): JsonResponse
     {
         $notice = $this->findNotice($id);
         $this->authorize('delete', $notice);
 
-        $notice->delete();
+        $delete->handle($notice);
 
         return response()->json([
             'message' => 'Notice deleted successfully.',

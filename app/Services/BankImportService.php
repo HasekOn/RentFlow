@@ -2,20 +2,21 @@
 
 namespace App\Services;
 
-use App\Enums\PaymentStatus;
-use App\Models\Lease;
-use App\Models\Payment;
+use App\Support\Money;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class BankImportService
 {
     /**
-     * Parse CSV and match payments by variable symbol
-     * Returns summary of matched, unmatched and already paid
+     * Řádky bankovního výpisu s očištěnými hodnotami: částka v haléřích (null = nečitelná), datum `Y-m-d`.
+     * Párování s platbami dělá Action ImportBankPayments.
+     *
+     * @return list<array{row: array<string, string>, variable_symbol: string, amount: int|null, date: string|null}>
      *
      * @throws ValidationException soubor není v UTF-8 (např. export banky v cp1250), řádky se vrací v odpovědi
      */
-    public function import(string $csvContent, int $landlordId): array
+    public function parse(string $csvContent): array
     {
         if (! mb_check_encoding($csvContent, 'UTF-8')) {
             throw ValidationException::withMessages([
@@ -23,145 +24,12 @@ class BankImportService
             ]);
         }
 
-        $rows = $this->parseCsv($csvContent);
-        $results = [
-            'matched' => [],
-            'already_paid' => [],
-            'unmatched' => [],
-            'total_rows' => count($rows),
-        ];
-
-        // Get all leases for this landlord's properties, keyed by cleaned VS
-        $landlordLeases = Lease::query()->whereHas('property', function ($query) use ($landlordId) {
-            $query->where('landlord_id', $landlordId);
-        })->whereNotNull('variable_symbol')
-            ->get(['id', 'variable_symbol']);
-
-        // Build lookup: cleaned VS → lease ID (handles leading zeros consistently)
-        $vsToLeaseId = [];
-        foreach ($landlordLeases as $lease) {
-            $cleanedVs = $this->cleanVariableSymbol($lease->variable_symbol);
-            if ($cleanedVs !== '') {
-                $vsToLeaseId[$cleanedVs] = $lease->id;
-            }
-        }
-
-        // Track which payment IDs we've already matched in THIS import
-        // to prevent a single CSV from matching multiple payments accidentally
-        $matchedPaymentIds = [];
-
-        foreach ($rows as $row) {
-            $vs = $this->cleanVariableSymbol($row['variable_symbol'] ?? '');
-            $amount = $this->cleanAmount($row['amount'] ?? '0');
-            $date = $this->cleanDate($row['date'] ?? '');
-
-            // Skip rows without variable symbol
-            if (empty($vs)) {
-                $results['unmatched'][] = [
-                    'row' => $row,
-                    'reason' => 'Missing variable symbol',
-                ];
-
-                continue;
-            }
-
-            // Skip rows with zero or negative amount
-            if ($amount <= 0) {
-                $results['unmatched'][] = [
-                    'row' => $row,
-                    'reason' => 'Invalid amount: '.($row['amount'] ?? '0'),
-                ];
-
-                continue;
-            }
-
-            // Find lease by variable symbol
-            if (! isset($vsToLeaseId[$vs])) {
-                $results['unmatched'][] = [
-                    'row' => $row,
-                    'reason' => 'Variable symbol not found: '.$vs,
-                ];
-
-                continue;
-            }
-
-            $leaseId = $vsToLeaseId[$vs];
-
-            // Find unpaid/overdue payment for this lease
-            // Match by amount first for accuracy, then by VS on payment if set
-            $paymentQuery = Payment::query()
-                ->where('lease_id', $leaseId)
-                ->whereIn('status', [PaymentStatus::Unpaid, PaymentStatus::Overdue])
-                ->whereNotIn('id', $matchedPaymentIds);
-
-            // Try exact amount match first (most reliable)
-            $payment = (clone $paymentQuery)
-                ->where('amount', $amount)
-                ->orderBy('due_date')
-                ->first();
-
-            // If no exact match, try any unpaid payment on the lease
-            if (! $payment) {
-                $payment = $paymentQuery
-                    ->orderBy('due_date')
-                    ->first();
-            }
-
-            if (! $payment) {
-                // Check if there's a paid payment with same VS and date to detect duplicate import
-                $alreadyImported = Payment::query()
-                    ->where('lease_id', $leaseId)
-                    ->where('status', PaymentStatus::Paid)
-                    ->where('note', 'LIKE', '%CSV import%')
-                    ->when($date, fn ($q) => $q->where('paid_date', $date))
-                    ->where('amount', $amount)
-                    ->exists();
-
-                $reason = $alreadyImported
-                    ? 'Already imported (duplicate CSV row) for VS: '.$vs
-                    : 'No unpaid payment found for VS: '.$vs;
-
-                $results['already_paid'][] = [
-                    'row' => $row,
-                    'reason' => $reason,
-                ];
-
-                continue;
-            }
-
-            // Track this payment to prevent double-matching within same import
-            $matchedPaymentIds[] = $payment->id;
-
-            // Check amount mismatch — still match but add warning
-            $amountMismatch = abs((float) $payment->amount - $amount) > 0.01;
-
-            // Match — mark as paid
-            $payment->update([
-                'paid_date' => $date ?: now()->toDateString(),
-                'status' => PaymentStatus::Paid,
-                'variable_symbol' => $vs,
-                'note' => 'Auto-matched from bank CSV import'.($amountMismatch
-                        ? ' (CSV amount: '.number_format($amount, 2).', expected: '.number_format((float) $payment->amount, 2).')'
-                        : ''),
-            ]);
-
-            // Recalculate trust score
-            $payment->load('lease.tenant');
-            $tenant = $payment->lease?->tenant;
-            $tenant?->recalculateTrustScore();
-
-            $results['matched'][] = [
-                'payment_id' => $payment->id,
-                'lease_id' => $leaseId,
-                'variable_symbol' => $vs,
-                'amount' => $amount,
-                'payment_amount' => (float) $payment->amount,
-                'amount_mismatch' => $amountMismatch,
-                'date' => $date,
-            ];
-        }
-
-        return $results;
+        return array_map(fn (array $row): array => [
+            'row' => $row,
+            'variable_symbol' => $this->cleanVariableSymbol($row['variable_symbol'] ?? ''),
+            'amount' => $this->cleanAmount($row['amount'] ?? ''),
+            'date' => $this->cleanDate($row['date'] ?? ''),
+        ], $this->parseCsv($csvContent));
     }
 
     /**
@@ -262,9 +130,9 @@ class BankImportService
     }
 
     /**
-     * Clean variable symbol — remove leading zeros and whitespace
+     * Clean variable symbol — remove leading zeros and whitespace (stejně se čistí VS smluv a plateb při párování)
      */
-    private function cleanVariableSymbol(string $vs): string
+    public function cleanVariableSymbol(string $vs): string
     {
         $vs = trim($vs);
         // Remove all non-numeric characters
@@ -274,15 +142,18 @@ class BankImportService
     }
 
     /**
-     * Clean amount — handle Czech number format (1 234,56)
+     * Částka v haléřích (#49) z českého formátu („1 234,56“, mezera i nezlomitelná mezera jako oddělovač tisíců).
+     * Záporná částka je odchozí platba (zůstane záporná a import ji nespáruje), nečitelná → null.
      */
-    private function cleanAmount(string $amount): float
+    private function cleanAmount(string $amount): ?int
     {
-        $amount = trim($amount);
-        $amount = str_replace(' ', '', $amount);    // Remove spaces (thousand separator)
-        $amount = str_replace(',', '.', $amount);    // Czech decimal comma to dot
+        $amount = str_replace([' ', "\u{00A0}", ','], ['', '', '.'], trim($amount));
 
-        return abs((float) $amount); // Always positive (some exports use negative for outgoing)
+        try {
+            return Money::cents($amount);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
     }
 
     /**
@@ -296,21 +167,15 @@ class BankImportService
             return null;
         }
 
-        // Try dd.mm.yyyy (Czech format)
-        if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $date, $m)) {
-            return $m[3].'-'.str_pad($m[2], 2, '0', STR_PAD_LEFT).'-'.str_pad($m[1], 2, '0', STR_PAD_LEFT);
+        // dd.mm.yyyy (český formát), dd/mm/yyyy a yyyy-mm-dd; neexistující datum (31. 2.) → null
+        if (preg_match('/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})$/', $date, $m)) {
+            [$day, $month, $year] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        } elseif (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m)) {
+            [$year, $month, $day] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        } else {
+            return null;
         }
 
-        // Try yyyy-mm-dd (ISO format)
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-            return $date;
-        }
-
-        // Try dd/mm/yyyy
-        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $date, $m)) {
-            return $m[3].'-'.str_pad($m[2], 2, '0', STR_PAD_LEFT).'-'.str_pad($m[1], 2, '0', STR_PAD_LEFT);
-        }
-
-        return null;
+        return checkdate($month, $day, $year) ? sprintf('%04d-%02d-%02d', $year, $month, $day) : null;
     }
 }

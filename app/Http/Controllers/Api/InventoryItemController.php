@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Inventory\DeleteInventoryItem;
+use App\Actions\Inventory\SaveInventoryItem;
 use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInventoryItemRequest;
@@ -27,15 +29,12 @@ class InventoryItemController extends Controller
         return response()->json(InventoryItemResource::collection($items));
     }
 
-    public function store(StoreInventoryItemRequest $request, string $propertyId): JsonResponse
+    public function store(StoreInventoryItemRequest $request, string $propertyId, SaveInventoryItem $save): JsonResponse
     {
         $property = $this->findProperty($propertyId);
         $this->authorize('create', [InventoryItem::class, $property]);
 
-        $item = InventoryItem::query()->create([
-            ...$request->validated(),
-            'property_id' => $property->id,
-        ]);
+        $item = $save->handle($property, $request->validated());
 
         return response()->json(new InventoryItemResource($item), 201);
     }
@@ -48,22 +47,22 @@ class InventoryItemController extends Controller
         return response()->json(new InventoryItemResource($item));
     }
 
-    public function update(UpdateInventoryItemRequest $request, string $id): JsonResponse
+    public function update(UpdateInventoryItemRequest $request, string $id, SaveInventoryItem $save): JsonResponse
     {
         $item = $this->findItem($id);
         $this->authorize('update', $item);
 
-        $item->update($request->validated());
+        $save->handle($item->property, $request->validated(), $item);
 
         return response()->json(new InventoryItemResource($item));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteInventoryItem $delete): JsonResponse
     {
         $item = $this->findItem($id);
         $this->authorize('delete', $item);
 
-        $item->delete();
+        $delete->handle($item);
 
         return response()->json([
             'message' => 'Inventory item deleted successfully.',

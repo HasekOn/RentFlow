@@ -28,7 +28,7 @@ class LeaseAccessTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->setUpPropertyRoles();
+        $this->createPropertyRoles();
         Payment::factory()->create(['lease_id' => $this->lease->id]);
     }
 
@@ -97,7 +97,7 @@ class LeaseAccessTest extends TestCase
         $this->actingAs($this->landlord)
             ->postJson($this->apiUrl('/leases'), $this->payload($this->formerTenant, now()->addMonth(), null))
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Another active lease on this property overlaps the given period.');
+            ->assertJsonPath('errors.start_date.0', 'Another active lease on this property overlaps the given period.');
 
         // navazující smlouva den po konci té současné projde, nájemníkem může být i správce
         $this->actingAs($this->landlord)

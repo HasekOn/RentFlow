@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\PropertyImageType;
+use App\Actions\Properties\DeletePropertyImage;
+use App\Actions\Properties\StorePropertyImage;
+use App\Actions\Properties\UpdatePropertyImage;
 use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePropertyImageRequest;
@@ -29,21 +31,12 @@ class PropertyImageController extends Controller
         return response()->json(PropertyImageResource::collection($images));
     }
 
-    public function store(StorePropertyImageRequest $request, string $propertyId): JsonResponse
+    public function store(StorePropertyImageRequest $request, string $propertyId, StorePropertyImage $store): JsonResponse
     {
         $property = $this->findProperty($propertyId);
         $this->authorize('create', [PropertyImage::class, $property]);
 
-        $path = $request->file('image')->store('properties/'.$property->id, PrivateFile::DISK);
-
-        $image = PropertyImage::query()->create([
-            'property_id' => $property->id,
-            'image_path' => $path,
-            'type' => $request->validated('type', PropertyImageType::Marketing->value),
-            'uploaded_by' => $request->user()->id,
-            'description' => $request->validated('description'),
-            'sort_order' => $request->validated('sort_order', 0),
-        ]);
+        $image = $store->handle($property, $request->user(), $request->file('image'), $request->safe()->except('image'));
 
         return response()->json(new PropertyImageResource($image), 201);
     }
@@ -60,23 +53,22 @@ class PropertyImageController extends Controller
         return PrivateFile::download($image->image_path, basename($image->image_path));
     }
 
-    public function update(UpdatePropertyImageRequest $request, string $id): JsonResponse
+    public function update(UpdatePropertyImageRequest $request, string $id, UpdatePropertyImage $update): JsonResponse
     {
         $image = $this->findImage($id);
         $this->authorize('update', $image);
 
-        $image->update($request->validated());
+        $update->handle($image, $request->validated());
 
         return response()->json(new PropertyImageResource($image));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeletePropertyImage $delete): JsonResponse
     {
         $image = $this->findImage($id);
         $this->authorize('delete', $image);
 
-        PrivateFile::delete($image->image_path);
-        $image->delete();
+        $delete->handle($image);
 
         return response()->json([
             'message' => 'Image deleted successfully.',

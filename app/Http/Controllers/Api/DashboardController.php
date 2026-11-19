@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Users\MarkNotificationRead;
 use App\Enums\LeaseStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\PaymentType;
@@ -16,9 +17,13 @@ use App\Models\Rating;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\TrustScoreService;
+use App\Support\Money;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -59,7 +64,8 @@ class DashboardController extends Controller
         // Leases ending within 30 days
         $expiringLeases = Lease::query()->whereIn('property_id', $propertyIds)
             ->where('status', LeaseStatus::Active)
-            ->whereBetween('end_date', [now(), now()->addDays(30)])
+            ->where('end_date', '>=', today())
+            ->where('end_date', '<', today()->addDays(31))
             ->count();
 
         // Open tickets
@@ -98,7 +104,7 @@ class DashboardController extends Controller
      * pro správce): počet a součet v DB.
      *
      * @param  Collection<int, int>  $propertyIds
-     * @return array<string, array{count: int, amount: mixed}>
+     * @return array<string, array{count: int, amount: float}>
      */
     private function paymentOverview(Collection $propertyIds): array
     {
@@ -109,7 +115,10 @@ class DashboardController extends Controller
                 ->whereHas('lease', fn ($lease) => $lease
                     ->where('status', LeaseStatus::Active)
                     ->whereIn('property_id', $propertyIds));
-            $overview[$key] = ['count' => (clone $payments)->count(), 'amount' => $payments->sum('amount')];
+            $overview[$key] = [
+                'count' => (clone $payments)->count(),
+                'amount' => Money::toFloat(Money::fromSum($payments->sum('amount'))),
+            ];
         }
 
         return $overview;
@@ -124,17 +133,21 @@ class DashboardController extends Controller
     private function monthFinance(Collection $propertyIds): array
     {
         $leaseIds = Lease::query()->whereIn('property_id', $propertyIds)->pluck('id');
-        $monthStart = now()->startOfMonth()->toDateString();
-        $monthEnd = now()->endOfMonth()->toDateString();
+        // rozsah >= začátek a < začátek dalšího měsíce (#28): započítá se i poslední den měsíce
+        $monthStart = today()->startOfMonth();
+        $nextMonth = $monthStart->copy()->addMonth();
 
-        $monthlyIncome = Payment::query()->whereIn('lease_id', $leaseIds)
+        // součty v DB, rozdíl v haléřích (#49)
+        $monthlyIncome = Money::fromSum(Payment::query()->whereIn('lease_id', $leaseIds)
             ->where('status', PaymentStatus::Paid)
-            ->whereBetween('paid_date', [$monthStart, $monthEnd])
-            ->sum('amount');
+            ->where('paid_date', '>=', $monthStart)
+            ->where('paid_date', '<', $nextMonth)
+            ->sum('amount'));
 
-        $monthlyExpenses = Expense::query()->whereIn('property_id', $propertyIds)
-            ->whereBetween('expense_date', [$monthStart, $monthEnd])
-            ->sum('amount');
+        $monthlyExpenses = Money::fromSum(Expense::query()->whereIn('property_id', $propertyIds)
+            ->where('expense_date', '>=', $monthStart)
+            ->where('expense_date', '<', $nextMonth)
+            ->sum('amount'));
 
         // Overdue payments — only those already marked overdue by scheduler
         $overduePayments = Payment::query()->whereIn('lease_id', $leaseIds)
@@ -142,9 +155,9 @@ class DashboardController extends Controller
             ->count();
 
         return [
-            'monthly_income' => $monthlyIncome,
-            'monthly_expenses' => $monthlyExpenses,
-            'cashflow' => $monthlyIncome - $monthlyExpenses,
+            'monthly_income' => Money::toFloat($monthlyIncome),
+            'monthly_expenses' => Money::toFloat($monthlyExpenses),
+            'cashflow' => Money::toFloat($monthlyIncome - $monthlyExpenses),
             'overdue_payments' => $overduePayments,
         ];
     }
@@ -165,32 +178,55 @@ class DashboardController extends Controller
 
         $leaseIds = Lease::query()->whereIn('property_id', $propertyIds)->pluck('id');
 
+        // 12 měsíců od začátku měsíce (31. ledna minus měsíc nesmí přetéct do března), rozsah >= a < (#28)
+        $from = today()->startOfMonth()->subMonths(11);
+        $to = today()->startOfMonth()->addMonth();
+
+        // dva dotazy místo 24 (#48): SUM po dnech (bez SQL funkcí na měsíc, DB-agnosticky), do měsíců v PHP v haléřích
+        $income = $this->sumByMonth(Payment::query()->whereIn('lease_id', $leaseIds)
+            ->where('status', PaymentStatus::Paid), 'paid_date', $from, $to);
+        $expenses = $this->sumByMonth(Expense::query()->whereIn('property_id', $propertyIds), 'expense_date', $from, $to);
+
         $months = collect();
-
-        for ($i = 11; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $monthStart = $date->copy()->startOfMonth()->toDateString();
-            $monthEnd = $date->copy()->endOfMonth()->toDateString();
-
-            $income = Payment::query()->whereIn('lease_id', $leaseIds)
-                ->where('status', PaymentStatus::Paid)
-                ->whereBetween('paid_date', [$monthStart, $monthEnd])
-                ->sum('amount');
-
-            $expenses = Expense::query()->whereIn('property_id', $propertyIds)
-                ->whereBetween('expense_date', [$monthStart, $monthEnd])
-                ->sum('amount');
+        for ($date = $from->copy(); $date < $to; $date->addMonth()) {
+            $month = $date->format('Y-m');
+            $monthIncome = $income[$month] ?? 0;
+            $monthExpenses = $expenses[$month] ?? 0;
 
             $months->push([
-                'month' => $date->format('Y-m'),
+                'month' => $month,
                 'label' => $date->format('M Y'),
-                'income' => round((float) $income, 2),
-                'expenses' => round((float) $expenses, 2),
-                'cashflow' => round((float) $income - (float) $expenses, 2),
+                'income' => Money::toFloat($monthIncome),
+                'expenses' => Money::toFloat($monthExpenses),
+                'cashflow' => Money::toFloat($monthIncome - $monthExpenses),
             ]);
         }
 
         return response()->json($months);
+    }
+
+    /**
+     * Součty částek po měsících (`Y-m` => haléře) v rozsahu dat [$from, $to).
+     *
+     * @param  Builder<Payment>|Builder<Expense>  $query
+     * @return array<string, int>
+     */
+    private function sumByMonth(Builder $query, string $dateColumn, Carbon $from, Carbon $to): array
+    {
+        $months = [];
+        $days = $query
+            ->where($dateColumn, '>=', $from)
+            ->where($dateColumn, '<', $to)
+            ->groupBy($dateColumn)
+            ->toBase()
+            ->get([$dateColumn.' as day', DB::raw('SUM(amount) as total')]);
+
+        foreach ($days as $day) {
+            $month = Carbon::parse($day->day)->format('Y-m');
+            $months[$month] = ($months[$month] ?? 0) + Money::fromSum($day->total);
+        }
+
+        return $months;
     }
 
     /**
@@ -268,13 +304,14 @@ class DashboardController extends Controller
      * Mark notification as read
      * PUT /api/notifications/{id}/read
      */
-    public function markNotificationRead(Request $request, string $id): JsonResponse
+    public function markNotificationRead(Request $request, string $id, MarkNotificationRead $markRead): JsonResponse
     {
-        $notification = $request->user()
-            ->notifications()
-            ->findOrFail($id);
+        $notification = $request->user()->notifications()->find($id);
+        if ($notification === null) {
+            abort(404);
+        }
 
-        $notification->markAsRead();
+        $markRead->handle($notification);
 
         return response()->json([
             'message' => 'Notification marked as read.',

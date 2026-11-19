@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\DocumentVisibility;
+use App\Actions\Documents\DeleteDocument;
+use App\Actions\Documents\StoreDocument;
 use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDocumentRequest;
@@ -31,21 +32,12 @@ class DocumentController extends Controller
         return response()->json(DocumentResource::collection($documents));
     }
 
-    public function store(StoreDocumentRequest $request, string $propertyId): JsonResponse
+    public function store(StoreDocumentRequest $request, string $propertyId, StoreDocument $store): JsonResponse
     {
         $property = $this->findProperty($propertyId);
         $this->authorize('create', [Document::class, $property]);
 
-        $path = $request->file('file')->store('documents/'.$property->id, PrivateFile::DISK);
-
-        $document = Document::query()->create([
-            'property_id' => $property->id,
-            'document_type' => $request->validated('document_type'),
-            'name' => $request->validated('name'),
-            'file_path' => $path,
-            'visibility' => $request->validated('visibility', DocumentVisibility::LandlordOnly->value),
-            'uploaded_by' => $request->user()->id,
-        ]);
+        $document = $store->handle($property, $request->user(), $request->file('file'), $request->safe()->except('file'));
 
         $document->load('uploadedBy');
 
@@ -60,13 +52,12 @@ class DocumentController extends Controller
         return PrivateFile::download($document->file_path, $document->name);
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteDocument $delete): JsonResponse
     {
         $document = $this->findDocument($id);
         $this->authorize('delete', $document);
 
-        PrivateFile::delete($document->file_path);
-        $document->delete();
+        $delete->handle($document);
 
         return response()->json([
             'message' => 'Document deleted successfully.',

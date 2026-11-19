@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -45,7 +46,7 @@ class MeterReading extends Model
     {
         return [
             'reading_value' => 'decimal:3',
-            'reading_date' => 'date',
+            'reading_date' => DateOnly::class,
         ];
     }
 }

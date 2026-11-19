@@ -4,6 +4,8 @@ namespace App\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Validator;
 
 trait Filterable
 {
@@ -21,14 +23,19 @@ trait Filterable
             }
         }
 
-        $dateFrom = $this->stringInput($request, 'date_from');
-        if ($dateFrom !== null) {
-            $query->where($this->getDateField(), '>=', $dateFrom);
-        }
+        // rozsah >= začátek dne a < začátek dne po date_to (#27): poslední den se započítá i u sloupců s časem;
+        // neplatné datum → 422, pole se ignoruje jako u ostatních parametrů
+        $dates = array_filter([
+            'date_from' => $this->stringInput($request, 'date_from'),
+            'date_to' => $this->stringInput($request, 'date_to'),
+        ]);
+        Validator::make($dates, ['date_from' => ['date'], 'date_to' => ['date']])->validate();
 
-        $dateTo = $this->stringInput($request, 'date_to');
-        if ($dateTo !== null) {
-            $query->where($this->getDateField(), '<=', $dateTo);
+        if (isset($dates['date_from'])) {
+            $query->where($this->getDateField(), '>=', Carbon::parse($dates['date_from'])->startOfDay());
+        }
+        if (isset($dates['date_to'])) {
+            $query->where($this->getDateField(), '<', Carbon::parse($dates['date_to'])->startOfDay()->addDay());
         }
 
         $search = $this->stringInput($request, 'search');

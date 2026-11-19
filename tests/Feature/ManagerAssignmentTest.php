@@ -21,7 +21,7 @@ class ManagerAssignmentTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->setUpPropertyRoles();
+        $this->createPropertyRoles();
     }
 
     public function test_landlord_promotes_own_tenant_to_manager_of_own_property(): void

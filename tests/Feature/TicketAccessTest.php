@@ -33,7 +33,7 @@ class TicketAccessTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->setUpPropertyRoles();
+        $this->createPropertyRoles();
         Storage::fake(PrivateFile::DISK);
 
         $new = ['status' => TicketStatus::New];

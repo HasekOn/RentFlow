@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Enums\InventoryCondition;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $category
  * @property InventoryCondition $condition
  * @property Carbon|null $purchase_date
- * @property float|null $purchase_price
+ * @property numeric-string|null $purchase_price
  * @property string|null $note
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -55,7 +56,7 @@ class InventoryItem extends Model
     {
         return [
             'condition' => InventoryCondition::class,
-            'purchase_date' => 'date',
+            'purchase_date' => DateOnly::class,
             'purchase_price' => 'decimal:2',
         ];
     }

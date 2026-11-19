@@ -19,7 +19,6 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read Property|null $property
- * @property-read User|null $uploadedBy
  */
 class PropertyImage extends Model
 {
@@ -57,10 +56,5 @@ class PropertyImage extends Model
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
-    }
-
-    public function uploadedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'uploaded_by');
     }
 }

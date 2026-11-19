@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\LeaseStatus;
+use App\Actions\Properties\DeleteProperty;
+use App\Actions\Properties\RestoreProperty;
+use App\Actions\Properties\SaveProperty;
 use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePropertyRequest;
@@ -48,14 +50,11 @@ class PropertyController extends Controller
         return PropertyResource::collection($query->paginate(15));
     }
 
-    public function store(StorePropertyRequest $request): JsonResponse
+    public function store(StorePropertyRequest $request, SaveProperty $save): JsonResponse
     {
         $this->authorize('create', Property::class);
 
-        $property = Property::query()->create([
-            ...$request->validated(),
-            'landlord_id' => $request->user()->id,
-        ]);
+        $property = $save->handle($request->user(), $request->validated());
 
         return response()->json(new PropertyResource($property), 201);
     }
@@ -80,38 +79,31 @@ class PropertyController extends Controller
         return response()->json(new PropertyResource($property));
     }
 
-    public function update(UpdatePropertyRequest $request, string $id): JsonResponse
+    public function update(UpdatePropertyRequest $request, string $id, SaveProperty $save): JsonResponse
     {
         $property = $this->findProperty($id);
 
         $this->authorize('update', $property);
 
-        $property->update($request->validated());
+        $save->handle($request->user(), $request->validated(), $property);
 
         return response()->json(new PropertyResource($property));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteProperty $delete): JsonResponse
     {
         $property = $this->findProperty($id);
 
         $this->authorize('delete', $property);
 
-        // aktivní smlouva by po smazání dál generovala platby a nájemník by ztratil přístup (#35)
-        if ($property->leases()->where('status', LeaseStatus::Active)->exists()) {
-            return response()->json([
-                'message' => 'Property with an active lease cannot be deleted.',
-            ], 422);
-        }
-
-        $property->delete();
+        $delete->handle($property);
 
         return response()->json([
             'message' => 'Property deleted successfully.',
         ]);
     }
 
-    public function restore(string $id): JsonResponse
+    public function restore(string $id, RestoreProperty $restore): JsonResponse
     {
         $property = Property::withTrashed()->find($id);
         if ($property === null) {
@@ -120,7 +112,7 @@ class PropertyController extends Controller
 
         $this->authorize('restore', $property);
 
-        $property->restore();
+        $restore->handle($property);
 
         return response()->json(new PropertyResource($property));
     }
@@ -132,10 +124,5 @@ class PropertyController extends Controller
     private function visibleLeases(User $user): Closure
     {
         return fn ($leases) => $leases->visibleTo($user)->with('tenant');
-    }
-
-    protected function getDateField(): string
-    {
-        return 'created_at';
     }
 }

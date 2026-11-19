@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
+/**
+ * Veřejný /health: jen stav a obecná hláška, text výjimky (connection string, host, cesta) do odpovědi nejde,
+ * ale do logu (#51). Kontrola úložiště zapisuje na privátní disk.
+ */
 class HealthController extends Controller
 {
     public function __invoke(): JsonResponse
@@ -42,10 +46,9 @@ class HealthController extends Controller
                 'response_time_ms' => $duration,
             ];
         } catch (Throwable $e) {
-            return [
-                'healthy' => false,
-                'message' => 'Connection failed: '.$e->getMessage(),
-            ];
+            report($e);
+
+            return ['healthy' => false, 'message' => 'Connection failed'];
         }
     }
 
@@ -61,10 +64,9 @@ class HealthController extends Controller
                 'message' => 'Writable',
             ];
         } catch (Throwable $e) {
-            return [
-                'healthy' => false,
-                'message' => 'Not writable: '.$e->getMessage(),
-            ];
+            report($e);
+
+            return ['healthy' => false, 'message' => 'Not writable'];
         }
     }
 
@@ -81,10 +83,9 @@ class HealthController extends Controller
                 'message' => $value === 'ok' ? 'Working' : 'Read/write mismatch',
             ];
         } catch (Throwable $e) {
-            return [
-                'healthy' => false,
-                'message' => 'Failed: '.$e->getMessage(),
-            ];
+            report($e);
+
+            return ['healthy' => false, 'message' => 'Failed'];
         }
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Expenses\DeleteExpense;
+use App\Actions\Expenses\SaveExpense;
 use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreExpenseRequest;
@@ -35,12 +37,12 @@ class ExpenseController extends Controller
         return ExpenseResource::collection($query->paginate(20));
     }
 
-    public function store(StoreExpenseRequest $request): JsonResponse
+    public function store(StoreExpenseRequest $request, SaveExpense $save): JsonResponse
     {
         $property = $this->findProperty((string) $request->validated('property_id'));
         $this->authorize('create', [Expense::class, $property]);
 
-        $expense = Expense::query()->create($request->validated());
+        $expense = $save->handle($property, $request->validated());
 
         return response()->json(new ExpenseResource($expense), 201);
     }
@@ -53,22 +55,22 @@ class ExpenseController extends Controller
         return response()->json(new ExpenseResource($expense));
     }
 
-    public function update(UpdateExpenseRequest $request, string $id): JsonResponse
+    public function update(UpdateExpenseRequest $request, string $id, SaveExpense $save): JsonResponse
     {
         $expense = $this->findExpense($id);
         $this->authorize('update', $expense);
 
-        $expense->update($request->validated());
+        $save->handle($expense->property, $request->validated(), $expense);
 
         return response()->json(new ExpenseResource($expense));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteExpense $delete): JsonResponse
     {
         $expense = $this->findExpense($id);
         $this->authorize('delete', $expense);
 
-        $expense->delete();
+        $delete->handle($expense);
 
         return response()->json([
             'message' => 'Expense deleted successfully.',

@@ -275,7 +275,7 @@ pokrýt test.
       hrubé síto, jeho test běží nad testovací routou. `invoice_path` se nevrací.
     - `purchase_price` inventáře dál vidí všichni, kdo vidí inventář (rozhodnutí při plánu).
     - Návrh (fáze 5): neaktivní oznámení nájemníkům neukazovat (dnes vidí i neaktivní).
-- [ ] **2.8 Smlouvy a hodnocení** (#13, #22, #30)
+- [x] **2.8 Smlouvy a hodnocení** (#13, #22, #30)
   - `LeasePolicy` + `Lease::visibleTo`, `RatingPolicy` (vlastník nemovitosti).
   - Kontrola překryvu aktivních smluv. `tenant_id` jen nájemník nebo správce.
   - `end_date` se porovnává s uloženým `start_date`.
@@ -293,7 +293,8 @@ pokrýt test.
       (scope `Lease::overlapping`) při založení, změně období a reaktivaci → 422. `end_date` proti uloženému
       `start_date` kontroluje controller až po autorizaci (hláška by cizímu prozradila datum).
     - `RatingPolicy`: seznam kdo vidí smlouvu, hodnotí a maže vlastník nemovitosti (i u smazané smlouvy).
-- [ ] **2.9 Platby** (#12, #17, #41)
+    - Odškrtnuto dodatečně 19.&nbsp;11.&nbsp;2026 (krok byl hotový a mergnutý v PR #9, zaškrtnutí chybělo).
+- [x] **2.9 Platby** (#12, #17, #41)
   - `PaymentPolicy` + `Payment::visibleTo`. Správce nevidí finance na dashboardu (platby viz změna rozhodnutí níž).
   - `lease_id` jen z vlastních smluv.
   - Mazání zaplacené platby vrátí 422 (stav), ne 403.
@@ -311,6 +312,7 @@ pokrýt test.
       i API (položka 2.13), kvůli idempotenci obou cest: `Cache::lock` + transakce, existující platby měsíce
       jedním dotazem v rozsahu `>=` / `<`. Příkaz už nevypisuje řádek na každou smlouvu, jen součet.
     - CSV import páruje jen smlouvy nemovitostí pronajímatele (i ne smazané nemovitosti), pokryto testem.
+    - Odškrtnuto dodatečně 19.&nbsp;11.&nbsp;2026 (krok byl hotový a mergnutý v PR #9, zaškrtnutí chybělo).
 - [x] **2.10 Tikety, komentáře, fotky** (#10, #11, #23, #24, #46)
   - `TicketPolicy` v pořadí: autor, nájemník s aktivní smlouvou, přiřazený správce, vlastník.
   - `Ticket::visibleTo`, `create(User, Property)`, `TicketCommentPolicy`, `TicketImagePolicy`.
@@ -345,11 +347,23 @@ pokrýt test.
       řešitele.
     - Návrh (2.13 / fáze 5): přiřazení ke smazané nemovitosti se nepočítá do role ani viditelnosti. Po obnovení
       nemovitosti role přepočítat.
-- [ ] **2.12 Data a datumy** (#27, #28, #29)
+- [x] **2.12 Data a datumy** (#27, #28, #29)
   - Sloupce `date` ukládat bez času (cast nebo mutator a úprava existujících hodnot).
   - Rozsahy `>=` a `<` ve filtrech, dashboardu a CSV importu.
   - `size` a `disposition` nullable.
-- [ ] **2.13 Actions a byznys logika** (#31–#37, #53, #54)
+  - *Hotovo 19.&nbsp;11.&nbsp;2026 (spolu s 2.13 a 2.14):*
+    - Cast `App\Casts\DateOnly` na všech sloupcích `date` (platby, smlouvy, náklady, inventář, odečty): ukládá
+      půlnoc ve formátu modelu (`Y-m-d 00:00:00`, v MariaDB `DATE`). Pravidlo: u sloupců `date` bindovat `Carbon`,
+      ne řetězec `Y-m-d`; rozsahy `>=` začátek a `<` začátek dalšího dne nebo měsíce.
+    - Datová migrace `normalize_date_columns` srovná staré hodnoty s časem na půlnoc (PHP po dávkách, bez SQL
+      funkcí, `down()` nic nevrací). Schéma se nemění.
+    - `Filterable`: `date_to` zahrne celý poslední den, neplatné datum → 422, pole v query se dál ignoruje.
+      Dashboard (měsíc, končící smlouvy) a graf přes `>=` / `<`. Graf navíc počítá měsíce od začátku měsíce
+      (31.&nbsp;ledna minus dva měsíce dřív přeteklo a prosinec byl v grafu dvakrát).
+    - #29: migrace `->change()` na nullable u `size` a `disposition` (výjimka z rozhodnutí z auditu). SQLite
+      tabulku přestaví s vypnutými FK (migrace v SQLite neběží v transakci, takže kaskády nic nesmažou);
+      `MigrationRollbackTest` hlídá rollback a migrate nad daty.
+- [x] **2.13 Actions a byznys logika** (#31–#37, #53, #54)
   - Actions pro zápisové operace: nemovitost, smlouva + PDF, platby a generování, CSV import, tiket + komentáře,
     měřiče a odečty, hodnocení, správci. Controllery jen volají Action.
   - Transakce, events po commitu, notifikace `ShouldQueue`.
@@ -358,14 +372,60 @@ pokrýt test.
   - Přepočet trust score po hodnocení a změně platby.
   - CSV import páruje podle VS platby.
   - Přechody stavů smlouvy a tiketu na jednom místě.
-- [ ] **2.14 Výkon, peníze, indexy, robustnost, úklid** (#42, #44, #45, #47–#52, #56)
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:*
+    - 48 Actions v `app/Actions/<Oblast>` (Properties, Leases, Ratings, Payments, Expenses, Inventory, Notices,
+      Documents, Meters, Tickets, Managers, Users). Každý zápis v API jde přes Action, controller dělá autorizaci,
+      validaci, Action a Resource. Výjimka: odhlášení maže token v controlleru (jako přihlášení).
+    - Triviální založení a úprava = jedna Action `Save<Věc>` (Livewire formulář řeší obojí). Soubory přes
+      `PrivateFile::storeWith()`: když zápis do DB selže, nahraný soubor se smaže.
+    - **Změna tvaru 422:** porušení byznys pravidla (aktivní smlouva, překryv, zaplacená platba, nižší odečet …)
+      je `ValidationException`, takže API vrací `message: Validation failed.` a text v `errors.<pole>` (dřív
+      v `message`). Livewire ho ukáže u pole. Upravené asserce: `LeaseAccessTest` (překryv), `PropertyAccessTest`
+      (smazání s aktivní smlouvou).
+    - Eventy `LeaseCreated`, `PaymentMarkedPaid`, `TicketCreated`, `TicketResolved` implementují
+      `ShouldDispatchAfterCommit`. Notifikace zůstávají synchronní, `ShouldQueue` (#31) odloženo do fáze 7.
+    - #32 generování jen pro smlouvy platné v měsíci a nesmazané nemovitosti. #33 upozornění na konec smlouvy jen
+      30 a 7 dní předem. #34 po splatnosti přeskočí smazané smlouvy a nemovitosti, chyba upozornění nezastaví
+      zbytek, trust score jednou na nájemníka.
+    - #36 přepočet trust score po hodnocení, jeho smazání, vytvoření, úpravě a smazání platby; `PUT status=paid`
+      funguje jako mark-paid (event, doplní dnešní datum), mark-paid na zaplacené → 422.
+    - #37 CSV: `ImportBankPayments` (párování podle VS platby i smlouvy, zálohy s VS + „1“ se spárují, nesoulad
+      částky → `to_review` a platba zůstane nezaplacená, záporná částka = odchozí platba se nepáruje, celé
+      v transakci, trust score jednou na nájemníka). `BankImportService` jen parsuje. **Změna tvaru:** souhrn má
+      navíc `to_review`, `matched[]` už nemá `amount_mismatch`.
+    - #53 smlouvy: `CreateLease` v transakci, `SyncPropertyOccupancy` jako jedno místo pro obsazenost,
+      reaktivace vrátí `occupied` a v rekonstrukci → 422. #54 tikety: `resolved_at` a notifikace jen při přechodu,
+      znovuotevření `resolved_at` smaže. #47 nový tiket dostane vlastník a přiřazení správci kromě autora.
+    - `ChangePassword` smaže ostatní API tokeny (část #25).
+    - Testy v `tests/Feature/Actions/`. Testy scheduleru dostaly pevné období smluv (factory bere náhodné
+      období podle skutečného dne, filtr platnosti v měsíci by je náhodně vyřadil).
+    - Nález v testech: Laravel volá `setUp<Trait>()` u traitů sám, takže `PropertyRoles` běžel v každém testu
+      dvakrát. Přejmenováno na `createPropertyRoles()`.
+- [x] **2.14 Výkon, peníze, indexy, robustnost, úklid** (#42, #44, #45, #47–#52, #56)
   - Indexy na FK (přidávající migrace), agregace místo dotazů v cyklu a test na počet dotazů.
   - Peníze přes `SUM` v DB nebo v haléřích.
   - Validace filtrů, `/health` bez detailů výjimek.
   - `toArray()` notifikací (klíče, česky), výběrové scopy bez stránkování.
   - Typ nákladu `utility` (rozhodnout), `download_url`, mrtvý kód.
-- [ ] **Hotovo, když:** `composer check` je zelený, Larastan bez baseline (nebo s malou a zdůvodněnou) a všechny
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:*
+    - #52 migrace s indexy na `property_id` (dokumenty, měřiče, inventář, oznámení, fotky), `ticket_id`
+      (komentáře, fotky tiketů) a `property_manager.user_id`.
+    - #48 `finance-chart` 4 dotazy místo 26 (`SUM` po dnech, do měsíců v PHP), expirace smluv hromadně, import
+      a po splatnosti s jedním přepočtem na nájemníka. `ListQueryScalingTest`: seznamy a dashboard pro
+      pronajímatele, správce-nájemníka a nájemníka mají při seedu × 1 i × 10 stejný počet dotazů.
+    - #49 `App\Support\Money`: haléře (`cents`, `fromSum` pro výsledek `SUM`), `format()` „12&nbsp;500&nbsp;Kč“
+      v e-mailech a PDF smlouvy. Dashboard, graf a CSV počítají v `int`. Model docblocky peněz jako `numeric-string`.
+    - #51 `/health` bez textu výjimek (jde do logu). #42 `download_url` přes `route()` už z dřívějška.
+    - #47 `toArray()` všech notifikací: `type`, český `title` a `message` (typografie), odkazy na záznam.
+      Texty e-mailů zůstávají anglicky do rozhodnutí o jazyku UI (fáze 3).
+    - #56 smazán prázdný `SendPaymentMarkedNotification`, `Hash::make` vedle castu `hashed`, shodné
+      `getDateField()` a nepoužitá relace `PropertyImage::uploadedBy`. `routes/web.php` s `welcome` řeší fáze 4.
+    - #44 rozhodnuto: `utility` se nepřidává. #45 výběry bez stránkování vědomě do fáze 5 (bez Livewire volajícího
+      by šlo o mrtvý kód). Řazení podle ceny je hotové a otestované z 2.5.
+- [x] **Hotovo, když:** `composer check` je zelený, Larastan bez baseline (nebo s malou a zdůvodněnou) a všechny
       nálezy kroků 2.1–2.14 mají opravu s testem.
+  - *Ověřeno 19.&nbsp;11.&nbsp;2026:* `composer check` zelený, Larastan level 5 bez baseline (soubor neexistuje),
+    nálezy #1–#58 opravené s testem, nebo vědomě odložené (tabulka níž). Level 7 jako samostatný krok (návrh).
 - [ ] **Po fázi 2: skill `rentflow-security`** podle `jatime-security` a hned první běh (ověří opravy z REVIEW).
   - Audit celé aplikace jako subagent spouštěný uživatelem. Každý nález s `soubor:řádek` a scénářem zneužití.
   - A autentizace: Sanctum tokeny a jejich expirace, od fáze 4 session a limiter `login` (#25).
@@ -381,7 +441,11 @@ pokrýt test.
 
 | Nález | Fáze | Co |
 | --- | --- | --- |
-| #25 | 4 | Rate limiter `login`, změna hesla odhlásí ostatní zařízení. Expirace Sanctum tokenů podle rozhodnutí o API ve fázi 6. |
+| #25 | 4 | Rate limiter `login`, změna hesla odhlásí ostatní session (API tokeny maže už 2.13). Expirace Sanctum tokenů podle rozhodnutí o API ve fázi 6. |
+| #31 | 7 | `ShouldQueue` pro notifikace a worker. Eventy už běží po commitu (2.13). |
+| #45 | 5 | Výběry nemovitostí bez stránkování (`visibleTo()->orderBy()->get(['id', 'address'])`) u stránek Smlouvy, Tikety, Dokumenty a dashboardu správce. |
+| #47 | 3 | Texty e-mailů notifikací česky po rozhodnutí o jazyku UI (data pro zvoneček jsou česky z 2.14). |
+| #56 | 4 | `routes/web.php` s `welcome` nahradí webové routy. |
 | review 2.2 | 5 | České názvy atributů ve validaci (`lang/cs/validation.php`, `attributes`): teď „Vybraná stav je neplatná“. |
 | review 2.2 | 6 | `days_overdue` v `PaymentResource` je float (`diffInDays` v Carbon 3 vrací desetinné číslo). |
 
@@ -398,6 +462,9 @@ Na konci odškrtni krok v plánu.
 
 - [ ] ROZHODNOUT jazyk UI – jen čeština, nebo lokalizace cs + en (texty přes __() / lang/, přepínač jazyka
       v nastavení uživatele)
+  - Pozor (stav po 2.14): notifikace ukládají český `title` a `message` přímo do DB (`toArray()`, trait
+    `App\Notifications\Concerns\CzechText`) a `Money::format()` vrací „Kč“ natvrdo. Pokud padne cs + en,
+    notifikace musí ukládat jen `type` + parametry a text skládat až při zobrazení přes `__()`.
 - [ ] `livewire/livewire` ^4 (stejná verze jako JaTime), Alpine přes Livewire, `@tailwindcss/forms`, fonty přes
       `@fontsource-variable/*` (bez CDN)
 - [ ] Návrh vzhledu: 2–3 klíčové obrazovky (přehled, seznam a detail nemovitosti) jako mockup ke schválení
@@ -460,11 +527,11 @@ Pořadí podle závislostí. URL česky. Detail nemovitosti rozdělit na zálož
 - [ ] Detail nemovitosti – dokumenty
 - [ ] Detail nemovitosti – oznámení
 - [ ] Detail nemovitosti – správci
-- [ ] Smlouvy `/smlouvy` + detail `/smlouvy/{lease}` (PDF, hodnocení nájemníka)
+- [ ] Smlouvy `/smlouvy` + detail `/smlouvy/{lease}` (PDF, hodnocení nájemníka; výběr nemovitosti bez stránkování, #45)
 - [ ] Platby `/platby` (označit zaplaceno, generování, CSV import)
-- [ ] Tikety `/tikety` + detail `/tikety/{ticket}` (komentáře, fotky, stavy)
+- [ ] Tikety `/tikety` + detail `/tikety/{ticket}` (komentáře, fotky, stavy; výběr nemovitosti bez stránkování, #45)
 - [ ] Lidé `/lide` + detail `/lide/{user}` (Trust Score, hodnocení, povýšení na správce)
-- [ ] Dokumenty `/dokumenty`
+- [ ] Dokumenty `/dokumenty` (výběr nemovitosti bez stránkování, #45)
 - [ ] Notifikace (zvoneček, označit přečtené, `wire:poll`)
 - [ ] Nastavení `/nastaveni`
 - [ ] **České názvy atributů ve validaci** (review 2.2): `lang/cs/validation.php` → `attributes` (`status` → „stav“,

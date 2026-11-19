@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Users\ChangePassword;
+use App\Actions\Users\UpdateProfile;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class ProfileController extends Controller
 {
@@ -15,31 +17,25 @@ class ProfileController extends Controller
         return response()->json($request->user());
     }
 
-    public function changePassword(Request $request): JsonResponse
+    public function changePassword(Request $request, ChangePassword $change): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'current_password' => ['required', 'string'],
             'password' => ['required', 'string', Password::min(8), 'confirmed'],
         ]);
 
-        if (! Hash::check($request->current_password, $request->user()->password)) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'error' => 'validation_error',
-                'errors' => [
-                    'current_password' => ['The current password is incorrect.'],
-                ],
-            ], 422);
-        }
-
-        $request->user()->update([
-            'password' => Hash::make($request->password),
-        ]);
+        // token, kterým se heslo mění, zůstane, ostatní se smažou
+        $change->handle(
+            $request->user(),
+            $validated['current_password'],
+            $validated['password'],
+            PersonalAccessToken::findToken((string) $request->bearerToken())?->id,
+        );
 
         return response()->json(['message' => 'Password changed successfully.']);
     }
 
-    public function update(Request $request): JsonResponse
+    public function update(Request $request, UpdateProfile $update): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -47,7 +43,7 @@ class ProfileController extends Controller
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
         ]);
 
-        $request->user()->update($validated);
+        $update->handle($request->user(), $validated);
 
         return response()->json($request->user()->fresh());
     }

@@ -33,13 +33,22 @@ class TicketResolvedNotification extends Notification
             ->line('If the issue persists, please create a new ticket.');
     }
 
+    /**
+     * Zvoneček (fáze 5) čte `title` a `message`, ostatní klíče jsou odkazy na záznam (#47).
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(object $notifiable): array
     {
+        $address = $this->ticket->property?->address;
+
         return [
             'type' => 'ticket_resolved',
+            'title' => 'Tiket vyřešen',
+            'message' => "Tiket „{$this->ticket->title}“ ({$address}) je vyřešený.",
             'ticket_id' => $this->ticket->id,
-            'title' => $this->ticket->title,
-            'property_address' => $this->ticket->property->address,
+            'ticket_title' => $this->ticket->title,
+            'property_address' => $address,
         ];
     }
 }

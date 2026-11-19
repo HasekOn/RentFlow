@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\TicketStatus;
 use App\Events\LeaseCreated;
 use App\Events\PaymentMarkedPaid;
 use App\Events\TicketCreated;
 use App\Events\TicketResolved;
 use App\Listeners\RecalculateTrustScore;
-use App\Listeners\SendPaymentMarkedNotification;
 use App\Listeners\SendTenantInvitation;
 use App\Listeners\SendTicketCreatedNotification;
 use App\Listeners\SendTicketResolvedNotification;
@@ -51,7 +51,7 @@ class EventListenersTest extends TestCase
             LeaseCreated::class => [SendTenantInvitation::class],
             TicketCreated::class => [SendTicketCreatedNotification::class],
             TicketResolved::class => [SendTicketResolvedNotification::class],
-            PaymentMarkedPaid::class => [RecalculateTrustScore::class, SendPaymentMarkedNotification::class],
+            PaymentMarkedPaid::class => [RecalculateTrustScore::class],
         ];
 
         foreach ($expected as $event => $listeners) {
@@ -81,7 +81,10 @@ class EventListenersTest extends TestCase
 
     public function test_ticket_resolved_notifies_tenant_once(): void
     {
-        $ticket = Ticket::factory()->create(['property_id' => $this->property->id, 'tenant_id' => $this->tenant->id]);
+        // stav pevně: notifikace jde jen při přechodu na vyřešený (#54), factory dává náhodný stav
+        $ticket = Ticket::factory()->create([
+            'property_id' => $this->property->id, 'tenant_id' => $this->tenant->id, 'status' => TicketStatus::InProgress,
+        ]);
 
         $this->actingAs($this->landlord)
             ->putJson($this->apiUrl("/tickets/{$ticket->id}"), ['status' => 'resolved'])
@@ -118,7 +121,7 @@ class EventListenersTest extends TestCase
             ->assertStatus(200)
             ->assertJsonPath('status', 'paid');
 
-        // SendPaymentMarkedNotification je zatím prázdný placeholder – notifikace se neposílá.
+        // potvrzení platby nájemníkovi zatím není (prázdný listener smazán, #56)
         Notification::assertNothingSent();
     }
 }
