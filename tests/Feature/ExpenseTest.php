@@ -22,7 +22,7 @@ class ExpenseTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->setUpPropertyRoles();
+        $this->createPropertyRoles();
         $this->expense = Expense::factory()->create([
             'property_id' => $this->property->id,
             'invoice_path' => 'javascript:alert(1)',

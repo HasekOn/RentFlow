@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Tickets\AddTicketImage;
+use App\Actions\Tickets\DeleteTicketImage;
 use App\Http\Controllers\Api\Concerns\FindsTicket;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TicketImageResource;
@@ -28,7 +30,7 @@ class TicketImageController extends Controller
         return response()->json(TicketImageResource::collection($images));
     }
 
-    public function store(Request $request, string $ticketId): JsonResponse
+    public function store(Request $request, string $ticketId, AddTicketImage $add): JsonResponse
     {
         $ticket = $this->findTicket($ticketId);
         $this->authorize('create', [TicketImage::class, $ticket]);
@@ -38,14 +40,7 @@ class TicketImageController extends Controller
             'description' => ['sometimes', 'string', 'max:255'],
         ]);
 
-        $path = $request->file('image')->store('tickets/'.$ticket->id.'/images', PrivateFile::DISK);
-
-        $image = TicketImage::query()->create([
-            'ticket_id' => $ticket->id,
-            'uploaded_by' => $request->user()->id,
-            'image_path' => $path,
-            'description' => $request->input('description'),
-        ]);
+        $image = $add->handle($ticket, $request->user(), $request->file('image'), $request->input('description'));
 
         $image->load('uploader');
 
@@ -64,7 +59,7 @@ class TicketImageController extends Controller
         return PrivateFile::download($image->image_path, basename($image->image_path));
     }
 
-    public function destroy(string $ticketId, string $imageId): JsonResponse
+    public function destroy(string $ticketId, string $imageId, DeleteTicketImage $delete): JsonResponse
     {
         $image = TicketImage::query()->with('ticket.property')->where('ticket_id', $ticketId)->find($imageId);
         if ($image === null) {
@@ -72,8 +67,7 @@ class TicketImageController extends Controller
         }
         $this->authorize('delete', $image);
 
-        PrivateFile::delete($image->image_path);
-        $image->delete();
+        $delete->handle($image);
 
         return response()->json(['message' => 'Image deleted successfully.']);
     }

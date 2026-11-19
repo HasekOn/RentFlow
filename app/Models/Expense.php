@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Enums\ExpenseType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $property_id
  * @property ExpenseType $type
- * @property float $amount
+ * @property numeric-string $amount
  * @property Carbon $expense_date
  * @property string|null $description
  * @property string|null $invoice_path
@@ -65,7 +66,7 @@ class Expense extends Model
         return [
             'type' => ExpenseType::class,
             'amount' => 'decimal:2',
-            'expense_date' => 'date',
+            'expense_date' => DateOnly::class,
         ];
     }
 }

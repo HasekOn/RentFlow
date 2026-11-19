@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\LeaseStatus;
-use App\Enums\PropertyStatus;
-use App\Events\LeaseCreated;
+use App\Actions\Leases\CreateLease;
+use App\Actions\Leases\DeleteLease;
+use App\Actions\Leases\UpdateLease;
 use App\Http\Controllers\Api\Concerns\FindsLease;
 use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
@@ -15,12 +15,9 @@ use App\Models\Lease;
 use App\Models\User;
 use App\Traits\Filterable;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Validator;
 
 class LeaseController extends Controller
 {
@@ -49,81 +46,24 @@ class LeaseController extends Controller
         return LeaseResource::collection($query->paginate(15));
     }
 
-    public function store(StoreLeaseRequest $request): JsonResponse
+    public function store(StoreLeaseRequest $request, CreateLease $create): JsonResponse
     {
         $property = $this->findProperty((string) $request->validated('property_id'));
         $this->authorize('create', [Lease::class, $property]);
 
-        if ($property->status === PropertyStatus::Renovation) {
-            return response()->json(['message' => 'Cannot create lease for a property under renovation.'], 422);
-        }
-
-        $existingActive = Lease::query()
-            ->where('property_id', $property->id)
-            ->where('tenant_id', $request->validated('tenant_id'))
-            ->where('status', LeaseStatus::Active)
-            ->exists();
-
-        if ($existingActive) {
-            return response()->json(['message' => 'An active lease already exists for this tenant on this property.'], 422);
-        }
-
-        $start = Carbon::parse($request->validated('start_date'));
-        $end = $request->validated('end_date') !== null ? Carbon::parse($request->validated('end_date')) : null;
-        if ($this->overlapsActiveLease($property->id, $start, $end)) {
-            return $this->overlapResponse();
-        }
-
-        $lease = Lease::query()->create($request->validated());
-        $lease->load(['property', 'tenant']);
-
-        LeaseCreated::dispatch($lease);
-
-        if ($property->status === PropertyStatus::Available) {
-            $property->update(['status' => PropertyStatus::Occupied]);
-        }
+        $lease = $create->handle($property, $request->validated());
+        $lease->load('tenant');
 
         return response()->json(new LeaseResource($lease), 201);
     }
 
-    public function update(UpdateLeaseRequest $request, string $id): JsonResponse
+    public function update(UpdateLeaseRequest $request, string $id, UpdateLease $update): JsonResponse
     {
         $lease = $this->findLease($id);
         $this->authorize('update', $lease);
 
-        $oldStatus = $lease->status;
-        $lease->fill($request->validated());
-
-        // konec po začátku i proti uloženému start_date (#30); až po autorizaci, hláška obsahuje datum smlouvy
-        if ($lease->isDirty(['start_date', 'end_date'])) {
-            Validator::make(
-                ['end_date' => $lease->end_date?->toDateString()],
-                ['end_date' => ['nullable', 'after:'.$lease->start_date->toDateString()]],
-            )->validate();
-        }
-
-        // překryv hlídat při změně období a při reaktivaci (#22)
-        if ($lease->status === LeaseStatus::Active
-            && ($oldStatus !== LeaseStatus::Active || $lease->isDirty(['start_date', 'end_date']))
-            && $this->overlapsActiveLease($lease->property_id, $lease->start_date, $lease->end_date, $lease->id)) {
-            return $this->overlapResponse();
-        }
-
-        $lease->save();
-
-        $newStatus = $lease->status;
-        if ($oldStatus === LeaseStatus::Active && in_array($newStatus, [LeaseStatus::Ended, LeaseStatus::Terminated], true)) {
-            $property = $lease->property;
-            if ($property) {
-                $hasOtherActive = $property->leases()
-                    ->where('id', '!=', $lease->id)
-                    ->where('status', LeaseStatus::Active)
-                    ->exists();
-                if (! $hasOtherActive) {
-                    $property->update(['status' => PropertyStatus::Available]);
-                }
-            }
-        }
+        // kontroly období a stavu až po autorizaci, hláška obsahuje datum smlouvy
+        $update->handle($lease, $request->validated());
 
         return response()->json(new LeaseResource($lease));
     }
@@ -139,23 +79,12 @@ class LeaseController extends Controller
         return response()->json(new LeaseResource($lease));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteLease $delete): JsonResponse
     {
         $lease = $this->findLease($id);
         $this->authorize('delete', $lease);
 
-        $property = $lease->property;
-        $lease->delete();
-
-        if ($property && $property->status === PropertyStatus::Occupied) {
-            $hasOtherActive = $property->leases()
-                ->where('id', '!=', $lease->id)
-                ->where('status', LeaseStatus::Active)
-                ->exists();
-            if (! $hasOtherActive) {
-                $property->update(['status' => PropertyStatus::Available]);
-            }
-        }
+        $delete->handle($lease);
 
         return response()->json(['message' => 'Lease deleted successfully.']);
     }
@@ -185,23 +114,5 @@ class LeaseController extends Controller
     protected function getDateField(): string
     {
         return 'start_date';
-    }
-
-    /**
-     * Na jedné nemovitosti nesmí být aktivní smlouvy s překrývajícím se obdobím (rozhodnutí z auditu, #22).
-     */
-    private function overlapsActiveLease(int $propertyId, CarbonInterface $start, ?CarbonInterface $end, ?int $ignoreId = null): bool
-    {
-        return Lease::query()
-            ->where('property_id', $propertyId)
-            ->where('status', LeaseStatus::Active)
-            ->when($ignoreId !== null, fn ($query) => $query->whereKeyNot($ignoreId))
-            ->overlapping($start, $end)
-            ->exists();
-    }
-
-    private function overlapResponse(): JsonResponse
-    {
-        return response()->json(['message' => 'Another active lease on this property overlaps the given period.'], 422);
     }
 }

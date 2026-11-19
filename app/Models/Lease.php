@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Enums\LeaseStatus;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,9 +20,9 @@ use Illuminate\Support\Carbon;
  * @property int $tenant_id
  * @property Carbon $start_date
  * @property Carbon|null $end_date
- * @property float $rent_amount
- * @property float|null $deposit_amount
- * @property float|null $utility_advances
+ * @property numeric-string $rent_amount
+ * @property numeric-string|null $deposit_amount
+ * @property numeric-string|null $utility_advances
  * @property string|null $variable_symbol
  * @property string|null $contract_path
  * @property LeaseStatus $status
@@ -113,8 +114,8 @@ class Lease extends Model
     {
         return [
             'status' => LeaseStatus::class,
-            'start_date' => 'date',
-            'end_date' => 'date',
+            'start_date' => DateOnly::class,
+            'end_date' => DateOnly::class,
             'rent_amount' => 'decimal:2',
             'deposit_amount' => 'decimal:2',
             'utility_advances' => 'decimal:2',

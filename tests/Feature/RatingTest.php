@@ -39,7 +39,7 @@ class RatingTest extends TestCase
 
     public function test_only_property_owner_rates_and_deletes_ratings(): void
     {
-        $this->setUpPropertyRoles();
+        $this->createPropertyRoles();
         $url = $this->apiUrl("/leases/{$this->endedLease->id}/ratings");
         $payload = ['category' => RatingCategory::Overall->value, 'score' => 2];
 
@@ -64,7 +64,7 @@ class RatingTest extends TestCase
 
     public function test_ratings_are_visible_to_whoever_sees_the_lease(): void
     {
-        $this->setUpPropertyRoles();
+        $this->createPropertyRoles();
         Rating::factory()->create(['lease_id' => $this->endedLease->id, 'rated_by' => $this->landlord->id]);
         $url = $this->apiUrl("/leases/{$this->endedLease->id}/ratings");
 

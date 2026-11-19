@@ -2,9 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\PaymentStatus;
-use App\Models\Payment;
-use App\Notifications\PaymentOverdueNotification;
+use App\Actions\Payments\MarkOverduePayments;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Command\Command as CommandAlias;
 
@@ -14,31 +12,9 @@ class CheckOverduePayments extends Command
 
     protected $description = 'Notify tenants about overdue payments and update their trust scores';
 
-    public function handle(): int
+    public function handle(MarkOverduePayments $markOverdue): int
     {
-        // Find payments that are 5+ days overdue and still unpaid
-        $payments = Payment::with(['lease.tenant', 'lease.property'])
-            ->where('status', PaymentStatus::Unpaid)
-            ->where('due_date', '<', now()->subDays(5))
-            ->get();
-
-        $count = 0;
-
-        foreach ($payments as $payment) {
-            // Mark as overdue
-            $payment->update(['status' => PaymentStatus::Overdue]);
-
-            // Notify tenant
-            $tenant = $payment->lease->tenant;
-            if ($tenant) {
-                $tenant->notify(new PaymentOverdueNotification($payment));
-
-                // Recalculate trust score (overdue hurts score)
-                $tenant->recalculateTrustScore();
-            }
-
-            $count++;
-        }
+        $count = $markOverdue->handle(today());
 
         $this->info("Checked overdue payments. Processed $count overdue payments.");
 

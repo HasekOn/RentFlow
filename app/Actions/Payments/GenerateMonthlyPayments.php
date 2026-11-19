@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Měsíční nájem a zálohy na služby pro aktivní smlouvy. Jedna logika pro příkaz scheduleru i API.
+ * Měsíční nájem a zálohy na služby pro aktivní smlouvy platné v daném měsíci. Jedna logika pro příkaz scheduleru
+ * i API.
  *
  * Idempotentní: platba stejného typu, která už v daném měsíci u smlouvy je, se znovu nevytvoří. Zámek
  * v cache (store database funguje napříč procesy) brání souběhu scheduleru a tlačítka v API.
@@ -35,8 +36,14 @@ final class GenerateMonthlyPayments
 
     private function generate(?User $landlord, CarbonInterface $monthStart): int
     {
+        // jen smlouvy platné v daném měsíci a nesmazané nemovitosti (#32): začátek nejpozději v měsíci, konec
+        // nejdřív v něm (smlouva končící 31. ještě před expirací ve 03:00 platbu na další měsíc nedostane)
+        $nextMonth = $monthStart->copy()->addMonth();
         $leases = Lease::query()
             ->where('status', LeaseStatus::Active)
+            ->where('start_date', '<', $nextMonth)
+            ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', $monthStart))
+            ->whereHas('property')
             ->when($landlord !== null, fn ($query) => $query->whereHas(
                 'property',
                 fn ($property) => $property->where('landlord_id', $landlord?->id),

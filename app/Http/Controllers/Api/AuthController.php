@@ -2,21 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Users\RegisterUser;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
-    public function register(Request $request): JsonResponse
+    public function register(Request $request, RegisterUser $register): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -26,12 +25,7 @@ class AuthController extends Controller
             'role' => ['sometimes', Rule::in([Role::Landlord->value, Role::Tenant->value])],
         ]);
 
-        $user = new User([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-        ]);
-        $user->forceFill(['role' => $validated['role'] ?? Role::Tenant])->save();
+        $user = $register->handle($validated);
 
         $token = $user->createToken('auth-token')->plainTextToken;
 

@@ -20,7 +20,7 @@ class InventoryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->setUpPropertyRoles();
+        $this->createPropertyRoles();
         $this->item = InventoryItem::factory()->create(['property_id' => $this->property->id]);
     }
 

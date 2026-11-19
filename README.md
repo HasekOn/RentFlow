@@ -43,7 +43,7 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 - Automatické generování měsíčních plateb (nájem + zálohy na služby)
 - Mark as Paid s přepočtem Trust Score
-- CSV import z bankovního výpisu (párování přes variabilní symbol)
+- CSV import z bankovního výpisu (párování přes VS platby i smlouvy, nesoulad částky jde „ke kontrole“)
 - Automatická detekce overdue plateb
 
 ### Helpdesk (Tickets)
@@ -82,12 +82,12 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 - Automatický výpočet spolehlivosti nájemníka (0–100)
 - Vzorec: (platební morálka × 0.6) + (průměr hodnocení × 0.4)
-- Přepočet při označení platby, po ratingu
+- Přepočet při každé změně platby (označení, úprava, smazání, CSV import, po splatnosti) a po hodnocení
 
 ### Notifikace
 
 - Zvoneček v sidebaru s počtem nepřečtených
-- Typy: nová smlouva, nový ticket, vyřešený ticket, platba přijata, overdue
+- Typy: nová smlouva, nový ticket (vlastník a přiřazení správci kromě autora), vyřešený ticket, overdue, končící smlouva (30 a 7 dní předem)
 - Mark as read, mark all read, auto-poll 60s
 
 ### Manager Flow
@@ -390,9 +390,9 @@ Všechny endpointy pod prefixem `/api/v1/`. Autentizace přes Sanctum Bearer tok
 
 | Command                           | Frekvence     | Co dělá                                                                 |
 |-----------------------------------|---------------|-------------------------------------------------------------------------|
-| `rentflow:generate-payments`      | 1. den měsíce | Vytvoří rent + utility platby pro aktivní leases                        |
+| `rentflow:generate-payments`      | 1. den měsíce | Vytvoří rent + utility platby pro aktivní leases platné v měsíci        |
 | `rentflow:check-overdue-payments` | Denně         | unpaid → overdue + notifikace + trust score recalc                      |
-| `rentflow:check-expiring-leases`  | Denně         | Notifikace o expirujících + auto-expire prošlých + property → available |
+| `rentflow:check-expiring-leases`  | Denně         | Notifikace 30 a 7 dní před koncem + auto-expire prošlých + property → available |
 
 ### Spuštění scheduleru
 
@@ -412,7 +412,8 @@ php artisan rentflow:check-expiring-leases
 |--------------------------|-------------------------------------------------------|
 | Vytvoření lease          | Property status → occupied                            |
 | Ukončení/terminace lease | Property status → available (pokud žádná jiná active) |
-| Mark payment as paid     | Trust score recalc + notifikace                       |
+| Reaktivace lease         | Property status → occupied (v rekonstrukci 422)       |
+| Mark payment as paid     | Trust score recalc (po commitu)                       |
 | Payment overdue (5+ dní) | Status → overdue + notifikace tenant                  |
 | Lease end_date < today   | Status → ended (auto-expire)                          |
 

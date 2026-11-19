@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Tickets\AddTicketComment;
+use App\Actions\Tickets\DeleteTicketComment;
 use App\Http\Controllers\Api\Concerns\FindsTicket;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTicketCommentRequest;
@@ -28,23 +30,12 @@ class TicketCommentController extends Controller
         return response()->json(TicketCommentResource::collection($comments));
     }
 
-    public function store(StoreTicketCommentRequest $request, string $ticketId): JsonResponse
+    public function store(StoreTicketCommentRequest $request, string $ticketId, AddTicketComment $add): JsonResponse
     {
         $ticket = $this->findTicket($ticketId);
         $this->authorize('create', [TicketComment::class, $ticket]);
 
-        $attachmentPath = null;
-
-        if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('tickets/'.$ticket->id, PrivateFile::DISK);
-        }
-
-        $comment = TicketComment::query()->create([
-            'message' => $request->validated('message'),
-            'ticket_id' => $ticket->id,
-            'user_id' => $request->user()->id,
-            'attachment_path' => $attachmentPath,
-        ]);
+        $comment = $add->handle($ticket, $request->user(), $request->validated('message'), $request->file('attachment'));
 
         $comment->load('user');
 
@@ -63,7 +54,7 @@ class TicketCommentController extends Controller
         return PrivateFile::download($comment->attachment_path, basename($comment->attachment_path));
     }
 
-    public function destroy(string $ticketId, string $commentId): JsonResponse
+    public function destroy(string $ticketId, string $commentId, DeleteTicketComment $delete): JsonResponse
     {
         $comment = TicketComment::query()->where('ticket_id', $ticketId)->find($commentId);
         if ($comment === null) {
@@ -71,8 +62,7 @@ class TicketCommentController extends Controller
         }
         $this->authorize('delete', $comment);
 
-        PrivateFile::delete($comment->attachment_path);
-        $comment->delete();
+        $delete->handle($comment);
 
         return response()->json([
             'message' => 'Comment deleted successfully.',

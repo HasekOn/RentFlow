@@ -35,13 +35,22 @@ class TicketCreatedNotification extends Notification
             ->line('Please review and assign this ticket.');
     }
 
+    /**
+     * Zvoneček (fáze 5) čte `title` a `message`, ostatní klíče jsou odkazy na záznam (#47).
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(object $notifiable): array
     {
+        $address = $this->ticket->property?->address;
+
         return [
             'type' => 'ticket_created',
+            'title' => 'Nový tiket',
+            'message' => "„{$this->ticket->title}“ – {$address}",
             'ticket_id' => $this->ticket->id,
-            'title' => $this->ticket->title,
-            'property_address' => $this->ticket->property->address,
+            'ticket_title' => $this->ticket->title,
+            'property_address' => $address,
             'priority' => $this->ticket->priority->value,
         ];
     }

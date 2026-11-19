@@ -34,7 +34,7 @@ trait PropertyRoles
 
     protected Lease $managerLease;
 
-    protected function setUpPropertyRoles(): void
+    protected function createPropertyRoles(): void
     {
         $this->landlord = User::factory()->landlord()->create();
         $this->otherLandlord = User::factory()->landlord()->create();

@@ -3,13 +3,14 @@
 namespace App\Notifications;
 
 use App\Models\Lease;
+use App\Notifications\Concerns\CzechText;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class LeaseExpiringNotification extends Notification
 {
-    use Queueable;
+    use CzechText, Queueable;
 
     public function __construct(
         private readonly Lease $lease
@@ -35,14 +36,23 @@ class LeaseExpiringNotification extends Notification
             ->line('Please contact your landlord to discuss renewal.');
     }
 
+    /**
+     * Zvoneček (fáze 5) čte `title` a `message`, ostatní klíče jsou odkazy na záznam (#47).
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(object $notifiable): array
     {
+        $address = $this->lease->property?->address;
+
         return [
             'type' => 'lease_expiring',
+            'title' => 'Smlouva brzy končí',
+            'message' => "Nájemní smlouva na {$address} končí {$this->czDate($this->lease->end_date)}.",
             'lease_id' => $this->lease->id,
-            'property_address' => $this->lease->property->address,
-            'end_date' => $this->lease->end_date->toDateString(),
-            'days_left' => now()->diffInDays($this->lease->end_date),
+            'property_address' => $address,
+            'end_date' => $this->lease->end_date?->toDateString(),
+            'days_left' => (int) today()->diffInDays($this->lease->end_date),
         ];
     }
 }

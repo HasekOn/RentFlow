@@ -20,7 +20,6 @@ class PropertyImageResource extends JsonResource
             'description' => $this->description,
             'sort_order' => $this->sort_order,
             'created_at' => $this->created_at->toDateTimeString(),
-            'uploaded_by' => UserResource::nested($this->whenLoaded('uploadedBy'), $request),
         ];
     }
 }

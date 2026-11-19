@@ -67,8 +67,10 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
 ## Kód – vzory a gotchas
 
 - **Byznys logika** patří do `app/Actions/<Oblast>/<Sloveso><Věc>.php` (jedna veřejná `handle()`, transakce
-  a eventy uvnitř). Volají ji API controllery i Livewire, autorizace je u volajícího. Services
-  (`TrustScoreService`, `BankImportService`) zůstávají. Postup: skill `rentflow-backend`.
+  a eventy uvnitř, triviální založení + úprava jako jedna `Save<Věc>`). Volají ji API controllery i Livewire,
+  autorizace je u volajícího. Porušení byznys pravidla = `ValidationException::withMessages([pole => …])`
+  (API 422, Livewire u pole), žádné `abort()` ani HTTP odpovědi v Action. Services (`TrustScoreService`,
+  `BankImportService` jen na parsování CSV) zůstávají. Postup: skill `rentflow-backend`.
 - **Co kdo vidí** řeší jeden scope na modelu `visibleTo(User $user)` (vzor `Property::visibleTo`). Používá ho API
   `index` i Livewire seznamy. Nepiš `if ($user->role === …)` větvení do controllerů ani komponent.
 - **Livewire:** autorizace (policy) v **každé** akci, ne jen v `mount()` nebo routě. Route middleware na update
@@ -87,15 +89,18 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
   (`attachment` + `nosniff`). Disk `public` ani `Storage::url()` pro ně nepoužívej, cestu (`*_path`) neposílej
   v JSON ani ji neber od klienta. Upload: whitelist `mimes` + `max` (`Document::MIMES`, `PrivateFile::IMAGE_MIMES`),
   žádné SVG/HTML. PDF smluv se generují za běhu a neukládají.
-- Peníze: sloupce `decimal`. Součty počítej v DB (`SUM`) nebo v haléřích (`int`), nikdy přes float.
-  Formát „12&nbsp;500&nbsp;Kč“ přes jeden helper nebo komponentu (`<x-money>`).
-- Data: SQLite ukládá datum s časem → rozsahy `>=` a `<` (ne `<=` konec dne). Časová zóna `Europe/Prague`.
+- Peníze: sloupce `decimal` (z modelu přijdou jako řetězec). Součty počítej v DB (`SUM`) a dál v haléřích přes
+  `App\Support\Money` (`cents()`, `fromSum()`), nikdy přes float. Formát „12&nbsp;500&nbsp;Kč“ přes
+  `Money::format()` (od fáze 3 komponenta `<x-money>`).
+- Data: sloupce `date` mají cast `App\Casts\DateOnly` (ukládá půlnoc). V dotazech bindovat `Carbon`, ne řetězec
+  `Y-m-d`, rozsahy `>=` začátek a `<` začátek dalšího dne (ne `<=` konec dne). Časová zóna `Europe/Prague`.
 - Kód nesmí záviset na konkrétní DB (lokálně SQLite, produkce zatím nerozhodnutá, README počítá s MariaDB).
 - `env()` jen v `config/*.php`. Novou proměnnou prostředí výslovně nahlas.
 - Pint: `! $x` s mezerou. V docblocku nepiš `@slovo` na začátku slova (Pint to bere jako anotaci).
 - Scheduler (`routes/console.php`): generování plateb (1. v měsíci), po splatnosti (denně) a končící smlouvy (denně).
-  Notifikace jdou do DB a e-mailem **synchronně při requestu** (žádná neimplementuje `ShouldQueue`). O frontě
-  a workeru se rozhodne ve fázi 7.
+  Příkazy jen volají Actions. Eventy implementují `ShouldDispatchAfterCommit` (běží až po commitu transakce).
+  Notifikace jdou do DB a e-mailem **synchronně** (žádná neimplementuje `ShouldQueue`). O frontě a workeru
+  se rozhodne ve fázi 7.
 - Listenery se registrují **jen auto-discovery** z `app/Listeners` podle typu události v `handle(Event $e)`
   (výchozí Laravel 13, jako JaTime). Nepiš `$listen` ani vlastní `EventServiceProvider`, jinak běží každý listener
   dvakrát. Kontrola `php artisan event:list`, hlídá `EventListenersTest`.
@@ -106,7 +111,8 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
   `Livewire::test()`. `tests/Unit` (TrustScore). Testy běží na SQLite `:memory:`.
 - Každá akce pokrývá: jinou roli (403), cizí data (jiný pronajímatel), nepřiřazeného správce, nájemníka bez aktivní
   smlouvy, `#[Locked]`, validaci a počet dotazů nezávislý na množství dat.
-- Pomocné metody v testech nepojmenovávej jako metody `TestCase` (`post()`, `component()` …).
+- Pomocné metody v testech nepojmenovávej jako metody `TestCase` (`post()`, `component()` …). Metodu traitu
+  nepojmenovávej `setUp<NázevTraitu>()`: Laravel ji volá sám, s ručním voláním běží dvakrát (`createPropertyRoles()`).
 - Po 404 nejde stejnou `Testable` dál volat. `Livewire::withQueryParams()` platí i pro další `test()`.
 
 ## Kde co je

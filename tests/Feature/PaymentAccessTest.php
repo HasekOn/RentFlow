@@ -31,7 +31,7 @@ class PaymentAccessTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->setUpPropertyRoles();
+        $this->createPropertyRoles();
         $this->payment = Payment::factory()->create(['lease_id' => $this->lease->id]);
         $this->managerPayment = Payment::factory()->create(['lease_id' => $this->managerLease->id]);
         Payment::factory()->create(['lease_id' => $this->endedLease->id]);

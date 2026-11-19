@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Payments\CreatePayment;
+use App\Actions\Payments\DeletePayment;
 use App\Actions\Payments\GenerateMonthlyPayments;
-use App\Enums\PaymentStatus;
-use App\Events\PaymentMarkedPaid;
+use App\Actions\Payments\ImportBankPayments;
+use App\Actions\Payments\MarkPaymentPaid;
+use App\Actions\Payments\UpdatePayment;
 use App\Http\Controllers\Api\Concerns\FindsLease;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePaymentRequest;
 use App\Http\Requests\UpdatePaymentRequest;
 use App\Http\Resources\PaymentResource;
 use App\Models\Payment;
-use App\Services\BankImportService;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,18 +40,12 @@ class PaymentController extends Controller
         return PaymentResource::collection($query->paginate(20));
     }
 
-    public function store(StorePaymentRequest $request): JsonResponse
+    public function store(StorePaymentRequest $request, CreatePayment $create): JsonResponse
     {
         $lease = $this->findLease((string) $request->validated('lease_id'));
         $this->authorize('create', [Payment::class, $lease]);
 
-        $validated = $request->validated();
-
-        if (! isset($validated['status'])) {
-            $validated['status'] = ! empty($validated['paid_date']) ? PaymentStatus::Paid : PaymentStatus::Unpaid;
-        }
-
-        $payment = Payment::query()->create($validated);
+        $payment = $create->handle($lease, $request->validated());
 
         return response()->json(new PaymentResource($payment), 201);
     }
@@ -65,47 +61,37 @@ class PaymentController extends Controller
         return response()->json(new PaymentResource($payment));
     }
 
-    public function markPaid(string $id): JsonResponse
+    public function markPaid(string $id, MarkPaymentPaid $markPaid): JsonResponse
     {
         $payment = $this->findPayment($id);
         $this->authorize('markPaid', $payment);
 
-        $payment->update([
-            'paid_date' => now()->toDateString(),
-            'status' => PaymentStatus::Paid,
-        ]);
-
-        PaymentMarkedPaid::dispatch($payment);
+        $markPaid->handle($payment, today());
 
         return response()->json(new PaymentResource($payment));
     }
 
-    public function update(UpdatePaymentRequest $request, string $id): JsonResponse
+    public function update(UpdatePaymentRequest $request, string $id, UpdatePayment $update): JsonResponse
     {
         $payment = $this->findPayment($id);
         $this->authorize('update', $payment);
-        $payment->update($request->validated());
+
+        $update->handle($payment, $request->validated());
 
         return response()->json(new PaymentResource($payment));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeletePayment $delete): JsonResponse
     {
         $payment = $this->findPayment($id);
         $this->authorize('delete', $payment);
 
-        if ($payment->status === PaymentStatus::Paid) {
-            return response()->json([
-                'message' => 'Cannot delete a paid payment. Only unpaid or overdue payments can be deleted.',
-            ], 422);
-        }
-
-        $payment->delete();
+        $delete->handle($payment);
 
         return response()->json(['message' => 'Payment deleted successfully.']);
     }
 
-    public function importCsv(Request $request): JsonResponse
+    public function importCsv(Request $request, ImportBankPayments $import): JsonResponse
     {
         $this->authorize('import', Payment::class);
 
@@ -113,17 +99,15 @@ class PaymentController extends Controller
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
         ]);
 
-        $content = file_get_contents($request->file('file')->getRealPath());
-
         // páruje jen smlouvy nemovitostí přihlášeného pronajímatele
-        $service = new BankImportService;
-        $results = $service->import($content, $request->user()->id);
+        $results = $import->handle($request->user(), (string) $request->file('file')->get());
 
         return response()->json([
             'message' => 'CSV import completed.',
             'summary' => [
                 'total_rows' => $results['total_rows'],
                 'matched' => count($results['matched']),
+                'to_review' => count($results['to_review']),
                 'already_paid' => count($results['already_paid']),
                 'unmatched' => count($results['unmatched']),
             ],
@@ -145,7 +129,7 @@ class PaymentController extends Controller
 
     private function findPayment(string $id): Payment
     {
-        $payment = Payment::query()->with('lease.property')->find($id);
+        $payment = Payment::query()->with('lease.property', 'lease.tenant')->find($id);
         if ($payment === null) {
             abort(404);
         }

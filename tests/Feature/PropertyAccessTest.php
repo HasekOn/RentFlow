@@ -129,7 +129,7 @@ class PropertyAccessTest extends TestCase
 
         $this->actingAs($this->landlord)->deleteJson($url)
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Property with an active lease cannot be deleted.');
+            ->assertJsonPath('errors.property.0', 'Property with an active lease cannot be deleted.');
         $this->assertNotSoftDeleted($this->property);
 
         $this->property->leases()->update(['status' => LeaseStatus::Ended]);

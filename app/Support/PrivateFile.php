@@ -2,8 +2,12 @@
 
 namespace App\Support;
 
+use Closure;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * Soubory od uživatelů (dokumenty, fotky, přílohy) leží jen na privátním disku a stahují se autorizovanou routou.
@@ -54,6 +58,30 @@ final class PrivateFile
     public static function extension(string $path): string
     {
         return strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    }
+
+    /**
+     * Uloží nahraný soubor a s jeho cestou vytvoří záznam. Když zápis do DB selže, soubor se smaže (nezůstane sirotek).
+     *
+     * @template T
+     *
+     * @param  Closure(string): T  $create
+     * @return T
+     */
+    public static function storeWith(UploadedFile $file, string $directory, Closure $create): mixed
+    {
+        $path = $file->store($directory, self::DISK);
+        if ($path === false) {
+            throw new RuntimeException('Soubor se nepodařilo uložit.');
+        }
+
+        try {
+            return $create($path);
+        } catch (Throwable $e) {
+            self::delete($path);
+
+            throw $e;
+        }
     }
 
     public static function delete(?string $path): void

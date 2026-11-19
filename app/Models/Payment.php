@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Enums\PaymentStatus;
 use App\Enums\PaymentType;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,7 +16,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $lease_id
  * @property PaymentType $type
- * @property float $amount
+ * @property numeric-string $amount
  * @property Carbon $due_date
  * @property Carbon|null $paid_date
  * @property string|null $variable_symbol
@@ -87,8 +88,8 @@ class Payment extends Model
             'type' => PaymentType::class,
             'status' => PaymentStatus::class,
             'amount' => 'decimal:2',
-            'due_date' => 'date',
-            'paid_date' => 'date',
+            'due_date' => DateOnly::class,
+            'paid_date' => DateOnly::class,
         ];
     }
 }
