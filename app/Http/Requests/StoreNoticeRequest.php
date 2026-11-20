@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\Limits;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreNoticeRequest extends FormRequest
@@ -16,7 +17,7 @@ class StoreNoticeRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'content' => ['required', 'string'],
+            'content' => ['required', 'string', 'max:'.Limits::TEXT],
         ];
     }
 

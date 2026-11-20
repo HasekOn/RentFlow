@@ -62,7 +62,12 @@ class Payment extends Model
      */
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        $query->whereIn('lease_id', Lease::query()->visibleTo($user)->select('id'));
+        // přiřazený správce vidí platby aktivních smluv, ale ne kauce (matice, S5); vlastní kauci jako nájemník ano
+        $query->where(fn (Builder $visible) => $visible
+            ->whereIn('lease_id', Lease::query()->ownedOrRentedBy($user)->select('id'))
+            ->orWhere(fn (Builder $managed) => $managed
+                ->where('type', '!=', PaymentType::Deposit)
+                ->whereIn('lease_id', Lease::query()->managedBy($user)->select('id'))));
     }
 
     /**

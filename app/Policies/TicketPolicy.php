@@ -34,6 +34,20 @@ class TicketPolicy
     }
 
     /**
+     * Komentáře a fotky: kdo vidí nemovitost, vždy; autor bez aktivní smlouvy jen u otevřeného tiketu
+     * (new, in_progress), vyřešený nebo zamítnutý už jen čte.
+     */
+    public function contribute(User $user, Ticket $ticket): bool
+    {
+        if (! $this->view($user, $ticket)) {
+            return false;
+        }
+
+        return in_array($ticket->status, [TicketStatus::New, TicketStatus::InProgress], true)
+            || ($ticket->property !== null && $user->can('view', $ticket->property));
+    }
+
+    /**
      * Všechna pole včetně stavu a řešitele (matice „Resolve ticket“).
      */
     public function update(User $user, Ticket $ticket): bool

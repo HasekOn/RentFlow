@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Leases\AcceptLease;
 use App\Actions\Leases\CreateLease;
+use App\Actions\Leases\DeclineLease;
 use App\Actions\Leases\DeleteLease;
 use App\Actions\Leases\UpdateLease;
 use App\Http\Controllers\Api\Concerns\FindsLease;
@@ -80,6 +82,34 @@ class LeaseController extends Controller
         return response()->json(new LeaseResource($lease));
     }
 
+    /**
+     * Nájemník přijme pozvánku ke smlouvě (S1).
+     */
+    public function accept(string $id, AcceptLease $accept): JsonResponse
+    {
+        $lease = $this->findLease($id);
+        $this->authorize('respond', $lease);
+
+        $accept->handle($lease);
+        $lease->load(['property', 'tenant']);
+
+        return response()->json(new LeaseResource($lease));
+    }
+
+    /**
+     * Nájemník odmítne pozvánku ke smlouvě (S1).
+     */
+    public function decline(string $id, DeclineLease $decline): JsonResponse
+    {
+        $lease = $this->findLease($id);
+        $this->authorize('respond', $lease);
+
+        $decline->handle($lease);
+        $lease->load(['property', 'tenant']);
+
+        return response()->json(new LeaseResource($lease));
+    }
+
     public function destroy(string $id, DeleteLease $delete): JsonResponse
     {
         $lease = $this->findLease($id);
@@ -92,7 +122,7 @@ class LeaseController extends Controller
 
     /**
      * PDF se generuje za běhu a nikam se neukládá (osobní údaje, GET bez vedlejšího efektu).
-     * Obsahuje kauci a osobní údaje, proto jen vlastník a nájemník (LeasePolicy::viewFinance), správce ne.
+     * Obsahuje kauci a osobní údaje, proto jen nájemník a vlastník u přijaté smlouvy (LeasePolicy::downloadPdf).
      */
     public function generatePdf(string $id): Response
     {
@@ -100,7 +130,7 @@ class LeaseController extends Controller
         if ($lease === null) {
             abort(404);
         }
-        $this->authorize('viewFinance', $lease);
+        $this->authorize('downloadPdf', $lease);
 
         $property = $lease->property;
         $tenant = $lease->tenant;

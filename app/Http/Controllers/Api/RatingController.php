@@ -29,7 +29,7 @@ class RatingController extends Controller
             ->with('ratedBy')
             ->get();
 
-        return response()->json(RatingResource::collection($ratings));
+        return response()->json($ratings->map(fn (Rating $rating) => new RatingResource($rating, $lease)));
     }
 
     public function store(StoreRatingRequest $request, string $leaseId, CreateRating $create): JsonResponse

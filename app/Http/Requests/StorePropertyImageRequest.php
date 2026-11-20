@@ -20,8 +20,8 @@ class StorePropertyImageRequest extends FormRequest
         return [
             'image' => ['required', 'file', PrivateFile::IMAGE_MIMES, 'max:'.PrivateFile::IMAGE_MAX_KB],
             'type' => ['sometimes', Rule::enum(PropertyImageType::class)],
-            'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
         ];
     }
 

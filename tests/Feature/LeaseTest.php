@@ -54,7 +54,7 @@ class LeaseTest extends TestCase
 
         $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-01-01',
             'end_date' => '2027-01-01',
             'rent_amount' => 15000,
@@ -65,13 +65,21 @@ class LeaseTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonPath('rent_amount', '15000.00')
-            ->assertJsonPath('variable_symbol', '12345');
+            ->assertJsonPath('variable_symbol', '12345')
+            ->assertJsonPath('status', 'pending');
 
         $this->assertDatabaseHas('leases', [
             'property_id' => $this->property->id,
             'tenant_id' => $tenant->id,
             'variable_symbol' => '12345',
         ]);
+        // nová smlouva je pozvánka (S1): nemovitost obsadí až přijetí nájemníkem
+        $this->assertSame(PropertyStatus::Available, $this->property->refresh()->status);
+
+        $this->actingAs($tenant)
+            ->putJson($this->apiUrl('/leases/'.$response->json('id').'/accept'))
+            ->assertStatus(200)
+            ->assertJsonPath('status', 'active');
         $this->assertSame(PropertyStatus::Occupied, $this->property->refresh()->status);
     }
 
@@ -82,7 +90,7 @@ class LeaseTest extends TestCase
 
         $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-01-01',
             'rent_amount' => 10000,
         ])->assertStatus(422);
@@ -97,7 +105,7 @@ class LeaseTest extends TestCase
 
         $response = $this->actingAs($tenant)->postJson($this->apiUrl('/leases'), [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-01-01',
             'rent_amount' => 10000,
         ]);
@@ -112,7 +120,7 @@ class LeaseTest extends TestCase
 
         $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $otherProperty->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-01-01',
             'rent_amount' => 10000,
         ]);
@@ -126,7 +134,7 @@ class LeaseTest extends TestCase
 
         $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-06-01',
             'end_date' => '2026-01-01',
             'rent_amount' => 10000,
@@ -139,11 +147,13 @@ class LeaseTest extends TestCase
     public function test_store_validates_unique_variable_symbol(): void
     {
         $tenant = User::factory()->tenant()->create();
-        Lease::factory()->create(['variable_symbol' => '99999']);
+        // VS je unikátní jen u téhož pronajímatele (S10), proto existující smlouva na jeho jiné nemovitosti
+        $ownProperty = Property::factory()->create(['landlord_id' => $this->landlord->id]);
+        Lease::factory()->create(['property_id' => $ownProperty->id, 'variable_symbol' => '99999']);
 
         $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-01-01',
             'rent_amount' => 10000,
             'variable_symbol' => '99999',

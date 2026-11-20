@@ -78,7 +78,8 @@ return [
          * direct class use like:
          * $dompdf = new DOMPDF();  $dompdf->load_html($htmldata); $dompdf->render(); $pdfdata = $dompdf->output();
          */
-        'chroot' => realpath(base_path()),
+        // jen šablony PDF, ne celý projekt (.env, storage); smlouvy nevkládají lokální obrázky ani fonty
+        'chroot' => realpath(resource_path('views/pdf')),
 
         /**
          * Protocol whitelist

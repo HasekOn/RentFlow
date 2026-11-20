@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\InventoryCondition;
+use App\Support\Limits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,8 +22,8 @@ class UpdateInventoryItemRequest extends FormRequest
             'category' => ['nullable', 'string', 'max:100'],
             'condition' => ['sometimes', Rule::enum(InventoryCondition::class)],
             'purchase_date' => ['nullable', 'date'],
-            'purchase_price' => ['nullable', 'numeric', 'min:0'],
-            'note' => ['nullable', 'string'],
+            'purchase_price' => ['nullable', 'numeric', 'min:0', 'max:'.Limits::AMOUNT],
+            'note' => ['nullable', 'string', 'max:'.Limits::TEXT],
         ];
     }
 }

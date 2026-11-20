@@ -20,8 +20,8 @@ class ProfileController extends Controller
     public function changePassword(Request $request, ChangePassword $change): JsonResponse
     {
         $validated = $request->validate([
-            'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', Password::min(8), 'confirmed'],
+            'current_password' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string', 'max:255', Password::min(8), 'confirmed'],
         ]);
 
         // token, kterým se heslo mění, zůstane, ostatní se smažou
@@ -41,6 +41,8 @@ class ProfileController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,'.$this->currentUser($request)->id],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
+            // povinné při změně e-mailu, ověří UpdateProfile (S9)
+            'current_password' => ['nullable', 'string', 'max:255'],
         ]);
 
         $update->handle($this->currentUser($request), $validated);

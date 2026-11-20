@@ -140,7 +140,10 @@ class User extends Authenticatable
 
         $query->where(fn (Builder $visible) => $visible
             ->whereKey($viewer->id)
-            ->orWhereHas('leases.property', fn (Builder $property) => $property->where('landlord_id', $viewer->id))
+            // nájemník jen přes smlouvu, kterou přijal (S1): pozvánka sama kontakty ani skóre neprozradí
+            ->orWhereHas('leases', fn (Builder $lease) => $lease
+                ->accepted()
+                ->whereHas('property', fn (Builder $property) => $property->where('landlord_id', $viewer->id)))
             ->orWhereHas('managedProperties', fn (Builder $property) => $property->where('landlord_id', $viewer->id))
             ->orWhereHas('leases', fn (Builder $lease) => $lease
                 ->where('status', LeaseStatus::Active)

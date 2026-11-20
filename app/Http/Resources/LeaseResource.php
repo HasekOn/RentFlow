@@ -3,7 +3,10 @@
 namespace App\Http\Resources;
 
 use App\Enums\LeaseStatus;
+use App\Enums\PaymentType;
 use App\Models\Lease;
+use App\Models\Payment;
+use App\Models\Rating;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -40,13 +43,17 @@ class LeaseResource extends JsonResource
             'created_at' => $this->created_at->toDateTimeString(),
             'property' => new PropertyResource($this->whenLoaded('property')),
             'tenant' => UserResource::nested($this->whenLoaded('tenant'), $request),
-            'payments' => $this->when($payments, fn () => PaymentResource::collection($this->whenLoaded('payments'))),
-            'ratings' => RatingResource::collection($this->whenLoaded('ratings')),
+            // správce bez kaucí jako Payment::visibleTo (B-2)
+            'payments' => $this->when($payments, fn () => PaymentResource::collection($this->whenLoaded(
+                'payments',
+                fn () => $finance ? $this->payments : $this->payments->reject(fn (Payment $payment) => $payment->type === PaymentType::Deposit)->values(),
+            ))),
+            'ratings' => $this->whenLoaded('ratings', fn () => $this->ratings->map(fn (Rating $rating) => new RatingResource($rating, $this->resource))),
         ];
     }
 
     /**
-     * Stejné pravidlo jako LeasePolicy::viewFinance (vlastník a nájemník), jen dávkově: id nemovitostí se načtou
+     * Kauce a všechny platby: vlastník nemovitosti a nájemník smlouvy, dávkově: id nemovitostí se načtou
      * jednou za request (smlouvy vnořené v nemovitosti, platbách …), ne dotazem na každou smlouvu.
      */
     public static function showsFinance(Lease $lease, Request $request): bool

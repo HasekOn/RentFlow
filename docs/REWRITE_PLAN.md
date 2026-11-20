@@ -455,6 +455,47 @@ pokrýt test.
     - nízké: kauce správci přes `/payments` (S5), dokumenty předchozího nájemníka (S6), texty a částky bez `max`
       (S7), zaplacená platba přes `PUT status=unpaid` (S8), změna e-mailu bez hesla (S9), VS unikátní napříč
       pronajímateli (S10), CSV bez limitu řádků (S11), workflow bez `permissions:` (S12).
+- [x] **Opravy S1–S11** (větev `v2-security`, S12 → fáze 6).
+  - *Hotovo 20.&nbsp;11.&nbsp;2026.* Rozhodnutí: Trust Score se sdílí (skóre + počet hodnocení), detaily hodnocení
+    jen u vlastních; autor tiketu po konci smlouvy komentuje jen otevřený tiket; `purchase_price` inventáře
+    zůstává všem (předávací protokol); DomPDF `chroot` jen `resources/views/pdf`.
+  - S1 + S2: smlouva je pozvánka. `LeaseStatus` + `pending` a `declined`, sloupec `leases.accepted_at` je jediné
+    kritérium „přijatá“ (scope `Lease::accepted()`). Přijetí a odmítnutí jen nájemník (`AcceptLease`,
+    `DeclineLease`, `LeasePolicy::respond`, `PUT /leases/{id}/accept|decline`). Překryv a obsazenost až od
+    přijetí, pronajímatel pozvánku jen odvolá (`terminated`), reaktivace jen přijaté smlouvy. Kontakty
+    (`User::visibleTo`), Trust Score, platby a hodnocení jen přes přijaté smlouvy. Datová migrace: stávající
+    smlouvy `accepted_at = created_at`; seed má navíc pozvánku pro Marii.
+  - S3 hodnocení: komentář, hodnotitel a adresa jen pro hodnoceného, autora a vlastníka nemovitosti; `/tenants/{id}/trust-score`
+    vrací `ratings_count`. S4 `Markdown::withSecuredEncoding()`. S5 kauce mimo `Payment::visibleTo` a `markPaid`
+    správce. S6 `documents.lease_id`. S7 `App\Support\Limits` a `max` ve všech Requestech i validaci v controllerech.
+    S8 zaplacená platba jen `note`. S9 změna e-mailu s `current_password`. S10 VS unikátní v rámci pronajímatele.
+    S11 `ImportBankPayments::MAX_ROWS` a `throttle:10,1,import-csv`.
+  - Odchylka: limity na routách mají prefix (`throttle:60,1,auth`, `30,1,lookup`, `10,1,import-csv`). Bez něj
+    sdílely počítadlo s globálním `throttle:200,1` a každý požadavek se počítal dvakrát (login 30/min místo 60).
+  - Výjimky z „migrace jen přidávající“: změna enumu `leases.status` (SQLite přestaví tabulku, jako #29) a zrušení
+    unikátního indexu VS (`down()` selže při duplicitách mezi pronajímateli). Obojí hlídá `MigrationRollbackTest`.
+  - Změněné aserce: `LeaseTest` a `LeaseRulesTest` (obsazenost až po přijetí), `LeaseAccessTest` (překryv
+    při přijetí, ne při založení), `LeaseTest::store_validates_unique_variable_symbol` (duplicita u téhož
+    pronajímatele), `MigrationRollbackTest` (`--step`).
+  - Návrhy: notifikace pronajímateli o přijetí a odmítnutí (fáze 5), vypršení starých pozvánek, DomPDF
+    `enable_javascript` a `allowed_protocols` výslovně v configu.
+  - Kontrolní audit B a F (20.&nbsp;11.) našel tři obchvaty, opravené v téže větvi:
+    - B-1: PDF smlouvy pronajímateli jen u přijaté smlouvy (`LeasePolicy::downloadPdf`, dřív `viewFinance`),
+      jinak pozvánka prozradila e-mail a telefon nájemníka;
+    - B-2: vnořené `payments` v `LeaseResource` bez kaucí pro správce (jako `Payment::visibleTo`);
+    - B-3: pozvánka podle `tenant_email` místo `tenant_id`. Neexistující účet i účet pronajímatele vrací stejnou
+      422, `POST /leases` sdílí limit `throttle:30,1,tenant-lookup` s `users/lookup`. Změna tvaru API: testy
+      posílají `tenant_email` místo `tenant_id`, chyby duplicity a role jsou u pole `tenant_email`.
+  - Rozhodnutí po auditu: nájemník vidí tikety svého bytu založené od `start_date` své aktivní smlouvy a své
+    vlastní, celou historii vlastník a správce (`Ticket::visibleTo`). Pozvánku (`pending`) nejde upravit, jen
+    odvolat (422 „odvolejte a pošlete novou“). `lease_id` u dokumentu zůstává volitelné.
+  - Druhý krátký audit B a F: N-1 (u nemovitosti v rekonstrukci klíč chyby prozradil existenci účtu) opraven
+    pořadím kontrol v `CreateLease`. Rozhodnutí k jeho otázkám:
+    - přijatá smlouva s budoucím začátkem: smlouvu, PDF a platby vidí nájemník hned, nemovitost (a na ní
+      oznámení, měřiče, inventář, tikety) a dokumenty až od `start_date`. Nový scope `Lease::current()` (aktivní
+      a už začala) v `Property::visibleTo` a `Document::visibleTo`; předchozí nájemník vidí byt do konce smlouvy;
+    - hodnocení v `/leases/{id}` a `/leases/{id}/ratings`: detail (komentář, hodnotitel) jen autor, hodnocený
+      a vlastník (`RatingResource`), přiřazený správce jen id, kategorii, skóre a datum, i u reaktivované smlouvy.
 
 **Nálezy mimo fázi 2:**
 
@@ -467,6 +508,7 @@ pokrýt test.
 | #56 | 4 | `routes/web.php` s `welcome` nahradí webové routy. |
 | review 2.2 | 5 | České názvy atributů ve validaci (`lang/cs/validation.php`, `attributes`): teď „Vybraná stav je neplatná“. |
 | review 2.2 | 6 | `days_overdue` v `PaymentResource` je float (`diffInDays` v Carbon 3 vrací desetinné číslo). |
+| S12 | 6 | GitHub workflow bez `permissions:` (token s výchozími právy zápisu). Spolu se zapnutím CI. |
 
 Krok se dá spustit i skillem `/rentflow-step 2.x <název kroku>` (stav repa, plán, kontroly, odškrtnutí, shrnutí).
 
@@ -524,7 +566,12 @@ vzhled uprav pro RentFlow podle schváleného návrhu. Nepřidávej závislosti 
 - [ ] Přihlášení `/login`, registrace `/registrace`, odhlášení `/logout`, zapomenuté heslo `/zapomenute-heslo`
       (vzor `LoginController` z JaTime, rate limiter `login` podle e-mailu a IP, #25)
 - [ ] Middleware `role:` pro web (redirect/403 stránka místo JSON), `$middleware->authenticateSessions()`
-- [ ] Profil a změna hesla (`/nastaveni`), změna hesla odhlásí ostatní zařízení (#25)
+- [ ] Profil a změna hesla (`/nastaveni`), změna hesla odhlásí ostatní zařízení (#25), změna e-mailu jen se
+      současným heslem (S9, `UpdateProfile` už to vynucuje)
+- [ ] **Smazání účtu a export osobních údajů** (`/nastaveni`, GDPR, z auditu S1–S11): navrhnout ve fázi 4
+      (co se smaže a co anonymizuje: smlouvy, platby, hodnocení a tikety zůstávají pronajímateli), UI ve fázi 5.
+      Patří sem i soubory smazaných tiketů: `DeleteTicket` je soft delete, fotky a přílohy komentářů zůstávají
+      na privátním disku (bez přístupu, ale jsou to osobní údaje) → smazat je při trvalém smazání nebo anonymizaci.
 - [ ] Sanctum a API nechat beze změny (API zůstává do rozhodnutí ve fázi 6)
 - [ ] Webové routy pro soubory se session auth (dokument, fotka nemovitosti, fotka a příloha tiketu, PDF smlouvy):
       stejné policies a `PrivateFile::download()` jako API z 2.3. API routy chtějí Bearer token, takže
@@ -543,10 +590,16 @@ Pořadí podle závislostí. URL česky. Detail nemovitosti rozdělit na zálož
 - [ ] Detail nemovitosti – inventář
 - [ ] Detail nemovitosti – náklady (návrh z 2.3: upload faktury na privátní disk místo `invoice_path` od klienta;
       totéž pro fotku odečtu `photo_proof` u měřičů)
-- [ ] Detail nemovitosti – dokumenty
+- [ ] Detail nemovitosti – dokumenty (formulář předvyplní `lease_id` aktuální aktivní smlouvy, S6: dokument
+      pro nájemníka pak neuvidí další nájemník; prázdné = všichni nájemníci bytu)
 - [ ] Detail nemovitosti – oznámení
 - [ ] Detail nemovitosti – správci
 - [ ] Smlouvy `/smlouvy` + detail `/smlouvy/{lease}` (PDF, hodnocení nájemníka; výběr nemovitosti bez stránkování, #45)
+- [ ] **Pozvánky ke smlouvě** u nájemníka (S1): seznam pozvánek `pending` (přehled a `/smlouvy`), detail s nájemným,
+      kaucí a termíny, tlačítka Přijmout / Odmítnout (`AcceptLease`, `DeclineLease`, chyby 422 u pole). U pronajímatele
+      stav „čeká na nájemníka“ a odvolání pozvánky (pozvánku nejde upravit, jen odvolat a poslat novou). Nájemník
+      se zadává e-mailem (`tenant_email`, B-3), chyba je u pole. Zvoneček: notifikace `tenant_invitation` vede
+      na pozvánku.
 - [ ] Platby `/platby` (označit zaplaceno, generování, CSV import)
 - [ ] Tikety `/tikety` + detail `/tikety/{ticket}` (komentáře, fotky, stavy; výběr nemovitosti bez stránkování, #45)
 - [ ] Lidé `/lide` + detail `/lide/{user}` (Trust Score, hodnocení, povýšení na správce)

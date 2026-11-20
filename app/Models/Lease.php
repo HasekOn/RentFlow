@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $variable_symbol
  * @property string|null $contract_path
  * @property LeaseStatus $status
+ * @property Carbon|null $accepted_at kdy nájemník smlouvu přijal (null = pozvánka, odmítnutá nebo odvolaná)
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Carbon|null $deleted_at
@@ -46,7 +47,7 @@ class Lease extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'status' => LeaseStatus::Active->value,
+        'status' => LeaseStatus::Pending->value,
     ];
 
     protected $fillable = [
@@ -71,11 +72,60 @@ class Lease extends Model
     public function scopeVisibleTo(Builder $query, User $user): void
     {
         $query->where(fn (Builder $visible) => $visible
+            ->ownedOrRentedBy($user)
+            ->orWhere(fn (Builder $managed) => $managed->managedBy($user)));
+    }
+
+    /**
+     * Smlouvy vlastních nemovitostí a vlastní nájemní smlouvy (bez správcovství).
+     *
+     * @param  Builder<Lease>  $query
+     */
+    public function scopeOwnedOrRentedBy(Builder $query, User $user): void
+    {
+        $query->where(fn (Builder $visible) => $visible
             ->where('tenant_id', $user->id)
-            ->orWhereHas('property', fn (Builder $property) => $property->where('landlord_id', $user->id))
-            ->orWhere(fn (Builder $managed) => $managed
-                ->where('status', LeaseStatus::Active)
-                ->whereHas('property.managers', fn (Builder $manager) => $manager->whereKey($user->id))));
+            ->orWhereHas('property', fn (Builder $property) => $property->where('landlord_id', $user->id)));
+    }
+
+    /**
+     * Aktivní smlouvy nemovitostí, ke kterým je uživatel přiřazený jako správce.
+     *
+     * @param  Builder<Lease>  $query
+     */
+    public function scopeManagedBy(Builder $query, User $user): void
+    {
+        $query->where('status', LeaseStatus::Active)
+            ->whereHas('property.managers', fn (Builder $manager) => $manager->whereKey($user->id));
+    }
+
+    /**
+     * Nájemník v bytě teď bydlí: aktivní smlouva, která už začala. Smlouvu, PDF a platby vidí nájemník hned
+     * po přijetí, nemovitost, oznámení, dokumenty a tikety až od `start_date` (do té doby tam bydlí předchozí
+     * nájemník).
+     *
+     * @param  Builder<Lease>  $query
+     */
+    public function scopeCurrent(Builder $query): void
+    {
+        $query->where('status', LeaseStatus::Active)
+            ->where('start_date', '<', today()->addDay());
+    }
+
+    /**
+     * Smlouvy, které nájemník přijal (i později ukončené). Jen z nich se počítá Trust Score a hodnocení
+     * a jen přes ně pronajímatel vidí kontakty nájemníka (S1, S2).
+     *
+     * @param  Builder<Lease>  $query
+     */
+    public function scopeAccepted(Builder $query): void
+    {
+        $query->whereNotNull('accepted_at');
+    }
+
+    public function isAccepted(): bool
+    {
+        return $this->accepted_at !== null;
     }
 
     /**
@@ -120,6 +170,7 @@ class Lease extends Model
     {
         return [
             'status' => LeaseStatus::class,
+            'accepted_at' => 'datetime',
             'start_date' => DateOnly::class,
             'end_date' => DateOnly::class,
             'rent_amount' => 'decimal:2',

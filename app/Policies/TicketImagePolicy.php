@@ -7,7 +7,8 @@ use App\Models\TicketImage;
 use App\Models\User;
 
 /**
- * Fotky tiketu vidí a nahrává každý, kdo vidí tiket (TicketPolicy::view, #10). Maže ten, kdo fotku nahrál,
+ * Fotky tiketu vidí každý, kdo vidí tiket (TicketPolicy::view, #10), nahrává kdo smí přispívat
+ * (TicketPolicy::contribute). Maže ten, kdo fotku nahrál,
  * nebo vlastník nemovitosti tiketu (dřív kterýkoli pronajímatel).
  */
 class TicketImagePolicy
@@ -19,7 +20,7 @@ class TicketImagePolicy
 
     public function create(User $user, Ticket $ticket): bool
     {
-        return $user->can('view', $ticket);
+        return $user->can('contribute', $ticket);
     }
 
     public function delete(User $user, TicketImage $image): bool

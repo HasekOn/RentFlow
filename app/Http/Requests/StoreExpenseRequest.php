@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\ExpenseType;
+use App\Support\Limits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,9 +20,9 @@ class StoreExpenseRequest extends FormRequest
         return [
             'property_id' => ['required', 'exists:properties,id'],
             'type' => ['required', Rule::enum(ExpenseType::class)],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'amount' => ['required', 'numeric', 'min:0', 'max:'.Limits::AMOUNT],
             'expense_date' => ['required', 'date'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:255'],
         ];
     }
 

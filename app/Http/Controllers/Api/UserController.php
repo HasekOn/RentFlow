@@ -65,13 +65,15 @@ class UserController extends Controller
             abort(404);
         }
         $this->authorize('view', $user);
+        $viewer = $this->currentUser($request);
 
+        // sdílí se kategorie a skóre (Trust Score), komentář, hodnotitel a adresa jen u vlastních hodnocení (S3)
         $ratings = Rating::query()
-            ->whereIn('lease_id', Lease::withTrashed()->select('id')->where('tenant_id', $user->id))
+            ->whereIn('lease_id', Lease::withTrashed()->accepted()->select('id')->where('tenant_id', $user->id))
             ->with(['ratedBy', 'lease.property'])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(fn (Rating $rating) => [
+            ->map(fn (Rating $rating) => $this->seesRatingDetail($viewer, $user, $rating) ? [
                 'id' => $rating->id,
                 'category' => $rating->category,
                 'score' => $rating->score,
@@ -79,8 +81,24 @@ class UserController extends Controller
                 'created_at' => $rating->created_at->toDateTimeString(),
                 'rated_by' => $rating->ratedBy ? ['id' => $rating->ratedBy->id, 'name' => $rating->ratedBy->name] : null,
                 'property' => $rating->lease?->property ? ['address' => $rating->lease->property->address] : null,
+            ] : [
+                'id' => $rating->id,
+                'category' => $rating->category,
+                'score' => $rating->score,
+                'created_at' => $rating->created_at->toDateTimeString(),
             ]);
 
         return response()->json($ratings);
+    }
+
+    /**
+     * Komentář, hodnotitele a adresu vidí hodnocený nájemník, autor hodnocení a vlastník nemovitosti.
+     * Ostatní (pronajímatel z jiné nemovitosti) jen kategorii a skóre.
+     */
+    private function seesRatingDetail(User $viewer, User $rated, Rating $rating): bool
+    {
+        return $viewer->id === $rated->id
+            || $rating->rated_by === $viewer->id
+            || $rating->lease?->property?->landlord_id === $viewer->id;
     }
 }

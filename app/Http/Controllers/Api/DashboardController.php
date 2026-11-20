@@ -100,8 +100,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * Nezaplacené a po splatnosti platby aktivních smluv daných nemovitostí (stejný výřez jako Payment::visibleTo
-     * pro správce): počet a součet v DB.
+     * Nezaplacené a po splatnosti platby aktivních smluv daných nemovitostí bez kauce (stejný výřez jako
+     * Payment::visibleTo pro správce, S5): počet a součet v DB.
      *
      * @param  Collection<int, int>  $propertyIds
      * @return array<string, array{count: int, amount: float}>
@@ -112,6 +112,7 @@ class DashboardController extends Controller
         foreach (['unpaid' => PaymentStatus::Unpaid, 'overdue' => PaymentStatus::Overdue] as $key => $status) {
             $payments = Payment::query()
                 ->where('status', $status)
+                ->where('type', '!=', PaymentType::Deposit)
                 ->whereHas('lease', fn ($lease) => $lease
                     ->where('status', LeaseStatus::Active)
                     ->whereIn('property_id', $propertyIds));
@@ -271,7 +272,8 @@ class DashboardController extends Controller
         $service = new TrustScoreService;
         $score = $service->calculate($tenant);
 
-        $leaseIds = $tenant->leases()->pluck('id');
+        // stejně jako TrustScoreService jen přijaté smlouvy (S2); sdílí se skóre, souhrn a počet hodnocení (S3)
+        $leaseIds = $tenant->leases()->accepted()->pluck('id');
 
         $totalPayments = Payment::query()->whereIn('lease_id', $leaseIds)
             ->where('type', PaymentType::Rent)
@@ -284,11 +286,13 @@ class DashboardController extends Controller
             ->count();
 
         $averageRating = Rating::query()->whereIn('lease_id', $leaseIds)->avg('score');
+        $ratingsCount = Rating::query()->whereIn('lease_id', $leaseIds)->count();
 
         return response()->json([
             'tenant_id' => $tenant->id,
             'tenant_name' => $tenant->name,
             'trust_score' => $score,
+            'ratings_count' => $ratingsCount,
             'breakdown' => [
                 'total_payments' => $totalPayments,
                 'on_time_payments' => $onTimePayments,

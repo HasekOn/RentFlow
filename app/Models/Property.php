@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\LeaseStatus;
 use App\Enums\PropertyStatus;
 use Database\Factories\PropertyFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -68,7 +67,8 @@ class Property extends Model
     ];
 
     /**
-     * Kdo nemovitost vidí: vlastník, přiřazený správce a nájemník s aktivní smlouvou (podle vztahu, ne role).
+     * Kdo nemovitost vidí: vlastník, přiřazený správce a nájemník, který tu teď bydlí (Lease::current: aktivní
+     * smlouva od `start_date`). Podle vztahu, ne role. Na tomhle stojí i oznámení, měřiče, inventář a tikety.
      *
      * @param  Builder<Property>  $query
      */
@@ -79,7 +79,7 @@ class Property extends Model
             ->orWhereHas('managers', fn (Builder $manager) => $manager->whereKey($user->id))
             ->orWhereHas('leases', fn (Builder $lease) => $lease
                 ->where('tenant_id', $user->id)
-                ->where('status', LeaseStatus::Active)));
+                ->current()));
     }
 
     /** @return BelongsTo<User, $this> */

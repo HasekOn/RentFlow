@@ -21,6 +21,12 @@ final class CreateRating
     public function handle(Lease $lease, User $author, array $data): Rating
     {
         return DB::transaction(function () use ($lease, $author, $data): Rating {
+            // hodnotit jde jen smlouvu, kterou nájemník přijal (S2), a až po jejím konci
+            if (! $lease->isAccepted()) {
+                throw ValidationException::withMessages([
+                    'lease' => __('Only a lease the tenant has accepted can be rated.'),
+                ]);
+            }
             if ($lease->status === LeaseStatus::Active) {
                 throw ValidationException::withMessages([
                     'lease' => __('Cannot rate an active lease. End the lease first.'),

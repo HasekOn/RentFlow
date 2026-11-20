@@ -26,12 +26,21 @@ class LeasePolicy
     }
 
     /**
-     * Kauce a PDF smlouvy: jen vlastník nemovitosti a nájemník smlouvy. Přiřazený správce vidí u aktivních smluv
-     * nájemné, zálohy, VS a platby (LeaseResource), kauci a PDF ne.
+     * PDF smlouvy (kauce, kontakty obou stran): nájemník smlouvy vždy, vlastník nemovitosti jen u smlouvy, kterou
+     * nájemník přijal (B-1: jinak by pozvánka s cizím nájemníkem prozradila jeho e-mail a telefon). Správce ne.
      */
-    public function viewFinance(User $user, Lease $lease): bool
+    public function downloadPdf(User $user, Lease $lease): bool
     {
-        return $lease->tenant_id === $user->id || $lease->property?->landlord_id === $user->id;
+        return $lease->tenant_id === $user->id
+            || ($lease->isAccepted() && $lease->property?->landlord_id === $user->id);
+    }
+
+    /**
+     * Přijetí nebo odmítnutí pozvánky (S1): jen nájemník smlouvy (i správce, který je nájemníkem). Stav hlídá Action.
+     */
+    public function respond(User $user, Lease $lease): bool
+    {
+        return $lease->tenant_id === $user->id;
     }
 
     public function create(User $user, Property $property): bool

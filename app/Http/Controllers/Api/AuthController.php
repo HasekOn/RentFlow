@@ -20,7 +20,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'string', 'max:255', 'confirmed', Password::min(8)],
             // Správcem se uživatel stává jen povýšením od pronajímatele (ManagerController::promote).
             'role' => ['sometimes', Rule::in([Role::Landlord->value, Role::Tenant->value])],
         ]);
@@ -38,8 +38,8 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string', 'max:255'],
         ]);
 
         if (! Auth::attempt($validated)) {

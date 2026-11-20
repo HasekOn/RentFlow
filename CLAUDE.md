@@ -60,7 +60,11 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
 - **Specifikace oprávnění = matice v `README.md` (sekce „Role a oprávnění“).** Když se kód s maticí rozchází,
   nehádej a zeptej se.
 - Pronajímatel vidí a spravuje jen **své** nemovitosti (`properties.landlord_id`). Správce jen **přiřazené**
-  (`property_manager`) a může být zároveň nájemníkem jinde. Nájemník vidí jen nemovitosti s **aktivní** smlouvou.
+  (`property_manager`) a může být zároveň nájemníkem jinde. Nájemník vidí jen nemovitosti, kde **teď bydlí**:
+  scope `Lease::current()` (aktivní smlouva, která už začala). Smlouvu a platby vidí hned po přijetí.
+- Nová smlouva je **pozvánka** (`pending`), aktivní je až po přijetí nájemníkem (`AcceptLease`). Kontakty,
+  platby, hodnocení a Trust Score nájemníka jen přes přijaté smlouvy: scope `Lease::accepted()` (`accepted_at`),
+  ne podle stavu (odvolaná pozvánka je `terminated`, ale přijatá nebyla).
 - Policies jsou v `app/Policies` (Property, Lease, Payment, Ticket, Expense, Notice). Ostatní modely (Document, Meter,
   MeterReading, InventoryItem, Rating, User) policy zatím nemají a doplní se ve fázi 2.
 
@@ -98,6 +102,7 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
 - Data: sloupce `date` mají cast `App\Casts\DateOnly` (ukládá půlnoc). V dotazech bindovat `Carbon`, ne řetězec
   `Y-m-d`, rozsahy `>=` začátek a `<` začátek dalšího dne (ne `<=` konec dne). Časová zóna `Europe/Prague`.
 - Kód nesmí záviset na konkrétní DB (lokálně SQLite, produkce zatím nerozhodnutá, README počítá s MariaDB).
+- Horní meze vstupů z `App\Support\Limits` (texty, částky podle `decimal`): každé nové pole v Requestu má `max`.
 - `env()` jen v `config/*.php`. Novou proměnnou prostředí výslovně nahlas.
 - Pint: `! $x` s mezerou. V docblocku nepiš `@slovo` na začátku slova (Pint to bere jako anotaci).
 - Scheduler (`routes/console.php`): generování plateb (1. v měsíci), po splatnosti (denně) a končící smlouvy (denně).

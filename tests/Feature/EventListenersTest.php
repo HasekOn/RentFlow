@@ -99,7 +99,7 @@ class EventListenersTest extends TestCase
 
         $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $property->id,
-            'tenant_id' => $this->tenant->id,
+            'tenant_email' => $this->tenant->email,
             'start_date' => '2026-01-01',
             'rent_amount' => 12000,
         ])->assertStatus(201);

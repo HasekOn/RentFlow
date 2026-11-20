@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\TicketCategory;
 use App\Enums\TicketPriority;
+use App\Support\Limits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,7 +21,7 @@ class StoreTicketRequest extends FormRequest
         return [
             'property_id' => ['required', 'exists:properties,id'],
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'min:10'],
+            'description' => ['required', 'string', 'min:10', 'max:'.Limits::TEXT],
             'category' => ['sometimes', Rule::enum(TicketCategory::class)],
             'priority' => ['sometimes', Rule::enum(TicketPriority::class)],
         ];
