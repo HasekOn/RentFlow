@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PaymentStatus;
 use App\Models\Lease;
 use App\Models\Payment;
 use App\Models\Property;
@@ -223,6 +224,32 @@ class PaymentTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('summary.matched', 0)
             ->assertJsonPath('summary.unmatched', 1);
+    }
+
+    public function test_csv_import_pairs_only_payments_of_own_properties(): void
+    {
+        // cizí smlouva s VS, který se po očištění (úvodní nuly) shoduje s řádkem výpisu
+        $foreign = Payment::factory()->unpaid()->create([
+            'lease_id' => Lease::factory()->create(['variable_symbol' => '0077'])->id,
+            'amount' => 9000,
+        ]);
+        // vlastní smlouva na smazané nemovitosti
+        $deletedProperty = Property::factory()->create(['landlord_id' => $this->landlord->id]);
+        $orphan = Payment::factory()->unpaid()->create([
+            'lease_id' => Lease::factory()->create(['property_id' => $deletedProperty->id, 'variable_symbol' => '88'])->id,
+            'amount' => 9000,
+        ]);
+        $deletedProperty->delete();
+
+        $csv = "Datum;Částka;Variabilní symbol\n15.03.2026;9000,00;77\n15.03.2026;9000,00;88";
+        $this->actingAs($this->landlord)
+            ->postJson($this->apiUrl('/payments/import-csv'), ['file' => UploadedFile::fake()->createWithContent('vypis.csv', $csv)])
+            ->assertStatus(200)
+            ->assertJsonPath('summary.matched', 0)
+            ->assertJsonPath('summary.unmatched', 2);
+
+        $this->assertSame(PaymentStatus::Unpaid, $foreign->refresh()->status);
+        $this->assertSame(PaymentStatus::Unpaid, $orphan->refresh()->status);
     }
 
     public function test_tenant_cannot_import_csv(): void

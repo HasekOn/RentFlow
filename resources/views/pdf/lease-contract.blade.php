@@ -275,24 +275,22 @@
 <table class="info-table">
     <tr>
         <td class="label-cell">Monthly Rent</td>
-        <td class="value-cell">{{ number_format($lease->rent_amount, 2, ',', ' ') }} CZK</td>
+        <td class="value-cell">{{ \App\Support\Money::format(\App\Support\Money::cents($lease->rent_amount)) }}</td>
     </tr>
     @if($lease->utility_advances)
         <tr>
             <td class="label-cell">Utility Advances</td>
-            <td class="value-cell">{{ number_format($lease->utility_advances, 2, ',', ' ') }} CZK</td>
+            <td class="value-cell">{{ \App\Support\Money::format(\App\Support\Money::cents($lease->utility_advances)) }}</td>
         </tr>
         <tr class="total-row">
             <td class="label-cell">Total Monthly Payment</td>
-            <td class="value-cell">{{ number_format($lease->rent_amount + $lease->utility_advances, 2, ',', ' ') }}
-                CZK
-            </td>
+            <td class="value-cell">{{ \App\Support\Money::format(\App\Support\Money::cents($lease->rent_amount) + \App\Support\Money::cents($lease->utility_advances)) }}</td>
         </tr>
     @endif
     @if($lease->deposit_amount)
         <tr>
             <td class="label-cell">Security Deposit</td>
-            <td class="value-cell">{{ number_format($lease->deposit_amount, 2, ',', ' ') }} CZK</td>
+            <td class="value-cell">{{ \App\Support\Money::format(\App\Support\Money::cents($lease->deposit_amount)) }}</td>
         </tr>
     @endif
     @if($lease->variable_symbol)

@@ -11,15 +11,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class MeterReadingResource extends JsonResource
 {
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [
             'id' => $this->id,
             'reading_value' => $this->reading_value,
             'reading_date' => $this->reading_date->format('Y-m-d'),
-            'photo_proof' => $this->photo_proof,
             'created_at' => $this->created_at->toDateTimeString(),
-            'submitted_by' => new UserResource($this->whenLoaded('submittedBy')),
+            'submitted_by' => UserResource::nested($this->whenLoaded('submittedBy'), $request),
         ];
     }
 }

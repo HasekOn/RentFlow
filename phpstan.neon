@@ -1,0 +1,8 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+    # Level 8 bez baseline jako JaTime (od uzavření fáze 2, docs/REWRITE_PLAN.md).
+    level: 8

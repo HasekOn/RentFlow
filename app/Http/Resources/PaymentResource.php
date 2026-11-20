@@ -11,6 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class PaymentResource extends JsonResource
 {
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [
@@ -22,9 +23,7 @@ class PaymentResource extends JsonResource
             'variable_symbol' => $this->variable_symbol,
             'status' => $this->status,
             'note' => $this->note,
-            'days_overdue' => $this->status !== 'paid' && $this->due_date->isPast()
-                ? $this->due_date->diffInDays(now())
-                : null,
+            'days_overdue' => $this->resource->daysOverdue(),
             'created_at' => $this->created_at->toDateTimeString(),
             'lease' => new LeaseResource($this->whenLoaded('lease')),
         ];

@@ -2,19 +2,25 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Meters\DeleteMeter;
+use App\Actions\Meters\SaveMeter;
+use App\Http\Controllers\Api\Concerns\FindsMeter;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMeterRequest;
 use App\Http\Requests\UpdateMeterRequest;
 use App\Http\Resources\MeterResource;
 use App\Models\Meter;
-use App\Models\Property;
 use Illuminate\Http\JsonResponse;
 
 class MeterController extends Controller
 {
+    use FindsMeter, FindsProperty;
+
     public function index(string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('view', $property);
 
         $meters = $property->meters()
             ->with(['readings' => function ($query) {
@@ -25,20 +31,12 @@ class MeterController extends Controller
         return response()->json(MeterResource::collection($meters));
     }
 
-    public function store(StoreMeterRequest $request, string $propertyId): JsonResponse
+    public function store(StoreMeterRequest $request, string $propertyId, SaveMeter $save): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('create', [Meter::class, $property]);
 
-        if ($property->landlord_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only add meters to your own properties.',
-            ], 403);
-        }
-
-        $meter = Meter::query()->create([
-            ...$request->validated(),
-            'property_id' => $property->id,
-        ]);
+        $meter = $save->handle($property, $request->validated());
 
         return response()->json(new MeterResource($meter), 201);
     }
@@ -47,25 +45,36 @@ class MeterController extends Controller
     {
         $meter = Meter::query()->with(['readings' => function ($query) {
             $query->orderBy('reading_date', 'desc');
-        }, 'property'])->findOrFail($id);
+        }, 'property'])->find($id);
+        if ($meter === null) {
+            abort(404);
+        }
+        $this->authorize('view', $meter);
 
         return response()->json(new MeterResource($meter));
     }
 
-    public function update(UpdateMeterRequest $request, string $id): JsonResponse
+    public function update(UpdateMeterRequest $request, string $id, SaveMeter $save): JsonResponse
     {
-        $meter = Meter::query()->findOrFail($id);
+        $meter = $this->findMeter($id);
+        $this->authorize('update', $meter);
 
-        $meter->update($request->validated());
+        // u smazané nemovitosti vrátí policy 403 dřív, kontrola null jen zúží typ
+        $property = $meter->property;
+        if ($property === null) {
+            abort(404);
+        }
+        $save->handle($property, $request->validated(), $meter);
 
         return response()->json(new MeterResource($meter));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteMeter $delete): JsonResponse
     {
-        $meter = Meter::query()->findOrFail($id);
+        $meter = $this->findMeter($id);
+        $this->authorize('delete', $meter);
 
-        $meter->delete();
+        $delete->handle($meter);
 
         return response()->json([
             'message' => 'Meter deleted successfully.',

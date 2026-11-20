@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\ExpenseType;
+use App\Support\Limits;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreExpenseRequest extends FormRequest
 {
@@ -11,15 +14,15 @@ class StoreExpenseRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
             'property_id' => ['required', 'exists:properties,id'],
-            'type' => ['required', 'in:repair,insurance,tax,maintenance,other'],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'type' => ['required', Rule::enum(ExpenseType::class)],
+            'amount' => ['required', 'numeric', 'min:0', 'max:'.Limits::AMOUNT],
             'expense_date' => ['required', 'date'],
-            'description' => ['nullable', 'string'],
-            'invoice_path' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:255'],
         ];
     }
 

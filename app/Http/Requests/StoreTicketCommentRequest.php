@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Support\Limits;
+use App\Support\PrivateFile;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTicketCommentRequest extends FormRequest
@@ -11,11 +13,12 @@ class StoreTicketCommentRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
-            'message' => ['required', 'string', 'min:1'],
-            'attachment' => ['sometimes', 'file', 'image', 'max:5120'], // max 5MB
+            'message' => ['required', 'string', 'min:1', 'max:'.Limits::COMMENT],
+            'attachment' => ['sometimes', 'file', PrivateFile::IMAGE_MIMES, 'max:'.PrivateFile::IMAGE_MAX_KB],
         ];
     }
 

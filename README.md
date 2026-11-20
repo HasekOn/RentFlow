@@ -34,7 +34,9 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 ### Nájemní smlouvy (Leases)
 
-- Vytváření smluv s automatickým propojením tenant ↔ property
+- Smlouva je pozvánka: pronajímatel ji pošle na e-mail nájemníka (`pending`), nájemník ji přijme (`active`) nebo
+  odmítne (`declined`). Obsazenost nemovitosti a kontrola překryvu smluv platí až od přijetí. Pozvánku nejde
+  upravit, pronajímatel ji jen odvolá (`terminated`) a pošle novou. Kontakty, platby, hodnocení a Trust Score nájemníka jen přes přijatou smlouvu (`accepted_at`).
 - Generování PDF smlouvy (DomPDF)
 - Automatická expirace smluv po uplynutí `end_date`
 - Blokace pronájmu nemovitosti v rekonstrukci
@@ -43,7 +45,7 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 - Automatické generování měsíčních plateb (nájem + zálohy na služby)
 - Mark as Paid s přepočtem Trust Score
-- CSV import z bankovního výpisu (párování přes variabilní symbol)
+- CSV import z bankovního výpisu (párování přes VS platby i smlouvy, nesoulad částky jde „ke kontrole“)
 - Automatická detekce overdue plateb
 
 ### Helpdesk (Tickets)
@@ -61,7 +63,8 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 ### Dokumenty
 
-- Upload souborů (PDF, DOC, XLS, obrázky) k nemovitosti
+- Upload souborů (PDF, DOC, XLS, obrázky) k nemovitosti, volitelně navázaný na smlouvu (dokument pro nájemníka
+  pak vidí jen nájemník té smlouvy, ne další nájemník bytu)
 - Download s korektní příponou, mazání
 - Typy: smlouva, pojistka, revize, energetický štítek, faktura...
 
@@ -82,12 +85,12 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 - Automatický výpočet spolehlivosti nájemníka (0–100)
 - Vzorec: (platební morálka × 0.6) + (průměr hodnocení × 0.4)
-- Přepočet při označení platby, po ratingu
+- Přepočet při každé změně platby (označení, úprava, smazání, CSV import, po splatnosti) a po hodnocení
 
 ### Notifikace
 
 - Zvoneček v sidebaru s počtem nepřečtených
-- Typy: nová smlouva, nový ticket, vyřešený ticket, platba přijata, overdue
+- Typy: nová smlouva, nový ticket (vlastník a přiřazení správci kromě autora), vyřešený ticket, overdue, končící smlouva (30 a 7 dní předem)
 - Mark as read, mark all read, auto-poll 60s
 
 ### Manager Flow
@@ -101,15 +104,17 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 ## 🏗 Architektura
 
+> **Probíhá přepis UI** z React SPA na Blade + Livewire 4 + Alpine + Tailwind 4 (plán v `docs/REWRITE_PLAN.md`).
+> React SPA už v této větvi není, jako předloha chování zůstává na větvi `main` a v `docs/FEATURES.md`.
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                      Browser                             │
-│  React 19 + TypeScript + Tailwind CSS + Vite             │
+│  Blade + Livewire 4 + Alpine + Tailwind CSS 4 (přepis)   │
 └──────────────────────┬──────────────────────────────────┘
-                       │ HTTP (Axios)
-                       │ /api/v1/*
+                       │ HTTP (session) · REST /api/v1 (Bearer token)
 ┌──────────────────────▼──────────────────────────────────┐
-│                  Laravel 12 API                          │
+│                  Laravel 13                              │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐ │
 │  │Controllers│ │ Policies │ │Resources │ │  Events    │ │
 │  └──────────┘ └──────────┘ └──────────┘ └────────────┘ │
@@ -119,28 +124,19 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 └──────────────────────┬──────────────────────────────────┘
                        │ Eloquent ORM
 ┌──────────────────────▼──────────────────────────────────┐
-│              MariaDB 10.11 Database                       │
+│        SQLite (lokálně) · MariaDB (README, produkce)      │
 │  15+ tables, soft deletes, compound indexes              │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Frontend → Backend komunikace
-
-```
-Vite Dev Server (:5173)
-  ├── /login, /register → React pages (public)
-  ├── /api/* → proxy → Laravel (:8000)
-  └── /* → ProtectedRoute → AppLayout → page
-```
-
-### Auth Flow
+### Auth Flow (REST API)
 
 ```
 1. User → /login
 2. POST /api/v1/login → Sanctum token + user data
-3. Token → localStorage + Axios interceptor
+3. Klient si token uloží
 4. Každý request → Authorization: Bearer {token}
-5. 401 response → interceptor → clear token → redirect /login
+5. 401 → token je neplatný, klient se přihlásí znovu
 ```
 
 ---
@@ -149,15 +145,13 @@ Vite Dev Server (:5173)
 
 | Vrstva            | Technologie        | Verze                       |
 |-------------------|--------------------|-----------------------------|
-| **Backend**       | Laravel (PHP)      | 12.x (PHP 8.4)              |
-| **Frontend**      | React + TypeScript | 19.x + 5.7                  |
+| **Backend**       | Laravel (PHP)      | 13.x (PHP 8.5)              |
+| **Frontend**      | Blade + Livewire   | 4.x (přepis, fáze 3+)       |
 | **Styling**       | Tailwind CSS       | 4.0                         |
-| **Build**         | Vite               | 6.x                         |
+| **Build**         | Vite               | 8.x                         |
 | **Database**      | MariaDB            | 10.11                       |
-| **Auth**          | Laravel Sanctum    | SPA tokens                  |
+| **Auth**          | Laravel Sanctum    | API tokens                  |
 | **PDF**           | DomPDF             | via barryvdh/laravel-dompdf |
-| **Charts**        | Recharts           | Bar + Pie charts            |
-| **HTTP Client**   | Axios              | s interceptory              |
 | **Code Style BE** | Laravel Pint       | PSR-12                      |
 | **Code Style FE** | Prettier           | custom config               |
 | **CI/CD**         | GitHub Actions     | PHPUnit + Pint              |
@@ -204,25 +198,43 @@ User (landlord/manager/tenant)
 
 - ✅ Plný přístup ke všem vlastním nemovitostem
 - ✅ CRUD: properties, leases, payments, expenses, inventory, documents, notices
-- ✅ Hodnocení nájemníků, generování PDF smluv
-- ✅ Povýšení/degradace managerů, přiřazení ke properties
+- ✅ Hodnocení nájemníků (jen přijaté a neaktivní smlouvy), generování PDF smluv (jen přijatých)
+- ✅ Nájemníka vidí (kontakty, hodnocení, Trust Score) jen přes smlouvu, kterou nájemník přijal; u hodnocení
+  z cizích nemovitostí jen kategorii a skóre (komentář, hodnotitele a adresu vidí hodnocený, autor a vlastník
+  nemovitosti)
+- ✅ Variabilní symbol je unikátní jen mezi jeho smlouvami
+- ✅ U zaplacené platby mění jen poznámku
+- ✅ Povýšení/degradace managerů = přiřazení k vlastním properties (jen lidé, které vidí: nájemníci jeho smluv a jeho
+  správci); sesazení odebere jen jeho přiřazení, role se přepočítá
 - ✅ Dashboard: finance grafy, obsazenost, statistiky
 - ✅ CSV import plateb, generování měsíčních plateb
 
 ### Manager (Správce)
 
 - ✅ Vidí přiřazené properties + property kde je tenant
-- ✅ Řeší tickety (status, komentáře) pro přiřazené properties
+- ✅ Vidí všechny tickety přiřazených properties včetně historie
+- ✅ Řeší tickety (status, řešitel, komentáře) pro přiřazené properties
+- ✅ Hodnocení nájemníka u smluv přiřazených properties vidí jen jako kategorii a skóre (bez komentáře
+  a hodnotitele), i u znovu aktivované smlouvy
 - ✅ Loguje meter odečty na přiřazených properties
-- ✅ Vytváří tickety pro přiřazené properties
-- ✅ Dual dashboard: Manager View + My Tenancy
-- ❌ Nevidí finance (expenses, cashflow)
+- ✅ Vytváří tickety pro přiřazené properties i ve svém bytě (kde je nájemníkem)
+- ✅ Vidí platby, nájemné, zálohy a VS aktivních smluv přiřazených properties a ručně je označí jako zaplacené
+  (ne kauce; ne svou vlastní platbu, kde je nájemníkem; platby ukončených smluv potvrzuje jen landlord)
+- ✅ Dual dashboard: Manager View (nezaplacené a po splatnosti) + My Tenancy
+- ❌ Nevidí finance (expenses, cashflow), kauce ani PDF smluv
+- ❌ Negeneruje, neimportuje, nezakládá ani nemaže platby
 - ❌ Nemůže editovat properties, inventory, documents
 
 ### Tenant (Nájemník)
 
-- ✅ Vidí svůj byt, platby, smlouvy (read-only)
-- ✅ Vytváří tickety + komentáře s fotkami
+- ✅ Vidí svůj byt, platby, smlouvy (read-only) a pozvánky ke smlouvě, které přijme nebo odmítne. Smlouvu, PDF
+  a platby hned po přijetí, byt, oznámení, dokumenty, měřiče, inventář a tikety až od začátku smlouvy
+  (`start_date`); předchozí nájemník je vidí do konce své smlouvy
+- ✅ Vidí tickety svého bytu založené od začátku své smlouvy a své vlastní (ne tikety předchozích nájemníků)
+- ✅ Vytváří tickety + komentáře s fotkami (u tiketů svého bytu), název a popis svého tiketu upraví, dokud je nový;
+  po konci smlouvy komentuje svůj tiket, jen dokud je otevřený (new, in_progress), vyřešený už jen čte
+- ✅ Vidí inventář bytu včetně pořizovací ceny (předávací protokol)
+- ✅ Změna e-mailu v profilu jen se současným heslem (platí pro všechny role)
 - ✅ Vidí management tab (meters, inventory) — read-only
 - ✅ Dashboard: moje platby, tickety, trust score
 - ❌ Nevidí People, expenses, jiné nájemníky
@@ -233,19 +245,24 @@ User (landlord/manager/tenant)
 | Akce                 | Landlord | Manager | Tenant |
 |----------------------|:--------:|:-------:|:------:|
 | Properties CRUD      |    ✅     |    ❌    |   ❌    |
-| View property detail |    ✅     |   ✅*    |   ✅*   |
-| Create lease         |    ✅     |    ❌    |   ❌    |
+| View property detail |    ✅     |   ✅*    |  ✅**   |
+| Create lease (pozvánka) |  ✅     |    ❌    |   ❌    |
+| Accept / decline lease |   ❌     |  ✅ ¶   |  ✅ ¶   |
 | Create ticket        |    ✅     |   ✅*    |  ✅**   |
 | Resolve ticket       |    ✅     |   ✅*    |   ❌    |
+| View tickets         |    ✅     |   ✅*    |  ✅ ◊   |
+| Comment / photo      |    ✅     |   ✅*    | ✅** ‖  |
 | Log meter reading    |    ✅     |   ✅*    |   ❌    |
-| View payments        |    ✅     |    ❌    | ✅ own  |
-| Mark paid            |    ✅     |    ❌    |   ❌    |
+| View payments        |    ✅     |  ✅* ‡   | ✅ own  |
+| Mark paid            |   ✅ †    |  ✅* ‡   |   ❌    |
+| Generate/import/delete payments | ✅ |   ❌    |   ❌    |
+| Lease PDF            |   ✅ ¶    |    ❌    | ✅ own  |
 | Upload documents     |    ✅     |    ❌    |   ❌    |
-| Rate tenant          |    ✅     |    ❌    |   ❌    |
+| Rate tenant          |   ✅ ¶    |    ❌    |   ❌    |
 | View People          |    ✅     |    ✅    |   ❌    |
-| Promote/demote       |    ✅     |    ❌    |   ❌    |
+| Promote/demote       |   ✅ §    |    ❌    |   ❌    |
 
-\* jen přiřazené properties | \*\* jen s aktivní smlouvou
+\* jen přiřazené properties | \*\* jen s aktivní smlouvou, která už začala (`start_date`) | † i u ukončené smlouvy (poslední nájem, nedoplatky) | ‡ jen aktivní smlouvy, bez kaucí, ne svou platbu (správce, který je jinde nájemníkem) | § jen vlastní properties a lidé, které vidí | ¶ přijímá a odmítá jen nájemník smlouvy (i správce, který je nájemníkem), hodnotit a stáhnout PDF jde jen přijatou smlouvu | ‖ autor tiketu i po konci smlouvy, dokud je tiket otevřený | ◊ tikety bytu od začátku své smlouvy a vlastní
 
 ---
 
@@ -253,10 +270,10 @@ User (landlord/manager/tenant)
 
 ### Požadavky
 
-- PHP 8.4+ s extensions: mbstring, pdo_mysql, gd
+- PHP 8.5+ s extensions: mbstring, pdo_sqlite (nebo pdo_mysql), gd
 - Composer 2.x
-- Node.js 20+ s npm
-- MariaDB 10.11+ nebo MySQL 8+
+- Node.js 24 s npm (jen pro build assetů)
+- Lokálně [Laravel Herd](https://herd.laravel.com) (SQLite), produkce zatím nerozhodnutá
 
 ### 1. Klonování
 
@@ -265,43 +282,21 @@ git clone https://github.com/your-repo/rentflow.git
 cd rentflow
 ```
 
-### 2. Backend
+### 2. Instalace
 
 ```bash
 composer install
 cp .env.example .env
 php artisan key:generate
+php artisan migrate --seed
+npm ci
+npm run build
 ```
 
-Uprav `.env`:
+### 3. Spuštění
 
-```env
-DB_CONNECTION=mariadb
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=rentflow
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
-```bash
-php artisan migrate
-php artisan storage:link
-php artisan db:seed
-php artisan serve
-```
-
-### 3. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 4. Otevření
-
-Aplikace běží na **http://localhost:5173**
+Herd složku obslouží sám, aplikace běží na **http://rentflow.test**. Druhý terminál ani `npm run dev`
+nejsou potřeba, po změně šablon nebo CSS stačí `npm run build`.
 
 ---
 
@@ -330,7 +325,7 @@ php artisan migrate:fresh --seed
 | Entita     | Počet | Detail                                               |
 |------------|-------|------------------------------------------------------|
 | Properties | 6     | 4 obsazené, 1 volná, 1 v rekonstrukci                |
-| Leases     | 6     | 4 aktivní, 1 ukončená (s ratings), 1 terminovaná     |
+| Leases     | 7     | 4 aktivní, 1 ukončená (s ratings), 1 terminovaná, 1 pozvánka pro Marii |
 | Payments   | ~60   | Rent + utilities + deposits, mix paid/unpaid/overdue |
 | Tickets    | 6     | Mix new/in_progress/resolved s komentáři v češtině   |
 | Meters     | 14+   | Voda + elektřina + plyn/teplo, 6 měsíců odečtů       |
@@ -369,8 +364,10 @@ Všechny endpointy pod prefixem `/api/v1/`. Autentizace přes Sanctum Bearer tok
 | Method | Endpoint                    | Popis                                           |
 |--------|-----------------------------|-------------------------------------------------|
 | GET    | `/leases`                   | Seznam (filtry: status, property_id, tenant_id) |
-| POST   | `/leases`                   | Vytvoření (guard: ne renovation)                |
+| POST   | `/leases`                   | Pozvánka `pending` podle `tenant_email`         |
 | GET    | `/leases/{id}/generate-pdf` | Download PDF smlouvy                            |
+| PUT    | `/leases/{id}/accept`       | Nájemník přijme pozvánku (pending → active)     |
+| PUT    | `/leases/{id}/decline`      | Nájemník odmítne pozvánku (pending → declined)  |
 
 ### Payments
 
@@ -388,6 +385,8 @@ Všechny endpointy pod prefixem `/api/v1/`. Autentizace přes Sanctum Bearer tok
 | GET    | `/tickets`               | Seznam (filtry: status, priority, category) |
 | POST   | `/tickets/{id}/comments` | Přidat komentář (+ příloha)                 |
 | POST   | `/tickets/{id}/images`   | Přidat fotku k ticketu                      |
+| GET    | `/tickets/{id}/images/{image}/file` | Stáhnout fotku tiketu (autorizovaně) |
+| GET    | `/tickets/{id}/comments/{comment}/attachment` | Stáhnout přílohu komentáře |
 
 ### Další
 
@@ -395,9 +394,14 @@ Všechny endpointy pod prefixem `/api/v1/`. Autentizace přes Sanctum Bearer tok
 |--------|------------------------------|------------------------|
 | GET    | `/properties/{id}/meters`    | Měřiče nemovitosti     |
 | GET    | `/properties/{id}/documents` | Dokumenty              |
+| GET    | `/documents/{id}/download`   | Stáhnout dokument (podle visibility) |
+| GET    | `/property-images/{id}/file` | Stáhnout fotku nemovitosti |
 | GET    | `/properties/{id}/notices`   | Oznámení               |
 | GET    | `/notifications`             | Notifikace uživatele   |
-| GET    | `/tenants/{id}/trust-score`  | Trust score detail     |
+| GET    | `/tenants/{id}/trust-score`  | Trust score detail (jen koho vidím) |
+| GET    | `/users`                     | Lidé, které vidím (pronajímatel, správce) |
+| GET    | `/users/lookup?email=`       | Účet podle přesného e-mailu (pronajímatel) |
+| GET    | `/users/{id}/ratings`        | Hodnocení nájemníka (jen koho vidím) |
 | GET    | `/health`                    | Health check (veřejný) |
 
 ---
@@ -408,9 +412,9 @@ Všechny endpointy pod prefixem `/api/v1/`. Autentizace přes Sanctum Bearer tok
 
 | Command                           | Frekvence     | Co dělá                                                                 |
 |-----------------------------------|---------------|-------------------------------------------------------------------------|
-| `rentflow:generate-payments`      | 1. den měsíce | Vytvoří rent + utility platby pro aktivní leases                        |
+| `rentflow:generate-payments`      | 1. den měsíce | Vytvoří rent + utility platby pro aktivní leases platné v měsíci        |
 | `rentflow:check-overdue-payments` | Denně         | unpaid → overdue + notifikace + trust score recalc                      |
-| `rentflow:check-expiring-leases`  | Denně         | Notifikace o expirujících + auto-expire prošlých + property → available |
+| `rentflow:check-expiring-leases`  | Denně         | Notifikace 30 a 7 dní před koncem + auto-expire prošlých + property → available |
 
 ### Spuštění scheduleru
 
@@ -430,7 +434,8 @@ php artisan rentflow:check-expiring-leases
 |--------------------------|-------------------------------------------------------|
 | Vytvoření lease          | Property status → occupied                            |
 | Ukončení/terminace lease | Property status → available (pokud žádná jiná active) |
-| Mark payment as paid     | Trust score recalc + notifikace                       |
+| Reaktivace lease         | Property status → occupied (v rekonstrukci 422)       |
+| Mark payment as paid     | Trust score recalc (po commitu)                       |
 | Payment overdue (5+ dní) | Status → overdue + notifikace tenant                  |
 | Lease end_date < today   | Status → ended (auto-expire)                          |
 
@@ -459,11 +464,9 @@ php artisan test
 ### Code Style
 
 ```bash
-# Backend
 vendor/bin/pint
-
-# Frontend
-cd frontend && npx prettier --write "src/**/*.{ts,tsx}"
+composer analyse   # Larastan
+composer check     # Pint + Larastan + testy
 ```
 
 ---
@@ -474,18 +477,19 @@ cd frontend && npx prettier --write "src/**/*.{ts,tsx}"
 
 Soubor: `.github/workflows/tests.yml`
 
-**Triggery:** Push na `main`/`develop`, Pull Request do `main`
+**Triggery:** během přepisu dočasně jen ručně (`workflow_dispatch`), zapnutí push/PR ve fázi 6
 
 **Pipeline:**
 
 ```
 1. Checkout code
-2. Setup PHP 8.4 + extensions
+2. Setup PHP 8.5 + extensions
 3. Cache Composer dependencies
 4. Install dependencies
 5. Setup environment (.env + key)
-6. Run migrations + tests (MariaDB service container)
-7. Run Pint (code style check)
+6. Run Pint (code style check)
+7. Run Larastan (composer analyse)
+8. Run migrations + tests (MariaDB service container)
 ```
 
 | Výsledek | Ikona | Význam                        |
@@ -519,25 +523,8 @@ rentflow/
 │   ├── factories/                 # 13 model factories
 │   ├── migrations/                # 15+ migrations
 │   └── seeders/                   # DatabaseSeeder (české seed data)
-├── frontend/
-│   └── src/
-│       ├── api/                   # 11 API modules (axios)
-│       ├── components/
-│       │   ├── layout/            # AppLayout, Sidebar, ProtectedRoute
-│       │   └── ui/                # Button, Modal, Badge, Spinner, ...
-│       ├── contexts/              # AuthContext (global auth state)
-│       ├── hooks/                 # useConfirm (custom dialog)
-│       ├── pages/
-│       │   ├── auth/              # Login, Register
-│       │   ├── dashboard/         # Landlord + Tenant + Manager dashboard
-│       │   ├── leases/            # Leases CRUD + PDF + Rating modal
-│       │   ├── payments/          # Payments + CSV import + Generate
-│       │   ├── people/            # People list + Person detail
-│       │   ├── properties/        # Properties + Detail (6 sections)
-│       │   ├── settings/          # Profile + Password
-│       │   └── tickets/           # Tickets + Comments + Images
-│       ├── types/                 # TypeScript interfaces (20+)
-│       └── utils/                 # format helpers (currency, date)
+├── lang/cs/                       # české překlady (laravel-lang)
+├── resources/views/               # Blade (nové UI, přepis)
 ├── routes/
 │   ├── api.php                    # 60+ API routes
 │   └── console.php                # Scheduler config

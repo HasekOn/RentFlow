@@ -2,47 +2,43 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Events\LeaseCreated;
+use App\Actions\Leases\AcceptLease;
+use App\Actions\Leases\CreateLease;
+use App\Actions\Leases\DeclineLease;
+use App\Actions\Leases\DeleteLease;
+use App\Actions\Leases\UpdateLease;
+use App\Http\Controllers\Api\Concerns\FindsLease;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreLeaseRequest;
 use App\Http\Requests\UpdateLeaseRequest;
 use App\Http\Resources\LeaseResource;
 use App\Models\Lease;
-use App\Models\Property;
 use App\Models\User;
 use App\Traits\Filterable;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 
 class LeaseController extends Controller
 {
-    use Filterable;
+    use Filterable, FindsLease, FindsProperty;
 
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Lease::class);
 
         /** @var User $user */
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
-        if ($user->role === 'landlord') {
-            $baseQuery = $request->filled('tenant_id')
-                ? Lease::withTrashed()
-                : Lease::query();
+        // smazané smlouvy jen v historii konkrétní osoby (filtr tenant_id)
+        $query = ($this->stringInput($request, 'tenant_id') !== null ? Lease::withTrashed() : Lease::query())
+            ->visibleTo($user)
+            ->with(['property.images', 'tenant']);
 
-            $query = $baseQuery->whereIn(
-                'property_id',
-                $user->ownedProperties()->pluck('id')
-            )->with(['property.images', 'tenant']);
-        } else {
-            // Both manager and tenant: see only own leases (as tenant)
-            $query = Lease::withTrashed()
-                ->where('tenant_id', $user->id)
-                ->with(['property.images', 'tenant']);
-        }
-
+        // nájemné vidí každý u všech smluv, které mu visibleTo vrátí (i přiřazený správce), řadit podle něj smí všichni
         $this->applyFilters(
             $query,
             $request,
@@ -53,115 +49,97 @@ class LeaseController extends Controller
         return LeaseResource::collection($query->paginate(15));
     }
 
-    public function store(StoreLeaseRequest $request): JsonResponse
+    public function store(StoreLeaseRequest $request, CreateLease $create): JsonResponse
     {
-        $this->authorize('create', Lease::class);
+        $property = $this->findProperty((string) $request->validated('property_id'));
+        $this->authorize('create', [Lease::class, $property]);
 
-        $property = Property::query()->findOrFail($request->validated('property_id'));
-
-        if ($property->landlord_id !== $request->user()->id) {
-            return response()->json(['message' => 'You can only create leases for your own properties.'], 403);
-        }
-
-        if ($property->status === 'renovation') {
-            return response()->json(['message' => 'Cannot create lease for a property under renovation.'], 422);
-        }
-
-        $existingActive = Lease::query()
-            ->where('property_id', $request->validated('property_id'))
-            ->where('tenant_id', $request->validated('tenant_id'))
-            ->where('status', 'active')
-            ->exists();
-
-        if ($existingActive) {
-            return response()->json(['message' => 'An active lease already exists for this tenant on this property.'], 422);
-        }
-
-        $lease = Lease::query()->create($request->validated());
-        $lease->load(['property', 'tenant']);
-
-        LeaseCreated::dispatch($lease);
-
-        if ($property->status === 'available') {
-            $property->update(['status' => 'occupied']);
-        }
+        $lease = $create->handle($property, $request->validated());
+        $lease->load('tenant');
 
         return response()->json(new LeaseResource($lease), 201);
     }
 
-    public function update(UpdateLeaseRequest $request, string $id): JsonResponse
+    public function update(UpdateLeaseRequest $request, string $id, UpdateLease $update): JsonResponse
     {
-        $lease = Lease::query()->findOrFail($id);
+        $lease = $this->findLease($id);
         $this->authorize('update', $lease);
 
-        $oldStatus = $lease->status;
-        $lease->update($request->validated());
-
-        $newStatus = $lease->status;
-        if ($oldStatus === 'active' && in_array($newStatus, ['ended', 'terminated'])) {
-            $property = $lease->property;
-            if ($property) {
-                $hasOtherActive = $property->leases()
-                    ->where('id', '!=', $lease->id)
-                    ->where('status', 'active')
-                    ->exists();
-                if (! $hasOtherActive) {
-                    $property->update(['status' => 'available']);
-                }
-            }
-        }
+        // kontroly období a stavu až po autorizaci, hláška obsahuje datum smlouvy
+        $update->handle($lease, $request->validated());
 
         return response()->json(new LeaseResource($lease));
     }
 
-    public function show(Request $request, string $id): JsonResponse
+    public function show(string $id): JsonResponse
     {
-        $lease = Lease::withTrashed()->with(['property', 'tenant', 'payments', 'ratings'])->findOrFail($id);
+        $lease = Lease::withTrashed()->with(['property', 'tenant', 'payments', 'ratings'])->find($id);
+        if ($lease === null) {
+            abort(404);
+        }
         $this->authorize('view', $lease);
 
         return response()->json(new LeaseResource($lease));
     }
 
-    public function destroy(string $id): JsonResponse
+    /**
+     * Nájemník přijme pozvánku ke smlouvě (S1).
+     */
+    public function accept(string $id, AcceptLease $accept): JsonResponse
     {
-        $lease = Lease::query()->findOrFail($id);
+        $lease = $this->findLease($id);
+        $this->authorize('respond', $lease);
+
+        $accept->handle($lease);
+        $lease->load(['property', 'tenant']);
+
+        return response()->json(new LeaseResource($lease));
+    }
+
+    /**
+     * Nájemník odmítne pozvánku ke smlouvě (S1).
+     */
+    public function decline(string $id, DeclineLease $decline): JsonResponse
+    {
+        $lease = $this->findLease($id);
+        $this->authorize('respond', $lease);
+
+        $decline->handle($lease);
+        $lease->load(['property', 'tenant']);
+
+        return response()->json(new LeaseResource($lease));
+    }
+
+    public function destroy(string $id, DeleteLease $delete): JsonResponse
+    {
+        $lease = $this->findLease($id);
         $this->authorize('delete', $lease);
 
-        $property = $lease->property;
-        $lease->delete();
-
-        if ($property && $property->status === 'occupied') {
-            $hasOtherActive = $property->leases()
-                ->where('id', '!=', $lease->id)
-                ->where('status', 'active')
-                ->exists();
-            if (! $hasOtherActive) {
-                $property->update(['status' => 'available']);
-            }
-        }
+        $delete->handle($lease);
 
         return response()->json(['message' => 'Lease deleted successfully.']);
     }
 
-    public function generatePdf(Request $request, string $id)
+    /**
+     * PDF se generuje za běhu a nikam se neukládá (osobní údaje, GET bez vedlejšího efektu).
+     * Obsahuje kauci a osobní údaje, proto jen nájemník a vlastník u přijaté smlouvy (LeasePolicy::downloadPdf).
+     */
+    public function generatePdf(string $id): Response
     {
-        $lease = Lease::withTrashed()->with(['property', 'tenant'])->findOrFail($id);
-        $this->authorize('view', $lease);
+        $lease = Lease::withTrashed()->with(['property.landlord', 'tenant'])->find($id);
+        if ($lease === null) {
+            abort(404);
+        }
+        $this->authorize('downloadPdf', $lease);
 
         $property = $lease->property;
         $tenant = $lease->tenant;
-        $landlord = $property->landlord;
+        $landlord = $property?->landlord;
 
         $pdf = Pdf::loadView('pdf.lease-contract', compact('lease', 'property', 'tenant', 'landlord'));
         $pdf->setPaper('A4');
 
-        $filename = 'contract_lease_'.$lease->id.'.pdf';
-        $path = 'contracts/'.$filename;
-
-        Storage::disk('public')->put($path, $pdf->output());
-        $lease->update(['contract_path' => $path]);
-
-        return $pdf->download($filename);
+        return $pdf->download('contract_lease_'.$lease->id.'.pdf');
     }
 
     protected function getDateField(): string

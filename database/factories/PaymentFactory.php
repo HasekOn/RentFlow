@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
 use App\Models\Lease;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -13,12 +15,12 @@ class PaymentFactory extends Factory
 
         return [
             'lease_id' => Lease::factory(),
-            'type' => 'rent',
+            'type' => PaymentType::Rent,
             'amount' => fake()->randomElement([8000, 10000, 12000, 15000, 18000, 22000]),
             'due_date' => $dueDate,
             'paid_date' => null,
             'variable_symbol' => null,
-            'status' => 'unpaid',
+            'status' => PaymentStatus::Unpaid,
             'note' => null,
         ];
     }
@@ -36,7 +38,7 @@ class PaymentFactory extends Factory
 
             return [
                 'paid_date' => $paidDate,
-                'status' => 'paid',
+                'status' => PaymentStatus::Paid,
             ];
         });
     }
@@ -45,7 +47,7 @@ class PaymentFactory extends Factory
     {
         return $this->state(fn () => [
             'paid_date' => null,
-            'status' => 'unpaid',
+            'status' => PaymentStatus::Unpaid,
         ]);
     }
 
@@ -54,7 +56,7 @@ class PaymentFactory extends Factory
         return $this->state(fn () => [
             'due_date' => fake()->dateTimeBetween('-3 months', '-1 month'),
             'paid_date' => null,
-            'status' => 'overdue',
+            'status' => PaymentStatus::Overdue,
         ]);
     }
 
@@ -71,7 +73,7 @@ class PaymentFactory extends Factory
 
             return [
                 'paid_date' => $paidDate,
-                'status' => 'paid',
+                'status' => PaymentStatus::Paid,
             ];
         });
     }

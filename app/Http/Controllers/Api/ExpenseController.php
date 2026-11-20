@@ -2,36 +2,29 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Expenses\DeleteExpense;
+use App\Actions\Expenses\SaveExpense;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\UpdateExpenseRequest;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
-use App\Models\Property;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ExpenseController extends Controller
 {
-    use Filterable;
+    use Filterable, FindsProperty;
 
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Expense::class);
 
-        $user = $request->user();
-
-        if ($user->role === 'landlord') {
-            $propertyIds = $user->ownedProperties()->pluck('id');
-        } else {
-            $propertyIds = $user->leases()
-                ->where('status', 'active')
-                ->pluck('property_id');
-        }
-
         $query = Expense::query()
-            ->whereIn('property_id', $propertyIds)
+            ->visibleTo($this->currentUser($request))
             ->with('property');
 
         $this->applyFilters(
@@ -45,55 +38,59 @@ class ExpenseController extends Controller
         return ExpenseResource::collection($query->paginate(20));
     }
 
-    public function store(StoreExpenseRequest $request): JsonResponse
+    public function store(StoreExpenseRequest $request, SaveExpense $save): JsonResponse
     {
-        $this->authorize('create', Expense::class);
+        $property = $this->findProperty((string) $request->validated('property_id'));
+        $this->authorize('create', [Expense::class, $property]);
 
-        // Verify property belongs to landlord
-        $property = Property::query()->findOrFail($request->validated('property_id'));
-
-        if ($property->landlord_id !== $request->user()->id) {
-            return response()->json([
-                'message' => 'You can only add expenses to your own properties.',
-            ], 403);
-        }
-
-        $expense = Expense::query()->create($request->validated());
+        $expense = $save->handle($property, $request->validated());
 
         return response()->json(new ExpenseResource($expense), 201);
     }
 
     public function show(string $id): JsonResponse
     {
-        $expense = Expense::query()->with('property')->findOrFail($id);
-
+        $expense = $this->findExpense($id);
         $this->authorize('view', $expense);
 
         return response()->json(new ExpenseResource($expense));
     }
 
-    public function update(UpdateExpenseRequest $request, string $id): JsonResponse
+    public function update(UpdateExpenseRequest $request, string $id, SaveExpense $save): JsonResponse
     {
-        $expense = Expense::query()->findOrFail($id);
-
+        $expense = $this->findExpense($id);
         $this->authorize('update', $expense);
 
-        $expense->update($request->validated());
+        // u smazané nemovitosti vrátí policy 403 dřív, kontrola null jen zúží typ
+        $property = $expense->property;
+        if ($property === null) {
+            abort(404);
+        }
+        $save->handle($property, $request->validated(), $expense);
 
         return response()->json(new ExpenseResource($expense));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteExpense $delete): JsonResponse
     {
-        $expense = Expense::query()->findOrFail($id);
-
+        $expense = $this->findExpense($id);
         $this->authorize('delete', $expense);
 
-        $expense->delete();
+        $delete->handle($expense);
 
         return response()->json([
             'message' => 'Expense deleted successfully.',
         ]);
+    }
+
+    private function findExpense(string $id): Expense
+    {
+        $expense = Expense::query()->with('property')->find($id);
+        if ($expense === null) {
+            abort(404);
+        }
+
+        return $expense;
     }
 
     protected function getDateField(): string

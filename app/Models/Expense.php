@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
+use App\Enums\ExpenseType;
+use Database\Factories\ExpenseFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,8 +15,8 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $property_id
- * @property string $type
- * @property float $amount
+ * @property ExpenseType $type
+ * @property numeric-string $amount
  * @property Carbon $expense_date
  * @property string|null $description
  * @property string|null $invoice_path
@@ -23,7 +27,17 @@ use Illuminate\Support\Carbon;
  */
 class Expense extends Model
 {
+    /** @use HasFactory<ExpenseFactory> */
     use HasFactory, SoftDeletes;
+
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'type' => ExpenseType::Other->value,
+    ];
 
     protected $fillable = [
         'property_id',
@@ -34,6 +48,17 @@ class Expense extends Model
         'invoice_path',
     ];
 
+    /**
+     * Náklady jsou finance vlastníka: vidí je jen vlastník nemovitosti (ne správce ani nájemník, #16).
+     *
+     * @param  Builder<Expense>  $query
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $query->whereHas('property', fn (Builder $property) => $property->where('landlord_id', $user->id));
+    }
+
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
@@ -42,8 +67,9 @@ class Expense extends Model
     protected function casts(): array
     {
         return [
+            'type' => ExpenseType::class,
             'amount' => 'decimal:2',
-            'expense_date' => 'date',
+            'expense_date' => DateOnly::class,
         ];
     }
 }

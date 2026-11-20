@@ -1,7 +1,7 @@
 <?php
 
+use App\Http\Middleware\RejectInvalidUtf8;
 use App\Http\Middleware\RoleMiddleware;
-use App\Providers\EventServiceProvider;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -23,9 +23,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         apiPrefix: 'api/v1',
     )
-    ->withProviders([
-        EventServiceProvider::class,
-    ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => RoleMiddleware::class,
@@ -33,6 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->api(prepend: [
             ThrottleRequests::class.':200,1',
+        ], append: [
+            RejectInvalidUtf8::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

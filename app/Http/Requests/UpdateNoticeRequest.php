@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\Limits;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateNoticeRequest extends FormRequest
@@ -11,11 +12,12 @@ class UpdateNoticeRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
             'title' => ['sometimes', 'string', 'max:255'],
-            'content' => ['sometimes', 'string'],
+            'content' => ['sometimes', 'string', 'max:'.Limits::TEXT],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

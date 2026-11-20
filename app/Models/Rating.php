@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\RatingCategory;
+use Database\Factories\RatingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +13,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $lease_id
  * @property int $rated_by
- * @property string $category
+ * @property RatingCategory $category
  * @property int $score
  * @property string|null $comment
  * @property Carbon $created_at
@@ -21,7 +23,17 @@ use Illuminate\Support\Carbon;
  */
 class Rating extends Model
 {
+    /** @use HasFactory<RatingFactory> */
     use HasFactory;
+
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'category' => RatingCategory::Overall->value,
+    ];
 
     protected $fillable = [
         'lease_id',
@@ -31,11 +43,23 @@ class Rating extends Model
         'comment',
     ];
 
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'category' => RatingCategory::class,
+        ];
+    }
+
+    /** @return BelongsTo<Lease, $this> */
     public function lease(): BelongsTo
     {
         return $this->belongsTo(Lease::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function ratedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'rated_by');

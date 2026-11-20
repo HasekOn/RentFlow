@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\Limits;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreMeterReadingRequest extends FormRequest
@@ -11,12 +12,12 @@ class StoreMeterReadingRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
-            'reading_value' => ['required', 'numeric', 'min:0'],
+            'reading_value' => ['required', 'numeric', 'min:0', 'max:'.Limits::READING],
             'reading_date' => ['required', 'date'],
-            'photo_proof' => ['nullable', 'string'],
         ];
     }
 

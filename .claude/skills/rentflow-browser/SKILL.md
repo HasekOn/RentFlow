@@ -10,10 +10,22 @@ description: Ruční ověření RentFlow v prohlížeči na http://rentflow.test
 1. `npm run build` v kořeni. Testuje se s produkčními assety a CSP (ne `npm run dev`).
 2. Herd běží: `curl -s -o /dev/null -w "%{http_code}" http://rentflow.test/up` → 200. Při 502 se zastav a napiš
    uživateli (Inteligentní řízení aplikací ve Windows nebo Herd, ne chyba appky).
-3. **Záloha DB** (PowerShell, z kořene repa): `php .claude/skills/rentflow-browser/db-snapshot.php backup`
-4. Data: `php artisan migrate:fresh --seed --force`.
+3. **Záloha DB** (PowerShell, z kořene repa): `php .claude/skills/rentflow-browser/db-snapshot.php backup`.
+   Skript zálohuje DB, se kterou appka opravdu běží (`DB_DATABASE` z `.env`, vypíše ji jako „Aktivní DB“).
+   **Zálohu pouštěj samostatně, nikdy ji neřetěz s dalšími kroky** (v PowerShellu `;` pustí další příkaz i po
+   chybě). Když skončí chybou „záloha už existuje“ (kód 2), zastav se: záloha může patřit jiné session – nic
+   nenačítej ani nemigruj a zeptej se uživatele (restore, smazat, nebo `--force`).
+4. Data (až po úspěšné záloze, samostatným příkazem):
+   - **výchozí demo data:** `php .claude/skills/rentflow-browser/db-snapshot.php load-default`
+     (`database/default.sqlite`, v gitignore). Když chybí (`check` → „výchozí data: nejsou“), připrav je jednou:
+     `php artisan migrate:fresh --seed --force` a `… db-snapshot.php save-default`. `save-default` jinak jen na
+     výslovnou žádost uživatele.
+   - po `load-default` vždy `php artisan migrate --force` (default mohl vzniknout před novými migracemi větve).
+   - **Chybějící data zakládej v PHP, ne klikáním ve formuláři:** `php artisan tinker --execute="…"`, delší skript
+     do scratchpadu a `php artisan tinker <soubor>.php` (druhý pronajímatel s nemovitostí, nájemník bez smlouvy …).
 5. **Na konci vždy obnov:** `php .claude/skills/rentflow-browser/db-snapshot.php restore` (zkontroluje integritu
-   a zálohu smaže). Soubory `database/database.sqlite-wal` / `-shm` nemaž ručně, drží je PHP-FPM.
+   a zálohu smaže), pak `… db-snapshot.php check`. Soubory `database/*.sqlite-wal` / `-shm` nemaž ručně, drží je
+   PHP-FPM. `database/default.sqlite` neměň (jen `save-default` na žádost).
 
 ## 2. Účty a role (seed, heslo `password`)
 
@@ -78,8 +90,9 @@ window.fetch = async (...a) => { const r = await of(...a); window.__st.push(r.st
   - XSS (`<script>`, `javascript:`, `"` v atributech) v adrese, popisu, komentáři tiketu, jménu
   Po každém pokusu stránku znovu načti. Odmítnutý `$set` na `#[Locked]` vlastnost zůstane ve stavu klienta
   a další požadavky pak vrací 500. Výsledek ověř i v DB.
-- **Parita s Reactem** (fáze 5): ve `frontend/` `npm run dev` a `http://localhost:5173` vedle sebe. Projdi položky
-  stránky v `docs/FEATURES.md` a u každé napiš OK / změněno / chybí.
+- **Parita s Reactem** (fáze 5): React je na větvi `main`. Spuštění vedle nového UI přes `git worktree` a vlastní
+  Herd site `rentflow-main.test` (recept ve skillu `rentflow-page`, sekce 1). Bez spuštěné předlohy porovnávej podle
+  `docs/FEATURES.md` a kódu (`git show main:frontend/src/pages/…`). U každé položky stránky napiš OK / změněno / chybí.
 - Konzole: `read_console_messages` (`onlyErrors`, `pattern: "Content Security Policy"`) a log
   `storage/logs/laravel.log` (`grep -o "local\.[A-Z]*: [^{]\{0,140\}"`).
 

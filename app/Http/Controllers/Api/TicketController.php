@@ -2,58 +2,39 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Events\TicketCreated;
-use App\Events\TicketResolved;
+use App\Actions\Tickets\CreateTicket;
+use App\Actions\Tickets\DeleteTicket;
+use App\Actions\Tickets\UpdateTicket;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
+use App\Http\Controllers\Api\Concerns\FindsTicket;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
-use App\Models\Lease;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TicketController extends Controller
 {
-    use Filterable;
+    use Filterable, FindsProperty, FindsTicket;
 
-    public function index(Request $request)
+    /** Pole, která smí autor upravit ve stavu new (#46); ostatní jen ten, kdo tiket řeší. */
+    private const array DETAIL_FIELDS = ['title', 'description'];
+
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Ticket::class);
 
         /** @var User $user */
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
-        if ($user->role === 'landlord') {
-            $query = Ticket::query()->whereIn(
-                'property_id',
-                $user->ownedProperties()->pluck('id')
-            )->with(['property', 'tenant', 'assignedUser']);
-        } elseif ($user->role === 'manager') {
-            $managedPropertyIds = $user->managedProperties()->pluck('properties.id');
-
-            $query = Ticket::query()
-                ->where(function ($q) use ($user, $managedPropertyIds) {
-                    $q->whereIn('property_id', $managedPropertyIds)
-                        ->orWhere('assigned_to', $user->id);
-                })
-                ->with(['property', 'tenant', 'assignedUser']);
-        } else {
-            // Tenant: sees own tickets + all tickets on properties where they have an active lease
-            $tenantPropertyIds = Lease::query()
-                ->where('tenant_id', $user->id)
-                ->where('status', 'active')
-                ->pluck('property_id');
-
-            $query = Ticket::query()
-                ->where(function ($q) use ($user, $tenantPropertyIds) {
-                    $q->where('tenant_id', $user->id)
-                        ->orWhereIn('property_id', $tenantPropertyIds);
-                })
-                ->with(['property', 'tenant', 'assignedUser']);
-        }
+        $query = Ticket::query()
+            ->visibleTo($user)
+            ->with(['property', 'tenant', 'assignedUser']);
 
         $this->applyFilters(
             $query,
@@ -66,38 +47,18 @@ class TicketController extends Controller
         return TicketResource::collection($query->paginate(15));
     }
 
-    public function store(StoreTicketRequest $request): JsonResponse
+    public function store(StoreTicketRequest $request, CreateTicket $create): JsonResponse
     {
-        $this->authorize('create', Ticket::class);
+        $property = $this->findProperty((string) $request->validated('property_id'));
+        $this->authorize('create', [Ticket::class, $property]);
 
-        $validated = $request->validated();
-        $user = $request->user();
-
-        // Manager creates ticket on behalf — set tenant_id to null or self
-        $validated['tenant_id'] = $user->id;
-
-        // Verify manager has access to this property
-        if ($user->role === 'manager') {
-            $hasAccess = $user->managedProperties()
-                ->where('properties.id', $validated['property_id'])
-                ->exists();
-
-            if (! $hasAccess) {
-                return response()->json([
-                    'message' => 'You can only create tickets for your managed properties.',
-                ], 403);
-            }
-        }
-
-        $ticket = Ticket::query()->create($validated);
-        $ticket->load(['property', 'tenant']);
-
-        TicketCreated::dispatch($ticket);
+        $ticket = $create->handle($property, $this->currentUser($request), $request->validated());
+        $ticket->load('tenant');
 
         return response()->json(new TicketResource($ticket), 201);
     }
 
-    public function show(Request $request, string $id): JsonResponse
+    public function show(string $id): JsonResponse
     {
         $ticket = Ticket::query()->with([
             'property',
@@ -105,51 +66,38 @@ class TicketController extends Controller
             'assignedUser',
             'comments.user',
             'images.uploader',
-        ])->findOrFail($id);
-
+        ])->find($id);
+        if ($ticket === null) {
+            abort(404);
+        }
         $this->authorize('view', $ticket);
 
         return response()->json(new TicketResource($ticket));
     }
 
-    public function update(UpdateTicketRequest $request, string $id): JsonResponse
+    public function update(UpdateTicketRequest $request, string $id, UpdateTicket $update): JsonResponse
     {
-        $ticket = Ticket::query()->findOrFail($id);
-
-        $this->authorize('update', $ticket);
-
+        $ticket = $this->findTicket($id);
         $validated = $request->validated();
 
-        // Auto-set resolved_at when status changes to resolved
-        if (isset($validated['status']) && $validated['status'] === 'resolved') {
-            $validated['resolved_at'] = now();
-        }
+        $onlyDetails = array_diff(array_keys($validated), self::DETAIL_FIELDS) === [];
+        $this->authorize($onlyDetails ? 'updateDetails' : 'update', $ticket);
 
-        $ticket->update($validated);
-
-        // Notify tenant when ticket is resolved
-        if (isset($validated['status']) && $validated['status'] === 'resolved') {
-            TicketResolved::dispatch($ticket);
-        }
+        // kontrola řešitele až po autorizaci, ať 422 cizímu nic neprozradí
+        $update->handle($ticket, $validated);
 
         return response()->json(new TicketResource($ticket));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteTicket $delete): JsonResponse
     {
-        $ticket = Ticket::query()->findOrFail($id);
-
+        $ticket = $this->findTicket($id);
         $this->authorize('delete', $ticket);
 
-        $ticket->delete();
+        $delete->handle($ticket);
 
         return response()->json([
             'message' => 'Ticket deleted successfully.',
         ]);
-    }
-
-    protected function getDateField(): string
-    {
-        return 'created_at';
     }
 }

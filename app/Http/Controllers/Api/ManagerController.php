@@ -2,122 +2,142 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Managers\AssignManager;
+use App\Actions\Managers\RemoveManager;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use App\Models\Property;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Správci podle rozhodnutí z auditu (#14): povýšení = přiřazení k nemovitosti pronajímatele, sesazení odebere jen
+ * jeho přiřazení, users.role se přepočítá (SyncManagerRole). Povýšit lze jen koho pronajímatel vidí.
+ */
 class ManagerController extends Controller
 {
+    use FindsProperty;
+
     /**
-     * Promote user to manager role
-     * POST /api/v1/users/{user}/promote-manager
+     * POST /api/v1/users/{user}/promote-manager (property_id vlastní nemovitosti)
      */
-    public function promote(Request $request, string $userId): JsonResponse
+    public function promote(Request $request, string $userId, AssignManager $assign): JsonResponse
     {
-        $landlord = $request->user();
+        $user = $this->findUser($userId);
+        $this->authorize('promote', $user);
 
-        if ($landlord->role !== 'landlord') {
-            return response()->json(['message' => 'Only landlords can promote managers.'], 403);
-        }
+        $request->validate(['property_id' => ['required', 'integer']]);
+        $property = $this->findProperty((string) $request->input('property_id'));
+        $this->authorize('assignManager', $property);
 
-        $user = User::query()->findOrFail($userId);
+        $assign->handle($property, $user);
 
-        if ($user->role === 'landlord') {
-            return response()->json(['message' => 'Cannot promote a landlord.'], 422);
-        }
-
-        $user->update(['role' => 'manager']);
-
-        return response()->json(['message' => 'User promoted to manager.', 'user' => $user]);
+        return response()->json([
+            'message' => 'User promoted to manager.',
+            'user' => UserResource::nested($user, $request),
+        ]);
     }
 
     /**
-     * Demote manager back to tenant
-     * POST /api/v1/users/{user}/demote-manager
+     * POST /api/v1/users/{user}/demote-manager – odebere ze všech nemovitostí přihlášeného pronajímatele.
      */
-    public function demote(Request $request, string $userId): JsonResponse
+    public function demote(Request $request, string $userId, RemoveManager $remove): JsonResponse
     {
-        $landlord = $request->user();
+        $user = $this->findUser($userId);
+        $this->authorize('demote', $user);
 
-        if ($landlord->role !== 'landlord') {
-            return response()->json(['message' => 'Only landlords can demote managers.'], 403);
+        /** @var list<int> $propertyIds */
+        $propertyIds = Property::withTrashed()
+            ->where('landlord_id', $this->currentUser($request)->id)
+            ->whereHas('managers', fn ($manager) => $manager->whereKey($user->id))
+            ->pluck('id')
+            ->all();
+
+        if ($propertyIds === []) {
+            return response()->json(['message' => 'User is not a manager of your properties.'], 422);
         }
 
-        $user = User::query()->findOrFail($userId);
+        $remove->handle($user, $propertyIds);
 
-        if ($user->role !== 'manager') {
-            return response()->json(['message' => 'User is not a manager.'], 422);
-        }
-
-        // Remove all property assignments
-        $user->managedProperties()->detach();
-        $user->update(['role' => 'tenant']);
-
-        return response()->json(['message' => 'Manager demoted to tenant.', 'user' => $user]);
+        return response()->json([
+            'message' => 'Manager removed from your properties.',
+            'user' => UserResource::nested($user, $request),
+        ]);
     }
 
     /**
-     * Assign manager to property
      * POST /api/v1/properties/{property}/assign-manager
      */
-    public function assign(Request $request, string $propertyId): JsonResponse
+    public function assign(Request $request, string $propertyId, AssignManager $assign): JsonResponse
     {
-        $landlord = $request->user();
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('assignManager', $property);
 
-        if ($property->landlord_id !== $landlord->id) {
-            return response()->json(['message' => 'You can only assign managers to your own properties.'], 403);
-        }
+        $request->validate(['user_id' => ['required', 'integer']]);
+        $user = $this->findUser((string) $request->input('user_id'));
+        $this->authorize('promote', $user);
 
-        $request->validate(['user_id' => 'required|exists:users,id']);
-
-        $manager = User::query()->findOrFail($request->input('user_id'));
-
-        if ($manager->role !== 'manager') {
-            return response()->json(['message' => 'User must be a manager first.'], 422);
-        }
-
-        $property->managers()->syncWithoutDetaching([$manager->id]);
+        $assign->handle($property, $user);
 
         return response()->json([
             'message' => 'Manager assigned to property.',
-            'managers' => $property->managers()->get(['users.id', 'users.name', 'users.email']),
+            'managers' => $this->managers($property),
         ]);
     }
 
     /**
-     * Remove manager from property
      * DELETE /api/v1/properties/{property}/remove-manager/{user}
      */
-    public function remove(Request $request, string $propertyId, string $userId): JsonResponse
+    public function remove(string $propertyId, string $userId, RemoveManager $remove): JsonResponse
     {
-        $landlord = $request->user();
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('assignManager', $property);
 
-        if ($property->landlord_id !== $landlord->id) {
-            return response()->json(['message' => 'You can only manage your own properties.'], 403);
+        // jen skutečně přiřazený správce, jinak by šlo přepočítat roli komukoli podle id
+        $user = $property->managers()->whereKey($userId)->first();
+        if ($user === null) {
+            abort(404);
         }
 
-        $property->managers()->detach($userId);
+        $remove->handle($user, [$property->id]);
 
         return response()->json([
             'message' => 'Manager removed from property.',
-            'managers' => $property->managers()->get(['users.id', 'users.name', 'users.email']),
+            'managers' => $this->managers($property),
         ]);
     }
 
     /**
-     * List managers for a property
-     * GET /api/v1/properties/{property}/managers
+     * GET /api/v1/properties/{property}/managers – kontakty správců jen vlastníkovi (#18)
      */
-    public function list(Request $request, string $propertyId): JsonResponse
+    public function list(string $propertyId): JsonResponse
     {
-        $property = Property::query()->findOrFail($propertyId);
+        $property = $this->findProperty($propertyId);
+        $this->authorize('assignManager', $property);
 
         return response()->json(
             $property->managers()->get(['users.id', 'users.name', 'users.email', 'users.phone'])
         );
+    }
+
+    private function findUser(string $id): User
+    {
+        $user = User::query()->find($id);
+        if ($user === null) {
+            abort(404);
+        }
+
+        return $user;
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function managers(Property $property): Collection
+    {
+        return $property->managers()->get(['users.id', 'users.name', 'users.email']);
     }
 }

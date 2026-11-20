@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PrivateFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
+/**
+ * Veřejný /health: jen stav a obecná hláška, text výjimky (connection string, host, cesta) do odpovědi nejde,
+ * ale do logu (#51). Kontrola úložiště zapisuje na privátní disk.
+ */
 class HealthController extends Controller
 {
     public function __invoke(): JsonResponse
@@ -28,6 +33,7 @@ class HealthController extends Controller
         ], $allHealthy ? 200 : 503);
     }
 
+    /** @return array{healthy: bool, message: string, response_time_ms?: float} */
     private function checkDatabase(): array
     {
         try {
@@ -41,32 +47,32 @@ class HealthController extends Controller
                 'response_time_ms' => $duration,
             ];
         } catch (Throwable $e) {
-            return [
-                'healthy' => false,
-                'message' => 'Connection failed: '.$e->getMessage(),
-            ];
+            report($e);
+
+            return ['healthy' => false, 'message' => 'Connection failed'];
         }
     }
 
+    /** @return array{healthy: bool, message: string} */
     private function checkStorage(): array
     {
         try {
             $testFile = 'health_check_'.time().'.tmp';
-            Storage::disk('public')->put($testFile, 'ok');
-            Storage::disk('public')->delete($testFile);
+            Storage::disk(PrivateFile::DISK)->put($testFile, 'ok');
+            Storage::disk(PrivateFile::DISK)->delete($testFile);
 
             return [
                 'healthy' => true,
                 'message' => 'Writable',
             ];
         } catch (Throwable $e) {
-            return [
-                'healthy' => false,
-                'message' => 'Not writable: '.$e->getMessage(),
-            ];
+            report($e);
+
+            return ['healthy' => false, 'message' => 'Not writable'];
         }
     }
 
+    /** @return array{healthy: bool, message: string} */
     private function checkCache(): array
     {
         try {
@@ -80,10 +86,9 @@ class HealthController extends Controller
                 'message' => $value === 'ok' ? 'Working' : 'Read/write mismatch',
             ];
         } catch (Throwable $e) {
-            return [
-                'healthy' => false,
-                'message' => 'Failed: '.$e->getMessage(),
-            ];
+            report($e);
+
+            return ['healthy' => false, 'message' => 'Failed'];
         }
     }
 }

@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\RatingCategory;
+use App\Support\Limits;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreRatingRequest extends FormRequest
 {
@@ -11,12 +14,13 @@ class StoreRatingRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
-            'category' => ['required', 'in:apartment_condition,communication,rules,overall'],
+            'category' => ['required', Rule::enum(RatingCategory::class)],
             'score' => ['required', 'integer', 'min:1', 'max:5'],
-            'comment' => ['nullable', 'string'],
+            'comment' => ['nullable', 'string', 'max:'.Limits::COMMENT],
         ];
     }
 

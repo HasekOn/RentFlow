@@ -2,53 +2,51 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Users\ChangePassword;
+use App\Actions\Users\UpdateProfile;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class ProfileController extends Controller
 {
     public function show(Request $request): JsonResponse
     {
-        return response()->json($request->user());
+        return response()->json($this->currentUser($request));
     }
 
-    public function changePassword(Request $request): JsonResponse
+    public function changePassword(Request $request, ChangePassword $change): JsonResponse
     {
-        $request->validate([
-            'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', Password::min(8), 'confirmed'],
+        $validated = $request->validate([
+            'current_password' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string', 'max:255', Password::min(8), 'confirmed'],
         ]);
 
-        if (! Hash::check($request->current_password, $request->user()->password)) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'error' => 'validation_error',
-                'errors' => [
-                    'current_password' => ['The current password is incorrect.'],
-                ],
-            ], 422);
-        }
-
-        $request->user()->update([
-            'password' => Hash::make($request->password),
-        ]);
+        // token, kterým se heslo mění, zůstane, ostatní se smažou
+        $change->handle(
+            $this->currentUser($request),
+            $validated['current_password'],
+            $validated['password'],
+            PersonalAccessToken::findToken((string) $request->bearerToken())?->id,
+        );
 
         return response()->json(['message' => 'Password changed successfully.']);
     }
 
-    public function update(Request $request): JsonResponse
+    public function update(Request $request, UpdateProfile $update): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,'.$request->user()->id],
+            'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,'.$this->currentUser($request)->id],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
+            // povinné při změně e-mailu, ověří UpdateProfile (S9)
+            'current_password' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $request->user()->update($validated);
+        $update->handle($this->currentUser($request), $validated);
 
-        return response()->json($request->user()->fresh());
+        return response()->json($this->currentUser($request)->fresh());
     }
 }

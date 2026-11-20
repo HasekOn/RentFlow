@@ -18,15 +18,18 @@ Stav: `- [ ]` čeká, `- [x]` hotovo. Poznámky piš pod krok.
   - Akce zvednuté na `actions/checkout@v7`, `actions/cache@v6`, `actions/setup-node@v7`; `composer.json` `php: ^8.5`.
   - Workflow je **dočasně vypnutý** (jen `workflow_dispatch`). Zapnout spouštěče push/PR (v komentáři
     v souboru) nejpozději ve fázi 6 spolu s úpravou jobů (bez React jobu, `npm run build`, `composer analyse`).
-- [ ] Merge `chore/upgrade-deps` → `main`, založit větev `v2`
-  - Merge hotový (PR #1). Zbývá založit `v2`.
+- [x] Merge `chore/upgrade-deps` → `main`, založit větev `v2`
+  - Merge hotový (PR #1), větev `v2` existuje (i na `origin`).
 - [x] `CLAUDE.md`, `.claude/` (settings, skills) a tento plán
 
 ## Fáze 1 – audit (jen čtení, nic neměnit)
 
-- [ ] `docs/REVIEW.md`: bezpečnost, autorizace, N+1, validace, uploady, mrtvý kód, chybějící testy
-- [ ] `docs/FEATURES.md`: inventář funkcí **každé** React stránky (tlačítka, filtry, řazení, stránkování, modaly,
+- [x] `docs/REVIEW.md`: bezpečnost, autorizace, N+1, validace, uploady, mrtvý kód, chybějící testy
+  - 58 nálezů (4 critical, 13 high, 21 medium, 20 low; #58 doplněn při plánování fáze 2). Všechna podezření níže
+    ověřena (tabulka v REVIEW). Otázky z REVIEW jsou rozhodnuté ve fázi 2 („Rozhodnutí z auditu“).
+- [x] `docs/FEATURES.md`: inventář funkcí **každé** React stránky (tlačítka, filtry, řazení, stránkování, modaly,
       prázdné stavy, toasty, polling, rozdíly podle role). Podle něj se ve fázi 5 kontroluje, že nic nechybí.
+  - Obsahuje i API, které React nevolá, a návrh URL včetně záložek detailu nemovitosti jako samostatných URL.
 
 **Podezření z prvního průchodu (ověřit, nebrat jako hotový fakt):**
 
@@ -56,29 +59,473 @@ Na konci shrnutí: počty nálezů podle závažnosti a 5 nejdůležitějších.
 
 ## Fáze 2 – backend (API a testy musí zůstat zelené)
 
-Postup pro každou oblast: skill `rentflow-backend`. Tvar JSON odpovědí API se nemění (React ho ještě používá).
+Postup pro každý krok: skill `rentflow-backend`. Každý krok je jeden PR do `v2` (větev `v2-<krok>`).
 
-- [ ] Nástroje: `larastan/larastan` (level 5 → postupně 7), `laravel-lang/common` (dev), skripty `composer analyse`
-      a `composer check` jako v JaTime, `pint.json`
-- [ ] `AppServiceProvider`: `Model::shouldBeStrict()` mimo produkci, `Carbon::setLocale('cs')`, rate limiter
-      přihlášení. `config/app.php`: `timezone` `Europe/Prague`, `APP_LOCALE=cs`, `lang/cs`
-- [ ] `App\Enums\Role` (+ cast na `User`), enumy pro statusy (property, lease, payment, ticket) a typy
-- [ ] Scope `visibleTo(User $user)` na Property, Lease, Payment, Ticket, Document… a jejich použití v API `index`
-- [ ] Policies pro všechny modely a oprava rozporů s maticí v README. Testy na každou roli.
-- [ ] Opravy critical/high z `docs/REVIEW.md` (dokumenty na privátní disk + autorizovaný download, `/users`, ratings…)
-- [ ] Actions pro zápisové operace (vytvořit/upravit/smazat nemovitost, smlouva + PDF, označit platbu, generovat
-      platby, CSV import, tiket + komentáře, měřiče a odečty, správci…). Controllery jen volají Action.
-- [ ] Indexy a FK podle nálezů, migrace jen přidávající
-- [ ] `composer check` zelený, Larastan bez baseline (nebo s malou a zdůvodněnou)
+React už v `v2` není (smazaný v 2.1), tvar JSON se kvůli němu držet nemusí. API a jeho testy jsou ale záchranná síť
+do konce fáze 5: změnu tvaru odpovědi nebo asserce (typicky oprava autorizace, kdy role dostane méně dat nebo 403)
+napiš do PR i s testem. O API se rozhodne ve fázi 6.
+
+Čísla `#` jsou nálezy z `docs/REVIEW.md`. U kroku jsou uvedené nálezy, které krok opravuje, a každý z nich musí
+pokrýt test.
+
+### Rozhodnutí z auditu (7. 10. 2026, otázky z REVIEW)
+
+- **Správce:**
+  - Oprávnění správce se odvozují z přiřazení k nemovitosti (`property_manager`), ne z globální role.
+    Policies a scopes se ptají, jestli je uživatel přiřazený k této nemovitosti, a nepíšou `role === 'manager'`.
+  - Promote = přiřazení uživatele k nemovitosti pronajímatele.
+  - Demote odebere jen přiřazení k nemovitostem toho pronajímatele.
+  - `users.role = manager` se přepočítává podle toho, jestli má uživatel aspoň jedno přiřazení (kvůli
+    kompatibilitě API; rozhodnuto ještě s Reactem).
+
+  (#14, #24)
+- **Nájemník do smlouvy:** existující účet se vyhledá podle přesného e-mailu. Seznam všech uživatelů pronajímatel
+  nedostane. Pozvánka e-mailem přijde později, mimo fázi 2. (#4)
+- **Smlouvy:** na jedné nemovitosti nesmí být překrývající se aktivní smlouvy. Kontroluje se při vytvoření, úpravě
+  dat a reaktivaci. (#22, #53)
+- **Tikety:** autor smí ve stavu `new` upravit název a popis. Ostatní pole upravuje jen pronajímatel a přiřazený
+  správce. (#46)
+- **Nemovitost:** `properties.size` a `disposition` jsou volitelné, takže migrace na `nullable`. Je to výjimka
+  z pravidla „migrace jen přidávající“: `->change()` bez ztráty dat. (#29)
+- **URL:** přihlášení a odhlášení zůstávají na `/login` a `/logout` (Laravel standard, skills s tím počítají).
+  Ostatní URL jsou česky (`/registrace`, `/zapomenute-heslo`, `/nemovitosti` …). Mapování je v `docs/FEATURES.md`.
+
+### Kroky
+
+- [x] **2.1 Nástroje a základ** (#26, #57)
+  - `larastan/larastan` (level 5, postupně 7), `laravel-lang/common` (dev), skripty `composer analyse`
+    a `composer check` jako v JaTime, `pint.json`.
+  - `AppServiceProvider`: `Model::shouldBeStrict()` mimo produkci, `Carbon::setLocale('cs')`.
+  - `config/app.php`: `timezone` `Europe/Prague`, `APP_LOCALE=cs`, `lang/cs`.
+  - Rate limiter přihlášení přijde s webovým loginem ve fázi 4 (#25).
+  - **Smazání `frontend/`** (přesunuto z fáze 6). React zůstává jako předloha na větvi `main` (spuštění přes
+    `git worktree`, recept ve skillu `rentflow-page`) a v `docs/FEATURES.md`. Úprava `CLAUDE.md` (přechodné období
+    do konce fáze 5), CORS pro SPA (#57), React job v CI, `unlighthouse.config.ts`, README a skills bez `localhost:5173`.
+    Kořenový `package.json` a `vite.config.js` zůstávají pro Blade.
+  - **Údržba závislostí** jako u JaTime: `composer outdated --direct`, `npm outdated`, `composer audit`,
+    `npm audit --omit=dev`. Patch a minor aktualizovat, majory jen navrhnout.
+  - Poznámky (18. 11. 2026):
+    - Larastan level 5 bez baseline: 9 chyb opraveno (generika relací `Meter::readings`, `Ticket::images`,
+      `@property` u `TicketImage`, logout v `AuthController` maže token z hlavičky + nový test).
+    - `$attributes` s DB defaulty u 12 modelů. Se strict, `Europe/Prague` a fakerem `cs_CZ` prošlo všech 117 testů
+      beze změny asercí.
+    - `pint.json` vynechává `lang/` (generuje `lang:add` / `lang:update`). `composer.json`
+      `audit.abandoned: report` jako JaTime: `dragon-code/*` z laravel-lang jsou opuštěné, jen se hlásí.
+    - `composer update`: framework 13.43 (spodní hranice `^13.43`), Symfony 8.1.11, Sanctum 4.5, všech
+      9 advisories opraveno. npm: Vite 8.3.8, Tailwind 4.3.5, laravel-vite-plugin 3.2.1.
+    - Plný `npm audit` (s dev) hlásí ReDoS v `picomatch` přes Vite. Oprava zatím není, produkční závislosti jsou čisté.
+    - **Majory (návrh, neprovedeno):** PHPUnit 12 → 13 (JaTime je na 13.4) jako samostatný malý krok.
+    - **Návrhy na později:** odebrat `laravel/sail` (Herd), `axios` a `resources/js/bootstrap.js` ve fázi 3,
+      `composer dev` (`artisan serve` + `vite`) je v rozporu s během jen přes Herd.
+    - Větev `v2/<krok>` git nedovolí vedle `v2`, proto `v2-<krok>` (opraveno v `CLAUDE.md`).
+    - **Skills podle JaTime (skupina „Hned“):**
+      - `rentflow-checks` běží jako subagent (Haiku) a nic neopravuje,
+      - `rentflow-review` je subagent spouštěný uživatelem, se stavem větve, checklistem „Čistota kódu“
+        a migracemi/rollbackem,
+      - nový `rentflow-step` (jeden krok plánu od stavu repa po shrnutí),
+      - `db-snapshot.php` pracuje s aktivní DB z konfigurace, má `save-default` / `load-default`
+        (`database/default.sqlite`) a při existující záloze skončí kódem 2.
+    - Ostatní skills z JaTime jsou rozplánované do fází: po 2.2 `CodeHygieneTest`, po fázi 2 `rentflow-security`,
+      ve fázi 3 `cdp.mjs`, `rentflow-design` a `ThemeTest`, ve fázích 5–7 dlouhé texty a `rentflow-release`.
+      `jatime-module` se nepřebírá (RentFlow nemá vypínatelné moduly).
+- [x] **2.2 Enumy a role** (#21, #40, #58)
+  - `App\Enums\Role` (+ cast na `User`), enumy pro statusy (property, lease, payment, ticket) a typy.
+  - `User::$fillable` bez `role` a `trust_score`. Nastavují se jen explicitně v registraci, u správců
+    a v `TrustScoreService`.
+  - Registrace jen `landlord` nebo `tenant`.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - 14 enumů v `app/Enums` (i `ExpenseType`, `InventoryCondition`, `MeterType`, `RatingCategory`,
+      `PropertyImageType`, `DocumentVisibility` místo `Document::VISIBILITY_OPTIONS`) a `Rule::enum()` ve validaci.
+    - Vědomě bez `label()`, tónu a ikon. Přijdou s UI ve fázi 3/5.
+    - `RoleMiddleware` vrací jen `Access denied.` (#40). `User::isLandlord()` / `isManager()` / `isTenant()`.
+    - Cast odhalil tiše rozbitá porovnání (stahování dokumentů nájemníkem a správcem, stav smlouvy při ukončení,
+      seeder). Opravena a pokrytá testy.
+    - Nově 422 při neplatné `visibility` u uploadu dokumentu (dřív tichý fallback na `landlord_only`).
+    - Seeder má data dál jako stringy (cast je převede). `findOrFail` zůstává mimo dotčené řádky, řeší 2.5+.
+    - Po review: testy scheduleru (`SchedulerCommandsTest`), hodnocení aktivní smlouvy, smlouvy na nemovitost
+      v rekonstrukci a stahování dokumentů správcem.
+- [x] **Po 2.2: dvojitá registrace listenerů** (nález z review 2.2, existovalo už předtím, v `docs/REVIEW.md` není)
+  - Každý listener je registrovaný dvakrát: v `$listen` v `app/Providers/EventServiceProvider.php` i přes
+    auto-discovery (`php artisan event:list` ukazuje `Listener` i `Listener@handle`).
+  - Dopad: nový tiket pošle pronajímateli 2 notifikace a 2 e-maily, `PaymentMarkedPaid` dvakrát přepočítá Trust Score
+    a dvakrát notifikuje.
+  - Oprava: smazat `EventServiceProvider` (discovery stačí), nebo vypnout discovery. Test, že jedna událost = jedna
+    notifikace (`Notification::fake()` + `assertSentToTimes(…, 1)`).
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `EventServiceProvider` smazán a `withProviders` odebráno z `bootstrap/app.php`. Zůstává výchozí auto-discovery
+      Laravelu 13, stejně jako JaTime.
+    - `User::recalculateTrustScore()` bere službu z kontejneru, aby šel počet přepočtů ověřit testem.
+    - `EventListenersTest`: registrace každého listeneru právě jednou a 1 notifikace u `TicketCreated`,
+      `TicketResolved` a `LeaseCreated`. U `PaymentMarkedPaid` 1 přepočet. Notifikaci neposílá, protože
+      `SendPaymentMarkedNotification` je zatím prázdný placeholder (výše uvedené „dvakrát notifikuje“ neplatilo).
+    - Testy byly před opravou červené (2×), po ní zelené.
+- [x] **Po 2.2: `CodeHygieneTest`** (vzor `tests/Feature/CodeHygieneTest.php` z JaTime)
+  - Hlídá: ladicí výpisy (`dd`, `dump`, `ray`, `var_dump`), `TODO`/`FIXME`, holé stringy rolí a statusů
+    v `app/` (`'landlord'`, `'paid'` … místo enumů z 2.2) a nepoužité Blade komponenty a partials (od fáze 3).
+  - Výjimky jen vědomě, s komentářem v testu. Checklist „Čistota kódu“ v `rentflow-review` odkáže na test.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026 (spolu s 2.10 a 2.11):*
+    - Tři testy: ladicí výpisy a `TODO` (`app`, `config`, `database`, `routes`, `resources`), holé hodnoty `Role`
+      a stavů smlouvy, platby, nemovitosti a tiketu v `app/`, nepoužité třídy v `app/`. Dnes vše čisté, kód se
+      neměnil.
+    - Výjimky: názvy relací `tenant` / `landlord` ve `with()`, `load()`, `whenLoaded()`, `compact()` a komentáře;
+      u nepoužitých tříd adresáře s auto-discovery (`Policies`, `Listeners`, `Console/Commands`, `Providers`).
+      Prázdný listener `SendPaymentMarkedNotification` tak test nehlásí, řeší ho 2.13.
+    - Blade komponenty a partials přibudou s fází 3 (zatím žádné nejsou).
+- [x] **2.3 Soubory** (#1, #2, #3, #15, #43, #55)
+  - Dokumenty, PDF smluv a fotky tiketů na privátní disk, existující soubory přesunout (příkaz nebo migrace).
+  - Whitelist typů (`mimes` + `max`, žádné SVG ani HTML).
+  - `DocumentPolicy` + `Document::visibleTo` (role, vlastnictví nebo přiřazení, `visibility`).
+  - Stažení jen autorizovanou routou s `Content-Disposition: attachment` a `nosniff`.
+  - PDF smlouvy streamem nebo z privátního disku, `visibility` přes `Rule::in`.
+  - Cesty (`invoice_path`, `photo_proof`) nebrat od klienta.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `App\Support\PrivateFile` (disk `local`, stažení s `attachment` + `nosniff`). Na privátním disku jsou
+      **všechny** soubory od uživatelů, tedy i všechny fotky nemovitostí (rozhodnutí při plánu).
+    - `Document::visibleTo` a `DocumentPolicy` odvozují oprávnění od vztahu k nemovitosti (vlastník, přiřazený správce,
+      aktivní smlouva), ne od globální role. Správce, který je jinde nájemníkem, tak vidí dokumenty své smlouvy.
+    - Nové routy na soubory fotek a příloh tiketů a fotek nemovitostí. Z JSON zmizely `file_path`, `image_path`,
+      `attachment_path` a `contract_path`, URL vedou na autorizované routy.
+    - PDF smlouvy se generuje za běhu a neukládá. Sloupec `leases.contract_path` zůstává nepoužitý (migrace jen
+      přidávají), smazat ho jde ve fázi 6.
+    - Příkaz `rentflow:move-files-to-private` přesune celé adresáře `documents/`, `properties/` a `tickets/`
+      z disku `public`, tedy i soubory bez záznamu v DB (lokálně jich bylo 12 ze starších seedů). Dál smaže
+      `contracts/` a nahlásí záznamy, kterým soubor chybí. Opakované spuštění nic nezmění.
+    - Navíc: `TicketCommentController::destroy` maže i soubor přílohy (dřív zůstával).
+    - Vědomě nechané: `findOrFail` v nedotčených metodách a autorizace zápisu fotek nemovitostí (#6) → 2.5;
+      autorizace `index`/`store` komentářů a fotek tiketů (#10) → 2.10.
+    - `HealthController` zkouší zápis na `PrivateFile::DISK` místo disku `public`.
+  - *Opravy po review 18.&nbsp;11.&nbsp;2026:*
+    - Jméno souboru ke stažení skládá server (`PrivateFile::downloadName`): `/` a `\` nahrazené, přípona z uložené
+      cesty. Dřív dokument „Smlouva 1/2025“ vracel 500. `DocumentResource` vrací `extension`.
+    - Stažení posílá navíc `Content-Security-Policy: default-src 'none'; sandbox`. Disk `local` má
+      `serve => false`, takže podepsaná `/storage/…` URL mimo policies neexistuje.
+    - `rentflow:move-files-to-private` zapisuje streamem a kontroluje výsledek i hash. Při chybě veřejný soubor
+      nemaže a vrátí `FAILURE`. Když na privátním disku leží jiný soubor se stejnou cestou, nechá oba a ohlásí
+      konflikt (také `FAILURE`). Smazané dokumenty nehlásí jako chybějící.
+    - `TicketResource` už nevrací `images[].image_path`. Seeder generuje PNG místo SVG, `storage:link`
+      z README pryč. `config/dompdf.php`: `enable_remote => false`.
+    - **Neplatné UTF-8:** middleware `RejectInvalidUtf8` v API skupině vrátí 422 pro neplatný text v query stringu
+      i ve formulářovém a multipart těle. Dřív se takový komentář uložil a detail tiketu pak padal všem (500).
+      `BankImportService::import()` odmítne CSV, které není v UTF-8 (export banky v cp1250), srozumitelnou
+      chybou 422 místo 500. Převod z cp1250 se nedělá.
+    - **GIF a BMP záměrně nepovolené** (dřív je pouštělo pravidlo `image`): u fotek stačí jpg, png a webp.
+    - Staré `.doc` a `.xls`: soubory uložené z Wordu a Excelu (97–2003) i soubory z instalace Office finfo pozná
+      jako `application/msword` / `application/vnd.ms-excel`, nikdy jako `x-ole-storage` nebo `CDFV2`. Výjimka
+      ve whitelistu proto není potřeba. Hlídá to test s fixturami `tests/fixtures/legacy.doc` a `legacy.xls`.
+- [x] **2.4 Uživatelé** (#4, #5, #19)
+  - `UserPolicy` + `User::visibleTo`:
+    - pronajímatel: nájemníci jeho smluv a správci jeho nemovitostí,
+    - správce: nájemníci spravovaných nemovitostí,
+    - nájemník: jen sám sebe.
+  - Vyhledání účtu podle přesného e-mailu pro novou smlouvu.
+  - `users/{user}/ratings` do controlleru s policy, trust score jen přes `UserPolicy::view`.
+  - **Vědomě:** smlouvu s novým nájemníkem (účtem, který pronajímatel ještě nezná) půjde založit až v Livewire
+    stránce Smlouvy (hledání podle e-mailu). React se po 2.1 už nespouští, takže se to netýká.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026 (spolu s 2.5 a 2.6):*
+    - `User::visibleTo`: sám sebe, nájemníci všech smluv (i ukončených) na mých nemovitostech, správci mých
+      nemovitostí; jako správce nájemníci aktivních smluv a **spolusprávci** přiřazených nemovitostí (rozhodnutí
+      při plánu, rozšíření oproti textu výše, kvůli sekci „Ostatní správci“ na stránce Lidé).
+    - `UserPolicy`: `viewAny` pronajímatel nebo správce s přiřazením (nájemník 403), `view` přes scope, `lookup`
+      jen pronajímatel. `UserController`: `/users` (filtr `role` přes `Rule::enum`), `/users/lookup?email=`
+      (přesná shoda, jen nájemník/správce, minimum údajů, `throttle:30,1`), `/users/{id}/ratings`.
+    - Hodnocení vrací stejný tvar jako dřív, ne `RatingResource` (ten by přidal e-mail a telefon hodnotitele).
+    - `tenants/{id}/trust-score` přes `UserPolicy::view`.
+
+**Kroky 2.5–2.10 jsou policies a `visibleTo()` po oblastech.** Každá akce má testy pro všechny role, cizí data
+(jiný pronajímatel), nepřiřazeného správce a nájemníka bez aktivní smlouvy (#38).
+
+- [x] **2.5 Nemovitosti a fotky** (#6, #18, #20, #35, #39)
+  - `PropertyPolicy` (včetně `restore`), `Property::visibleTo` (správce přes přiřazení), `PropertyImagePolicy`.
+  - Společná kontrola `view` nemovitosti pro čtecí endpointy pod ní (#18, oblasti dál v 2.6–2.10).
+  - Resource podle role: nájemník jen svou smlouvu, `purchase_price` jen vlastník.
+  - Smazání nemovitosti s aktivní smlouvou vrátí 422.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `Property::visibleTo` (vlastník, přiřazený správce, nájemník s aktivní smlouvou), `PropertyPolicy::view`
+      přes scope, bez větve `isManager()`. `restore` = vlastník.
+    - Smlouvy v `/properties` a detailu: vlastník všechny, ostatní jen svou (správce tedy žádnou cizí, nájemníky
+      bere z `/users`). Podmínka je v `PropertyController::visibleLeases()`, ve 2.8 ji nahradí `Lease::visibleTo`.
+      `purchase_price` jen vlastníkovi.
+    - `PropertyImagePolicy` (zápis vlastník), seznam fotek přes `view`. `GET /properties/{id}/managers` jen
+      vlastník (rozhodnutí při plánu). Traity `Api\Concerns\FindsProperty` a `FindsMeter` (find + 404).
+    - Řazení `/properties` podle `purchase_price` jen tomu, kdo má v seznamu jen vlastní nemovitosti, ostatním se
+      `sort` ignoruje (pořadí by ceny prozradilo).
+- [x] **2.6 Měřiče a odečty** (#7, #8)
+  - `MeterPolicy` a `MeterReadingPolicy`: zápis odečtu vlastník a přiřazený správce, úpravy a mazání vlastník.
+  - `photo_proof` v `MeterReadingResource` vynulovat nebo nevracet (z 2.3: staré hodnoty od klienta, mohou být
+    `javascript:` URL).
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `MeterPolicy` (čtení přes nemovitost, zápis vlastník), `MeterReadingPolicy` (zápis vlastník a přiřazený
+      správce, mazání vlastník). Odečet z jiného měřiče v URL → 404. `photo_proof` se nevrací.
+    - **Vnoření uživatelé** (všechny Resources: tiket, komentář, smlouva, hodnocení, nemovitost, dokument, fotka,
+      odečet, oznámení): `UserResource::nested()` vrací celý profil (e-mail, telefon, trust score) jen tomu, kdo
+      osobu vidí podle `UserPolicy::view`, jinak `UserSummaryResource` (`id`, `name`, `role`). Viditelná id se
+      načtou jednou za request. Důsledek: nájemník ani správce nevidí kontakt na pronajímatele (pronajímatel
+      není v jejich `User::visibleTo`). Rozhodnout ve fázi 5 u detailu nemovitosti, jestli kontakt ukázat záměrně.
+    - Návrh: e-mail normalizovat (malá písmena) při registraci a změně profilu + migrace. Teď `unique:users`
+      a `/users/lookup` na SQLite rozlišují velikost písmen, na MariaDB ne.
+- [x] **2.7 Inventář, oznámení, náklady** (#9, #16)
+  - `InventoryItemPolicy`, `NoticePolicy`, `ExpensePolicy` + `Expense::visibleTo` (jen vlastník).
+  - Skupinu `role:landlord,manager` v `routes/api.php` nahradit policies.
+  - `invoice_path` v `ExpenseResource` vynulovat nebo nevracet (z 2.3: staré hodnoty od klienta, mohou být
+    `javascript:` URL).
+  - *Hotovo 18.&nbsp;11.&nbsp;2026 (spolu s 2.8 a 2.9):*
+    - `InventoryItemPolicy` a `NoticePolicy`: čtení jako nemovitost (nově i přiřazený správce u oznámení), zápis
+      vlastník. `ExpensePolicy` + `Expense::visibleTo` jen vlastník, `/expenses` pro správce i nájemníka 403.
+    - Skupina `role:landlord,manager` je pryč (ve 2.8 i hodnocení), `RoleMiddleware` zůstává zaregistrovaný jako
+      hrubé síto, jeho test běží nad testovací routou. `invoice_path` se nevrací.
+    - `purchase_price` inventáře dál vidí všichni, kdo vidí inventář (rozhodnutí při plánu).
+    - Návrh (fáze 5): neaktivní oznámení nájemníkům neukazovat (dnes vidí i neaktivní).
+- [x] **2.8 Smlouvy a hodnocení** (#13, #22, #30)
+  - `LeasePolicy` + `Lease::visibleTo`, `RatingPolicy` (vlastník nemovitosti).
+  - Kontrola překryvu aktivních smluv. `tenant_id` jen nájemník nebo správce.
+  - `end_date` se porovnává s uloženým `start_date`.
+  - Vnořený `tenant` ve smlouvě a `rated_by` v hodnocení už jdou přes `UserResource::nested()` (2.4–2.6), krok
+    řeší jen `Lease::visibleTo` a výřez částek pro správce.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `Lease::visibleTo`: vlastník, nájemník smlouvy a přiřazený správce jen **aktivní** smlouvy (rozhodnutí při
+      plánu, stejně jako `User::visibleTo`). `LeasePolicy::view` přes scope, `viewFinance` (vlastník a nájemník)
+      pro PDF smlouvy (správce 403). Nahradilo `PropertyController::visibleLeases()` z 2.5.
+    - **Změna rozhodnutí** (platby párují správci ručně, appka není napojená na banku): `LeaseResource` vrací
+      přiřazenému správci u aktivních smluv nájemné, zálohy, VS a platby, **kauci ne**. Řazení podle `rent_amount`
+      proto smí všichni. PDF smlouvy a hodnocení beze změny.
+    - Seznam `/leases` vrací smazané smlouvy jen s filtrem `tenant_id` (dřív nájemníkovi vždy).
+    - `create(User, Property)`, `tenant_id` jen účet nájemníka nebo správce, překryv aktivních smluv na nemovitosti
+      (scope `Lease::overlapping`) při založení, změně období a reaktivaci → 422. `end_date` proti uloženému
+      `start_date` kontroluje controller až po autorizaci (hláška by cizímu prozradila datum).
+    - `RatingPolicy`: seznam kdo vidí smlouvu, hodnotí a maže vlastník nemovitosti (i u smazané smlouvy).
+    - Odškrtnuto dodatečně 19.&nbsp;11.&nbsp;2026 (krok byl hotový a mergnutý v PR #9, zaškrtnutí chybělo).
+- [x] **2.9 Platby** (#12, #17, #41)
+  - `PaymentPolicy` + `Payment::visibleTo`. Správce nevidí finance na dashboardu (platby viz změna rozhodnutí níž).
+  - `lease_id` jen z vlastních smluv.
+  - Mazání zaplacené platby vrátí 422 (stav), ne 403.
+  - *Hotovo 18.&nbsp;11.&nbsp;2026:*
+    - `Payment::visibleTo` = platby smluv z `Lease::visibleTo` (vlastník, nájemník smlouvy, přiřazený správce
+      u aktivních smluv). `PaymentPolicy`: `create(User, Lease)` jen na smlouvu vlastní nemovitosti, `update`
+      vlastník, `delete` bez kontroly stavu (zaplacená → 422 v controlleru), `generate` a `import` pronajímatel.
+    - **Změna rozhodnutí:** `markPaid` smí vlastník v jakémkoli stavu smlouvy (poslední nájem a nedoplatky
+      chodí po konci) a přiřazený správce jen u aktivní smlouvy (včetně přepočtu trust
+      score), **nikdy nájemník té smlouvy** (správce, který je jinde nájemníkem, nepotvrdí svou platbu).
+    - Dashboard: správce místo sekce `finance` dostane `payments` (počet a součet nezaplacených a po splatnosti
+      u aktivních smluv přiřazených nemovitostí), `finance-chart` jen pronajímatel.
+    - `days_overdue` jako celé číslo přes `Payment::daysOverdue()` (přesunuto z fáze 6). Splatná dnes → `null`.
+    - **Odchylka:** generování plateb je už jedna Action `App\Actions\Payments\GenerateMonthlyPayments` pro příkaz
+      i API (položka 2.13), kvůli idempotenci obou cest: `Cache::lock` + transakce, existující platby měsíce
+      jedním dotazem v rozsahu `>=` / `<`. Příkaz už nevypisuje řádek na každou smlouvu, jen součet.
+    - CSV import páruje jen smlouvy nemovitostí pronajímatele (i ne smazané nemovitosti), pokryto testem.
+    - Odškrtnuto dodatečně 19.&nbsp;11.&nbsp;2026 (krok byl hotový a mergnutý v PR #9, zaškrtnutí chybělo).
+- [x] **2.10 Tikety, komentáře, fotky** (#10, #11, #23, #24, #46)
+  - `TicketPolicy` v pořadí: autor, nájemník s aktivní smlouvou, přiřazený správce, vlastník.
+  - `Ticket::visibleTo`, `create(User, Property)`, `TicketCommentPolicy`, `TicketImagePolicy`.
+  - `assigned_to` jen správce přiřazený k nemovitosti.
+  - Autor upraví název a popis ve stavu `new`.
+  - Vnořený `tenant`, `assigned_user` a autor komentáře už jdou přes `UserResource::nested()` (2.4–2.6). Fotky
+    tiketu (`images[].uploader`) vrací jen id a jméno.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:*
+    - `Ticket::visibleTo`: autor (i po skončení smlouvy) a kdo vidí nemovitost (`Property::visibleTo`). Nájemník
+      s aktivní smlouvou vidí všechny tikety bytu (rozhodnutí při plánu). **Změna:** samotné `assigned_to` už přístup
+      nedává (dřív ano), jen přiřazení k nemovitosti.
+    - `TicketPolicy`: `create(User, Property)` = kdo vidí nemovitost (#11, správce-nájemník i ve svém bytě, #24),
+      `update` vlastník a přiřazený správce, `updateDetails` navíc autor ve stavu `new` jen pro název a popis (#46),
+      `delete` vlastník. `TicketCommentPolicy` a `TicketImagePolicy`: číst a přidávat smí kdo vidí tiket (#10),
+      komentář maže autor, fotku kdo ji nahrál nebo vlastník nemovitosti.
+    - `assigned_to` (#23): jen správce přiřazený k nemovitosti tiketu nebo `null`, měnit ho smí vlastník
+      i přiřazený správce (rozhodnutí při plánu). Kontrola po autorizaci v controlleru.
+    - `TicketImageResource` pro detail tiketu i `/tickets/{id}/images` (**změna tvaru:** seznam a upload fotky
+      dřív vracely surový model s `ticket_id` a `uploaded_by`). Trait `FindsTicket`, find + 404.
+- [x] **2.11 Správci** (#14)
+  - Promote a demote podle rozhodnutí výše.
+  - Přepočet `users.role` po přiřazení a odebrání.
+  - Testy na správce u dvou pronajímatelů.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:*
+    - Actions `App\Actions\Managers\AssignManager`, `RemoveManager`, `SyncManagerRole` (role = `manager`, když
+      spravuje aspoň jednu nesmazanou nemovitost, jinak `tenant`; pronajímatel beze změny).
+    - Povýšit smí pronajímatel jen toho, koho vidí (`User::visibleTo`, rozhodnutí při plánu), cizí účet → 403.
+      **Změna API:** `promote-manager` vyžaduje `property_id` vlastní nemovitosti, `assign-manager` přijme
+      i nájemníka (povýšení), odpovědi vrací uživatele přes `UserResource::nested`.
+    - `demote-manager` odebere jen přiřazení u přihlášeného pronajímatele (i u jeho smazaných nemovitostí),
+      `remove-manager` jen skutečně přiřazeného (jinak 404). Tikety, které na těch nemovitostech řešil, ztratí
+      řešitele.
+    - Návrh (2.13 / fáze 5): přiřazení ke smazané nemovitosti se nepočítá do role ani viditelnosti. Po obnovení
+      nemovitosti role přepočítat.
+- [x] **2.12 Data a datumy** (#27, #28, #29)
+  - Sloupce `date` ukládat bez času (cast nebo mutator a úprava existujících hodnot).
+  - Rozsahy `>=` a `<` ve filtrech, dashboardu a CSV importu.
+  - `size` a `disposition` nullable.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026 (spolu s 2.13 a 2.14):*
+    - Cast `App\Casts\DateOnly` na všech sloupcích `date` (platby, smlouvy, náklady, inventář, odečty): ukládá
+      půlnoc ve formátu modelu (`Y-m-d 00:00:00`, v MariaDB `DATE`). Pravidlo: u sloupců `date` bindovat `Carbon`,
+      ne řetězec `Y-m-d`; rozsahy `>=` začátek a `<` začátek dalšího dne nebo měsíce.
+    - Datová migrace `normalize_date_columns` srovná staré hodnoty s časem na půlnoc (PHP po dávkách, bez SQL
+      funkcí, `down()` nic nevrací). Schéma se nemění.
+    - `Filterable`: `date_to` zahrne celý poslední den, neplatné datum → 422, pole v query se dál ignoruje.
+      Dashboard (měsíc, končící smlouvy) a graf přes `>=` / `<`. Graf navíc počítá měsíce od začátku měsíce
+      (31.&nbsp;ledna minus dva měsíce dřív přeteklo a prosinec byl v grafu dvakrát).
+    - #29: migrace `->change()` na nullable u `size` a `disposition` (výjimka z rozhodnutí z auditu). SQLite
+      tabulku přestaví s vypnutými FK (migrace v SQLite neběží v transakci, takže kaskády nic nesmažou);
+      `MigrationRollbackTest` hlídá rollback a migrate nad daty.
+- [x] **2.13 Actions a byznys logika** (#31–#37, #53, #54)
+  - Actions pro zápisové operace: nemovitost, smlouva + PDF, platby a generování, CSV import, tiket + komentáře,
+    měřiče a odečty, hodnocení, správci. Controllery jen volají Action.
+  - Transakce, events po commitu, notifikace `ShouldQueue`.
+  - Generování plateb jen pro platné smlouvy (jedna Action pro příkaz i API už je z 2.9).
+  - Notifikace o konci smlouvy jen jednou, robustní kontrola plateb po splatnosti.
+  - Přepočet trust score po hodnocení a změně platby.
+  - CSV import páruje podle VS platby.
+  - Přechody stavů smlouvy a tiketu na jednom místě.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:*
+    - 48 Actions v `app/Actions/<Oblast>` (Properties, Leases, Ratings, Payments, Expenses, Inventory, Notices,
+      Documents, Meters, Tickets, Managers, Users). Každý zápis v API jde přes Action, controller dělá autorizaci,
+      validaci, Action a Resource. Výjimka: odhlášení maže token v controlleru (jako přihlášení).
+    - Triviální založení a úprava = jedna Action `Save<Věc>` (Livewire formulář řeší obojí). Soubory přes
+      `PrivateFile::storeWith()`: když zápis do DB selže, nahraný soubor se smaže.
+    - **Změna tvaru 422:** porušení byznys pravidla (aktivní smlouva, překryv, zaplacená platba, nižší odečet …)
+      je `ValidationException`, takže API vrací `message: Validation failed.` a text v `errors.<pole>` (dřív
+      v `message`). Livewire ho ukáže u pole. Upravené asserce: `LeaseAccessTest` (překryv), `PropertyAccessTest`
+      (smazání s aktivní smlouvou).
+    - Eventy `LeaseCreated`, `PaymentMarkedPaid`, `TicketCreated`, `TicketResolved` implementují
+      `ShouldDispatchAfterCommit`. Notifikace zůstávají synchronní, `ShouldQueue` (#31) odloženo do fáze 7.
+    - #32 generování jen pro smlouvy platné v měsíci a nesmazané nemovitosti. #33 upozornění na konec smlouvy jen
+      30 a 7 dní předem. #34 po splatnosti přeskočí smazané smlouvy a nemovitosti, chyba upozornění nezastaví
+      zbytek, trust score jednou na nájemníka.
+    - #36 přepočet trust score po hodnocení, jeho smazání, vytvoření, úpravě a smazání platby; `PUT status=paid`
+      funguje jako mark-paid (event, doplní dnešní datum), mark-paid na zaplacené → 422.
+    - #37 CSV: `ImportBankPayments` (párování podle VS platby i smlouvy, zálohy s VS + „1“ se spárují, nesoulad
+      částky → `to_review` a platba zůstane nezaplacená, záporná částka = odchozí platba se nepáruje, celé
+      v transakci, trust score jednou na nájemníka). `BankImportService` jen parsuje. **Změna tvaru:** souhrn má
+      navíc `to_review`, `matched[]` už nemá `amount_mismatch`.
+    - #53 smlouvy: `CreateLease` v transakci, `SyncPropertyOccupancy` jako jedno místo pro obsazenost,
+      reaktivace vrátí `occupied` a v rekonstrukci → 422. #54 tikety: `resolved_at` a notifikace jen při přechodu,
+      znovuotevření `resolved_at` smaže. #47 nový tiket dostane vlastník a přiřazení správci kromě autora.
+    - `ChangePassword` smaže ostatní API tokeny (část #25).
+    - Testy v `tests/Feature/Actions/`. Testy scheduleru dostaly pevné období smluv (factory bere náhodné
+      období podle skutečného dne, filtr platnosti v měsíci by je náhodně vyřadil).
+    - Nález v testech: Laravel volá `setUp<Trait>()` u traitů sám, takže `PropertyRoles` běžel v každém testu
+      dvakrát. Přejmenováno na `createPropertyRoles()`.
+- [x] **2.14 Výkon, peníze, indexy, robustnost, úklid** (#42, #44, #45, #47–#52, #56)
+  - Indexy na FK (přidávající migrace), agregace místo dotazů v cyklu a test na počet dotazů.
+  - Peníze přes `SUM` v DB nebo v haléřích.
+  - Validace filtrů, `/health` bez detailů výjimek.
+  - `toArray()` notifikací (klíče, česky), výběrové scopy bez stránkování.
+  - Typ nákladu `utility` (rozhodnout), `download_url`, mrtvý kód.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:*
+    - #52 migrace s indexy na `property_id` (dokumenty, měřiče, inventář, oznámení, fotky), `ticket_id`
+      (komentáře, fotky tiketů) a `property_manager.user_id`.
+    - #48 `finance-chart` 4 dotazy místo 26 (`SUM` po dnech, do měsíců v PHP), expirace smluv hromadně, import
+      a po splatnosti s jedním přepočtem na nájemníka. `ListQueryScalingTest`: seznamy a dashboard pro
+      pronajímatele, správce-nájemníka a nájemníka mají při seedu × 1 i × 10 stejný počet dotazů.
+    - #49 `App\Support\Money`: haléře (`cents`, `fromSum` pro výsledek `SUM`), `format()` „12&nbsp;500&nbsp;Kč“
+      v e-mailech a PDF smlouvy. Dashboard, graf a CSV počítají v `int`. Model docblocky peněz jako `numeric-string`.
+    - #51 `/health` bez textu výjimek (jde do logu). #42 `download_url` přes `route()` už z dřívějška.
+    - #47 `toArray()` všech notifikací: `type`, český `title` a `message` (typografie), odkazy na záznam.
+      Texty e-mailů zůstávají anglicky do rozhodnutí o jazyku UI (fáze 3).
+    - #56 smazán prázdný `SendPaymentMarkedNotification`, `Hash::make` vedle castu `hashed`, shodné
+      `getDateField()` a nepoužitá relace `PropertyImage::uploadedBy`. `routes/web.php` s `welcome` řeší fáze 4.
+    - #44 rozhodnuto: `utility` se nepřidává. #45 výběry bez stránkování vědomě do fáze 5 (bez Livewire volajícího
+      by šlo o mrtvý kód). Řazení podle ceny je hotové a otestované z 2.5.
+- [x] **Hotovo, když:** `composer check` je zelený, Larastan bez baseline (nebo s malou a zdůvodněnou) a všechny
+      nálezy kroků 2.1–2.14 mají opravu s testem.
+  - *Ověřeno 19.&nbsp;11.&nbsp;2026:* `composer check` zelený, Larastan level 5 bez baseline (soubor neexistuje),
+    nálezy #1–#58 opravené s testem, nebo vědomě odložené (tabulka níž). Level 7 jako samostatný krok (návrh).
+- [x] **Po fázi 2: Larastan level 8 bez baseline** (jako JaTime)
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:* 233 chyb z levelu 8 opraveno bez baseline a bez `@phpstan-ignore`:
+    - přihlášený uživatel v API přes `Controller::currentUser()` (bez auth 401, dál do Actions jen `User`);
+    - generika relací (`@return BelongsTo<Model, $this>`), `@use HasFactory<…Factory>`,
+      `Collection<int, Model>`, typy polí u `rules()`, `toArray()`, `via()` a `Filterable` (`@template`);
+    - notifikace: `toMail(User $notifiable)`, nemovitost a datum přes `?->` (smazaná nemovitost nespadne);
+    - update nákladu, inventáře, měřiče a oznámení: kontrola null u nemovitosti (policy vrátí 403 dřív);
+    - `LeaseResource`: cache id nemovitostí za request ve `WeakMap` místo `$request->attributes`;
+    - CSV: prázdná buňka jako `''`, ne `null`.
+- [x] **Po fázi 2: skill `rentflow-security`** podle `jatime-security` a hned první běh (ověří opravy z REVIEW).
+  - Audit celé aplikace jako subagent spouštěný uživatelem. Každý nález s `soubor:řádek` a scénářem zneužití.
+  - A autentizace: Sanctum tokeny a jejich expirace, od fáze 4 session a limiter `login` (#25).
+  - B autorizace: matice z README × každá API metoda a Livewire akce. Izolace pronajímatelů místo „více škol“,
+    správce přes `property_manager`, nájemník jen s aktivní smlouvou.
+  - C vstupy: uploady (privátní disk, `mimes`), CSV import (vzorce, kódování), DomPDF (uživatelské texty v PDF),
+    `$fillable` bez `role` a `trust_score`.
+  - D HTTP: `SecurityHeaders`, CORS (vypnutý od 2.1), trust proxies.
+  - E data a provoz: fronta `database` a e-maily notifikací, logy, tajemství v repu, audity závislostí.
+  - F osobní údaje: nájemníci, citlivé dokumenty, hodnocení a Trust Score.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:* skill `.claude/skills/rentflow-security` (argument `utoky` = útoky přes HTTP
+    se zálohou DB, od fáze 5 i Livewire z konzole). První běh A–F bez útoků: opravy z REVIEW drží, 12 nových
+    nálezů čeká na rozhodnutí (S1–S12):
+    - vysoké: smlouva bez souhlasu nájemníka zpřístupní jeho kontakty, hodnocení a Trust Score (S1) a dovolí
+      Trust Score zničit falešnými platbami a hodnoceními (S2);
+    - střední: hodnocení nájemníka prozradí adresy a komentáře cizích pronajímatelů (S3), Markdown v e-mailech
+      s uživatelskými texty (S4);
+    - nízké: kauce správci přes `/payments` (S5), dokumenty předchozího nájemníka (S6), texty a částky bez `max`
+      (S7), zaplacená platba přes `PUT status=unpaid` (S8), změna e-mailu bez hesla (S9), VS unikátní napříč
+      pronajímateli (S10), CSV bez limitu řádků (S11), workflow bez `permissions:` (S12).
+- [x] **Opravy S1–S11** (větev `v2-security`, S12 → fáze 6).
+  - *Hotovo 20.&nbsp;11.&nbsp;2026.* Rozhodnutí: Trust Score se sdílí (skóre + počet hodnocení), detaily hodnocení
+    jen u vlastních; autor tiketu po konci smlouvy komentuje jen otevřený tiket; `purchase_price` inventáře
+    zůstává všem (předávací protokol); DomPDF `chroot` jen `resources/views/pdf`.
+  - S1 + S2: smlouva je pozvánka. `LeaseStatus` + `pending` a `declined`, sloupec `leases.accepted_at` je jediné
+    kritérium „přijatá“ (scope `Lease::accepted()`). Přijetí a odmítnutí jen nájemník (`AcceptLease`,
+    `DeclineLease`, `LeasePolicy::respond`, `PUT /leases/{id}/accept|decline`). Překryv a obsazenost až od
+    přijetí, pronajímatel pozvánku jen odvolá (`terminated`), reaktivace jen přijaté smlouvy. Kontakty
+    (`User::visibleTo`), Trust Score, platby a hodnocení jen přes přijaté smlouvy. Datová migrace: stávající
+    smlouvy `accepted_at = created_at`; seed má navíc pozvánku pro Marii.
+  - S3 hodnocení: komentář, hodnotitel a adresa jen pro hodnoceného, autora a vlastníka nemovitosti; `/tenants/{id}/trust-score`
+    vrací `ratings_count`. S4 `Markdown::withSecuredEncoding()`. S5 kauce mimo `Payment::visibleTo` a `markPaid`
+    správce. S6 `documents.lease_id`. S7 `App\Support\Limits` a `max` ve všech Requestech i validaci v controllerech.
+    S8 zaplacená platba jen `note`. S9 změna e-mailu s `current_password`. S10 VS unikátní v rámci pronajímatele.
+    S11 `ImportBankPayments::MAX_ROWS` a `throttle:10,1,import-csv`.
+  - Odchylka: limity na routách mají prefix (`throttle:60,1,auth`, `30,1,lookup`, `10,1,import-csv`). Bez něj
+    sdílely počítadlo s globálním `throttle:200,1` a každý požadavek se počítal dvakrát (login 30/min místo 60).
+  - Výjimky z „migrace jen přidávající“: změna enumu `leases.status` (SQLite přestaví tabulku, jako #29) a zrušení
+    unikátního indexu VS (`down()` selže při duplicitách mezi pronajímateli). Obojí hlídá `MigrationRollbackTest`.
+  - Změněné aserce: `LeaseTest` a `LeaseRulesTest` (obsazenost až po přijetí), `LeaseAccessTest` (překryv
+    při přijetí, ne při založení), `LeaseTest::store_validates_unique_variable_symbol` (duplicita u téhož
+    pronajímatele), `MigrationRollbackTest` (`--step`).
+  - Návrhy: notifikace pronajímateli o přijetí a odmítnutí (fáze 5), vypršení starých pozvánek, DomPDF
+    `enable_javascript` a `allowed_protocols` výslovně v configu.
+  - Kontrolní audit B a F (20.&nbsp;11.) našel tři obchvaty, opravené v téže větvi:
+    - B-1: PDF smlouvy pronajímateli jen u přijaté smlouvy (`LeasePolicy::downloadPdf`, dřív `viewFinance`),
+      jinak pozvánka prozradila e-mail a telefon nájemníka;
+    - B-2: vnořené `payments` v `LeaseResource` bez kaucí pro správce (jako `Payment::visibleTo`);
+    - B-3: pozvánka podle `tenant_email` místo `tenant_id`. Neexistující účet i účet pronajímatele vrací stejnou
+      422, `POST /leases` sdílí limit `throttle:30,1,tenant-lookup` s `users/lookup`. Změna tvaru API: testy
+      posílají `tenant_email` místo `tenant_id`, chyby duplicity a role jsou u pole `tenant_email`.
+  - Rozhodnutí po auditu: nájemník vidí tikety svého bytu založené od `start_date` své aktivní smlouvy a své
+    vlastní, celou historii vlastník a správce (`Ticket::visibleTo`). Pozvánku (`pending`) nejde upravit, jen
+    odvolat (422 „odvolejte a pošlete novou“). `lease_id` u dokumentu zůstává volitelné.
+  - Druhý krátký audit B a F: N-1 (u nemovitosti v rekonstrukci klíč chyby prozradil existenci účtu) opraven
+    pořadím kontrol v `CreateLease`. Rozhodnutí k jeho otázkám:
+    - přijatá smlouva s budoucím začátkem: smlouvu, PDF a platby vidí nájemník hned, nemovitost (a na ní
+      oznámení, měřiče, inventář, tikety) a dokumenty až od `start_date`. Nový scope `Lease::current()` (aktivní
+      a už začala) v `Property::visibleTo` a `Document::visibleTo`; předchozí nájemník vidí byt do konce smlouvy;
+    - hodnocení v `/leases/{id}` a `/leases/{id}/ratings`: detail (komentář, hodnotitel) jen autor, hodnocený
+      a vlastník (`RatingResource`), přiřazený správce jen id, kategorii, skóre a datum, i u reaktivované smlouvy.
+
+**Nálezy mimo fázi 2:**
+
+| Nález | Fáze | Co |
+| --- | --- | --- |
+| #25 | 4 | Rate limiter `login`, změna hesla odhlásí ostatní session (API tokeny maže už 2.13). Expirace Sanctum tokenů podle rozhodnutí o API ve fázi 6. |
+| #31 | 7 | `ShouldQueue` pro notifikace a worker. Eventy už běží po commitu (2.13). |
+| #45 | 5 | Výběry nemovitostí bez stránkování (`visibleTo()->orderBy()->get(['id', 'address'])`) u stránek Smlouvy, Tikety, Dokumenty a dashboardu správce. |
+| #47 | 3 | Texty e-mailů notifikací česky po rozhodnutí o jazyku UI (data pro zvoneček jsou česky z 2.14). |
+| #56 | 4 | `routes/web.php` s `welcome` nahradí webové routy. |
+| review 2.2 | 5 | České názvy atributů ve validaci (`lang/cs/validation.php`, `attributes`): teď „Vybraná stav je neplatná“. |
+| review 2.2 | 6 | `days_overdue` v `PaymentResource` je float (`diffInDays` v Carbon 3 vrací desetinné číslo). |
+| S12 | 6 | GitHub workflow bez `permissions:` (token s výchozími právy zápisu). Spolu se zapnutím CI. |
+
+Krok se dá spustit i skillem `/rentflow-step 2.x <název kroku>` (stav repa, plán, kontroly, odškrtnutí, shrnutí).
 
 ```text
-Fáze 2 z docs/REWRITE_PLAN.md, krok „<název kroku>“. Postupuj podle skillu rentflow-backend.
-Tvar JSON odpovědí API neměň. Nejdřív plán (soubory, testy), pak implementace, kontroly (rentflow-checks).
+Fáze 2 z docs/REWRITE_PLAN.md, krok „2.x <název kroku>“. Postupuj podle skillu rentflow-backend.
+Oprav nálezy z docs/REVIEW.md uvedené u kroku a každý pokryj testem. Tvar JSON odpovědí API neměň
+(výjimka: oprava autorizace, napiš ji). Nejdřív plán (soubory, testy), pak implementace, kontroly (rentflow-checks).
 Na konci odškrtni krok v plánu.
 ```
 
 ## Fáze 3 – Livewire, design systém, layout
 
+- [ ] ROZHODNOUT jazyk UI – jen čeština, nebo lokalizace cs + en (texty přes __() / lang/, přepínač jazyka
+      v nastavení uživatele)
+  - Pozor (stav po 2.14): notifikace ukládají český `title` a `message` přímo do DB (`toArray()`, trait
+    `App\Notifications\Concerns\CzechText`) a `Money::format()` vrací „Kč“ natvrdo. Pokud padne cs + en,
+    notifikace musí ukládat jen `type` + parametry a text skládat až při zobrazení přes `__()`.
 - [ ] `livewire/livewire` ^4 (stejná verze jako JaTime), Alpine přes Livewire, `@tailwindcss/forms`, fonty přes
       `@fontsource-variable/*` (bez CDN)
 - [ ] Návrh vzhledu: 2–3 klíčové obrazovky (přehled, seznam a detail nemovitosti) jako mockup ke schválení
@@ -91,6 +538,22 @@ Na konci odškrtni krok v plánu.
 - [ ] Layout `layouts/app.blade.php` (sidebar podle role, mobilní menu, uživatelské menu, zvoneček notifikací,
       `<meta name="csrf-token">`), chybové stránky 403/404/419/429/500/503
 - [ ] `SecurityHeaders` middleware (CSP bez `script-src`/`style-src` jako JaTime), `trustProxies`
+- [ ] **Skill `rentflow-design`** podle `jatime-design` (vzniká spolu s komponentami a tokeny, `paths:
+      resources/views/**, resources/css/**`).
+  - Tabulka komponent `<x-…>` s props, tokeny `@theme`.
+  - Závazná pravidla: karty, nebo tabulka, zalamování textů od lidí, `maxlength` = `max:` z validace, dotyk 44 px,
+    tlačítka a dialogy, toasty, prázdné stavy, čísla, data a česká typografie, tmavý režim.
+  - Přístupnost a gotchas Blade.
+  - Bez modulových tříd JaTime (`.nb-*`, `.rp-*`, `.dq-*`, `.tr-*`). Navíc stavy nemovitosti, smlouvy, platby
+    a tiketu z enumů, peníze, Trust Score, grafy a záložky detailu nemovitosti.
+  - Porovnání se schváleným mockupem RentFlow.
+- [ ] **`ThemeTest`** (vzor JaTime): žádné natvrdo hex barvy v Blade a CSS, `tracking-[…]` jen přes token.
+- [ ] **`cdp.mjs` v `rentflow-browser`** (vzor `jatime-browser`): headless Edge přes CDP bez pluginu a bez npm
+      balíčků, jeden skript na scénář s malým JSON výstupem, `checks.overflow` a `checks.contrast`.
+  - Úpravy: `http://rentflow.test` (bez HTTPS), `login()` s heslem `password` a selektory z fáze 4, klíč
+    tmavého režimu z fáze 3.
+  - Skill pak poběží jako subagent s argumentem „stránky a role“. Vestavěný prohlížeč jen na přání (odpadne hack
+    s `requestAnimationFrame`).
 
 ```text
 Fáze 3 z docs/REWRITE_PLAN.md, krok „<název kroku>“. Vzor je JaTime v C:\dev\jatime (resources/views/components,
@@ -100,10 +563,21 @@ vzhled uprav pro RentFlow podle schváleného návrhu. Nepřidávej závislosti 
 
 ## Fáze 4 – autentizace (session)
 
-- [ ] Přihlášení, registrace, odhlášení, zapomenuté heslo (vzor `LoginController` z JaTime, rate limiter `login`)
+- [ ] Přihlášení `/login`, registrace `/registrace`, odhlášení `/logout`, zapomenuté heslo `/zapomenute-heslo`
+      (vzor `LoginController` z JaTime, rate limiter `login` podle e-mailu a IP, #25)
 - [ ] Middleware `role:` pro web (redirect/403 stránka místo JSON), `$middleware->authenticateSessions()`
-- [ ] Profil a změna hesla (`/nastaveni`), změna hesla odhlásí ostatní zařízení
-- [ ] Sanctum a API nechat beze změny (React běží dál)
+- [ ] Profil a změna hesla (`/nastaveni`), změna hesla odhlásí ostatní zařízení (#25), změna e-mailu jen se
+      současným heslem (S9, `UpdateProfile` už to vynucuje)
+- [ ] **Smazání účtu a export osobních údajů** (`/nastaveni`, GDPR, z auditu S1–S11): navrhnout ve fázi 4
+      (co se smaže a co anonymizuje: smlouvy, platby, hodnocení a tikety zůstávají pronajímateli), UI ve fázi 5.
+      Patří sem i soubory smazaných tiketů: `DeleteTicket` je soft delete, fotky a přílohy komentářů zůstávají
+      na privátním disku (bez přístupu, ale jsou to osobní údaje) → smazat je při trvalém smazání nebo anonymizaci.
+- [ ] Sanctum a API nechat beze změny (API zůstává do rozhodnutí ve fázi 6)
+- [ ] Webové routy pro soubory se session auth (dokument, fotka nemovitosti, fotka a příloha tiketu, PDF smlouvy):
+      stejné policies a `PrivateFile::download()` jako API z 2.3. API routy chtějí Bearer token, takže
+      `<img src>` v Livewire je nepoužije.
+- [ ] Neplatné UTF-8 i ve webových formulářích: `RejectInvalidUtf8` z 2.3 je zatím jen v API skupině. Rozhodnout,
+      jestli ho dát globálně, nebo do `web` skupiny (Livewire posílá JSON, ten neplatné UTF-8 nedekóduje).
 
 ## Fáze 5 – stránky (každá = PR, skill `rentflow-page`)
 
@@ -114,34 +588,69 @@ Pořadí podle závislostí. URL česky. Detail nemovitosti rozdělit na zálož
 - [ ] Detail nemovitosti `/nemovitosti/{property}` – přehled a fotky
 - [ ] Detail nemovitosti – měřiče a odečty
 - [ ] Detail nemovitosti – inventář
-- [ ] Detail nemovitosti – náklady
-- [ ] Detail nemovitosti – dokumenty
+- [ ] Detail nemovitosti – náklady (návrh z 2.3: upload faktury na privátní disk místo `invoice_path` od klienta;
+      totéž pro fotku odečtu `photo_proof` u měřičů)
+- [ ] Detail nemovitosti – dokumenty (formulář předvyplní `lease_id` aktuální aktivní smlouvy, S6: dokument
+      pro nájemníka pak neuvidí další nájemník; prázdné = všichni nájemníci bytu)
 - [ ] Detail nemovitosti – oznámení
 - [ ] Detail nemovitosti – správci
-- [ ] Smlouvy `/smlouvy` + detail `/smlouvy/{lease}` (PDF, hodnocení nájemníka)
+- [ ] Smlouvy `/smlouvy` + detail `/smlouvy/{lease}` (PDF, hodnocení nájemníka; výběr nemovitosti bez stránkování, #45)
+- [ ] **Pozvánky ke smlouvě** u nájemníka (S1): seznam pozvánek `pending` (přehled a `/smlouvy`), detail s nájemným,
+      kaucí a termíny, tlačítka Přijmout / Odmítnout (`AcceptLease`, `DeclineLease`, chyby 422 u pole). U pronajímatele
+      stav „čeká na nájemníka“ a odvolání pozvánky (pozvánku nejde upravit, jen odvolat a poslat novou). Nájemník
+      se zadává e-mailem (`tenant_email`, B-3), chyba je u pole. Zvoneček: notifikace `tenant_invitation` vede
+      na pozvánku.
 - [ ] Platby `/platby` (označit zaplaceno, generování, CSV import)
-- [ ] Tikety `/tikety` + detail `/tikety/{ticket}` (komentáře, fotky, stavy)
+- [ ] Tikety `/tikety` + detail `/tikety/{ticket}` (komentáře, fotky, stavy; výběr nemovitosti bez stránkování, #45)
 - [ ] Lidé `/lide` + detail `/lide/{user}` (Trust Score, hodnocení, povýšení na správce)
-- [ ] Dokumenty `/dokumenty`
+- [ ] Dokumenty `/dokumenty` (výběr nemovitosti bez stránkování, #45)
 - [ ] Notifikace (zvoneček, označit přečtené, `wire:poll`)
 - [ ] Nastavení `/nastaveni`
+- [ ] **České názvy atributů ve validaci** (review 2.2): `lang/cs/validation.php` → `attributes` (`status` → „stav“,
+  `type` → „typ“ …) a rod v hlášce `enum`/`in` („Vybraná stav je neplatná“ → např. „Hodnota pole stav je
+  neplatná.“). Ověřit na formulářích fáze 5 i v API 422.
+- [ ] **Scénář „dlouhé texty“** v `rentflow-browser` (vzor `jatime-browser/dlouhe-texty`, po převodu stránek):
+  - `analyze.js`: ořezání, překryv, prvek mimo kartu, dotyk pod 44 px, zalomení po písmenech.
+  - `run.mjs`: role × šířky 360–1920 a souhrn.
+  - `data.php`: limity RentFlow – adresy a popisy nemovitostí, názvy a texty tiketů, komentáře, jména, názvy
+    dokumentů, poznámky plateb, částky do maxima `decimal`.
+  - `scenarios.mjs` po stránkách fáze 5.
+  - Spolu s `LongTextTest`, který hlídá `wrap-anywhere` u textů od lidí.
 
 ```text
 Fáze 5 z docs/REWRITE_PLAN.md, stránka „<název>“. Postupuj podle skillu rentflow-page.
-Předloha: frontend/src/pages/<…>.tsx a sekce stránky v docs/FEATURES.md. Nic z inventáře nesmí chybět;
+Předloha: git show main:frontend/src/pages/<…>.tsx a sekce stránky v docs/FEATURES.md. Nic z inventáře nesmí chybět;
 vědomé vynechání napiš. Nejdřív plán, pak implementace, testy, rentflow-checks a rentflow-browser.
 ```
 
 ## Fáze 6 – úklid
 
-- [ ] Smazat `frontend/`, proxy, CORS konfiguraci pro SPA a `unlighthouse.config.ts` přepsat na nové URL
-- [ ] Rozhodnout API: ponechat (veřejné API s tokeny a testy), nebo odstranit i se Sanctum
-- [ ] CI: odstranit frontend job, přidat `npm run build` v kořeni, `composer analyse`, audity
+- Smazání `frontend/`, proxy, CORS pro SPA (#57), React jobu v CI a `unlighthouse.config.ts` se přesunulo
+  do kroku 2.1.
+- [ ] Rozhodnout API: ponechat (veřejné API s tokeny a testy), nebo odstranit i se Sanctum. Podle toho nastavit CORS
+      (`config/cors.php`, teď vypnutý).
+- [x] `days_overdue` v `PaymentResource` jako celé číslo (review 2.2: Carbon 3 vrací z `diffInDays` float, např.
+      `10.707…`). Podle rozhodnutí o API, s testem. Stejný výpočet pro UI fáze 5 přes jeden helper.
+      *Přesunuto do 2.9 a hotovo (`Payment::daysOverdue()`).*
+- [ ] CI: zapnout spouštěče push/PR, přidat `npm run build` v kořeni a audity (`composer analyse` už je od 2.1)
+- [ ] Odstranit worktree s React předlohou (`herd unlink rentflow-main`, `git worktree remove ../rentflow-main`)
 - [ ] README (architektura, instalace přes Herd, screenshoty), `CHANGELOG.md`
 
 ## Fáze 7 – kvalita a nasazení
 
 - [ ] Playwright E2E na hlavní toky (přihlášení všech rolí, nemovitost, smlouva, platba, tiket s komentářem)
-- [ ] Unlighthouse (výkon, přístupnost) na hlavních stránkách
+- [ ] Unlighthouse (výkon, přístupnost) na hlavních stránkách: nový `unlighthouse.config.ts` pro `rentflow.test`
+      a české URL (starý pro React smazán ve 2.1)
 - [ ] Rozhodnout produkci (Coolify na Hetzneru jako JaTime? SQLite vs MariaDB), Dockerfile, zálohy
-- [ ] Skill `rentflow-release` podle `jatime-release`
+- [ ] Rozhodnout `ShouldQueue` pro notifikace + queue worker v produkci (teď se posílají synchronně při requestu)
+- [ ] Při prvním nasazení po 2.3 spustit `php artisan rentflow:move-files-to-private` (soubory z `public`
+      na privátní disk). Do `rentflow-release`.
+  - Poznámka k vydání: **rollback** na verzi před 2.3 po spuštění příkazu vyžaduje zpětný přesun souborů
+    z `storage/app/private` do `storage/app/public` (stará verze čte z `public`). Reverzní příkaz neexistuje.
+  - Příkaz končí `FAILURE`, když soubor nejde zapsat nebo na privátním disku leží jiný soubor se stejnou cestou.
+    Veřejný soubor pak zůstane na místě a je potřeba ho vyřešit ručně.
+- [ ] Skill `rentflow-release` podle `jatime-release`, až po rozhodnutí o produkci.
+  - Verze + `CHANGELOG.md` + README.
+  - Připravenost na produkci: `env()` mimo config, `autoload-dev` v běhovém kódu, migrace bez modelů, simulace
+    startu `migrate` → `optimize` → smoke, rollback.
+  - Návrh popisu PR. Sekce „Migrace a rollback“ z `rentflow-review` se sem přesune.

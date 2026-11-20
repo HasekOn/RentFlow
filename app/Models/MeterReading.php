@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
+use Database\Factories\MeterReadingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +23,7 @@ use Illuminate\Support\Carbon;
  */
 class MeterReading extends Model
 {
+    /** @use HasFactory<MeterReadingFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -31,11 +34,13 @@ class MeterReading extends Model
         'photo_proof',
     ];
 
+    /** @return BelongsTo<Meter, $this> */
     public function meter(): BelongsTo
     {
         return $this->belongsTo(Meter::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by');
@@ -45,7 +50,7 @@ class MeterReading extends Model
     {
         return [
             'reading_value' => 'decimal:3',
-            'reading_date' => 'date',
+            'reading_date' => DateOnly::class,
         ];
     }
 }

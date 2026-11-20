@@ -1,60 +1,64 @@
 ---
 name: rentflow-checks
-description: Kompletní kontroly RentFlow jako v CI – testy, Pint, Larastan, build nového UI i starého React frontendu a audity – s hlášením výsledků. Použij po každé změně kódu, před předáním práce a před commitem.
+description: Kompletní kontroly RentFlow jako v CI – testy, Pint, Larastan, build UI a audity – s hlášením výsledků. Použij po každé změně kódu, před předáním práce a před commitem. Běží jako samostatný subagent – v argumentu předej, co se změnilo (soubory, oblast).
+argument-hint: "[co se změnilo – soubory, oblast]"
+context: fork
+agent: general-purpose
+model: haiku
+background: false
 ---
 
 # Kontroly RentFlow
 
-Pouštěj přes **PowerShell** z `C:\dev\rentflow` (PHP z Herdu, mimo sandbox podle `.claude/settings.local.json`).
+**Úkol: spusť kontroly, nic neopravuj, vrať hlášení (řádek na kontrolu + přesný výstup selhání).**
+Co se změnilo (od volajícího): $ARGUMENTS
 
-## Vždy
+Pouštěj přes **PowerShell** z `C:\dev\rentflow` (PHP z Herdu, mimo sandbox podle `.claude/settings.local.json`).
+Každý příkaz spusť jen jednou. Výpis selhání je **nad** souhrnem, proto u testů ber posledních 40 řádků.
+Testy běží sériově (paratest v projektu není). Jednotlivý soubor nebo `--filter` jen na žádost volajícího.
 
 ```powershell
-php artisan test 2>&1 | Select-Object -Last 5
+php artisan config:clear 2>&1 | Out-Null
+php artisan test 2>&1 | Select-Object -Last 40
 vendor/bin/pint --test 2>&1 | Select-Object -Last 5
 composer analyse 2>&1 | Select-Object -Last 5
 npm run build 2>&1 | Select-String "built in|error" | Select-Object -Last 3
 ```
 
-- `composer analyse` existuje až od fáze 2 (Larastan). Do té doby napiš „Larastan: zatím není v projektu“.
-- `npm run build` v kořeni builduje nové UI (Blade + Livewire). Po změně Blade šablon ho spusť vždy, protože nové
-  Tailwind třídy se objeví až po buildu.
+`composer check` je totéž bez buildu (Pint + Larastan + testy) a zastaví se na první chybě. Pro hlášení pouštěj
+příkazy zvlášť, ať je vidět výsledek každého.
 
-## Starý React frontend (jen dokud existuje `frontend/`)
-
-Pouštěj, když se změnilo něco ve `frontend/`, v `package*.json`, nebo **v API** (controllery, resources, routy,
-requesty), protože React z API čte:
+Audity jako v CI (před mergem, před vydáním, po změně `composer.*` / `package*.json`, nebo když to volající zmíní):
 
 ```powershell
-Push-Location frontend
-npx tsc -b 2>&1 | Select-Object -Last 5
-npm run lint 2>&1 | Select-Object -Last 3
-npm run build 2>&1 | Select-String "built in|error" | Select-Object -Last 3
-Pop-Location
-```
-
-ESLint má známá varování (pravidla React Compileru a `any` přepnutá na `warn`). Nepočítej je jako chybu,
-ale nepřidávej nová. Chyba (`error`) je chyba.
-
-## Před vydáním nebo mergem navíc
-
-```powershell
-composer audit 2>&1 | Select-Object -Last 3
+composer audit 2>&1 | Select-Object -Last 3; "composer audit exit=$LASTEXITCODE"   # 0 = bez zranitelnosti (opuštěné balíčky jen hlásí)
 npm audit --omit=dev 2>&1 | Select-Object -Last 3
 ```
 
+Opuštěné `dragon-code/*` (závislost `laravel-lang`) jsou známé a exit kód nemění (`audit.abandoned: report`).
+Plný `npm audit` (s dev závislostmi) se nespouští – známý ReDoS v `picomatch` přes Vite zatím nemá opravu.
+
 ## Když něco selže
 
-- **Test:** spusť jen soubor (`php artisan test tests/Feature/PaymentTest.php`) a oprav příčinu, ne test.
-  Když API test musí změnit aserci (jiný tvar odpovědi), zastav se a napiš proč. React na tvaru závisí.
-- **Pint:** `vendor/bin/pint <soubor>` opraví formát. Když Pint „opravuje“ docblock nesmyslně (rozdělí větu),
-  hledej `@slovo` v textu (např. `*@rentflow.cz`) a přeformuluj ho.
-- **Larastan:** typy v PHPDoc (`list<…>`, `array{…}`, `Collection<int, Model>`), `Builder<Model>` u scopů,
-  žádné `?->` po non-null, `find()` + `abort(404)` místo `findOrFail()`.
-- **Build:** chybějící třída nebo komponenta v Blade je většinou překlep v `<x-…>` nebo cesta v `@source`.
+Neopravuj. Do hlášení dej přesný výstup selhání (u testů název testu, zprávu a soubor:řádek; u Pintu seznam
+souborů; u Larastanu řádky s chybou).
+
+Nápověda pro volajícího, kam se podívat:
+
+- **Test:** volající opraví příčinu, ne test. API testy jsou záchranná síť do konce fáze 5 – když musí změnit
+  aserci (jiný tvar odpovědi), napíše proč.
+- **Pint:** `vendor/bin/pint <soubor>` opraví formát. `lang/` je z Pintu vyřazený (generuje ho laravel-lang).
+  Když Pint „opravuje“ docblock nesmyslně (rozdělí větu), bývá v textu `@slovo` (např. `*@rentflow.cz`) – přeformulovat.
+- **Larastan:** typy v PHPDoc (`list<…>`, `array{…}`, `Collection<int, Model>`), generika relací
+  (`@return HasMany<Model, $this>`), `@use HasFactory<…Factory>`, `Builder<Model>` u scopů, žádné `?->`
+  po non-null, `find()` + `abort(404)` místo `findOrFail()`, uživatel přes `currentUser()`. Level 8, baseline
+  se nezakládá.
+- **Build:** nové Tailwind třídy se objeví až po buildu – po změně Blade šablon je build nutný před kontrolou
+  v prohlížeči. Chybějící komponenta bývá překlep v `<x-…>` nebo cesta v `@source`.
 - **Windows:** `composer require balik:^1.0` spolkne `^` → `~1.0` nebo úprava `composer.json` a `composer update`.
 
 ## Hlášení
 
-Jedním řádkem na kontrolu: počet testů a asercí, Pint, Larastan, build (+ React, pokud běžel), audity.
-Při chybě vlož přesný výstup. Nikdy netvrď „prochází“, když kontrola neproběhla. Napiš, co se nespustilo a proč.
+Jedním řádkem na kontrolu: počet testů a asercí, Pint, Larastan, build, audity (pokud běžely). Při chybě vlož
+přesný výstup. Nikdy netvrď „prochází“, když kontrola neproběhla – napiš, co se nespustilo a proč
+(např. `rentflow.test` 502, chybějící `node_modules`).

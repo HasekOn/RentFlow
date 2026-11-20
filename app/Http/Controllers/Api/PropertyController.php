@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Properties\DeleteProperty;
+use App\Actions\Properties\RestoreProperty;
+use App\Actions\Properties\SaveProperty;
+use App\Http\Controllers\Api\Concerns\FindsProperty;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
@@ -9,110 +13,117 @@ use App\Http\Resources\PropertyResource;
 use App\Models\Property;
 use App\Models\User;
 use App\Traits\Filterable;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PropertyController extends Controller
 {
-    use Filterable;
+    use Filterable, FindsProperty;
 
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Property::class);
 
         /** @var User $user */
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
-        if ($user->role === 'landlord') {
-            $query = $user->ownedProperties()->with(['leases.tenant', 'images'])->getQuery();
-        } elseif ($user->role === 'manager') {
-            $managedIds = $user->managedProperties()->pluck('properties.id');
-            $leaseIds = $user->leases()->where('status', 'active')->pluck('property_id');
-            $allIds = $managedIds->merge($leaseIds)->unique();
+        $query = Property::query()
+            ->visibleTo($user)
+            ->with(['leases' => $this->visibleLeases($user), 'images']);
 
-            $query = Property::query()
-                ->whereIn('id', $allIds)
-                ->with(['leases.tenant', 'images']);
-        } else {
-            $query = Property::query()->whereIn('id',
-                $user->leases()->where('status', 'active')->pluck('property_id')
-            )->with('images');
+        // cena je finance vlastníka: řadit podle ní jde, jen když seznam nemá cizí nemovitosti, jinak se sort ignoruje
+        $sortableFields = ['address', 'city', 'size', 'status', 'created_at'];
+        if (ltrim((string) $this->stringInput($request, 'sort'), '-') === 'purchase_price'
+            && ! Property::query()->visibleTo($user)->where('landlord_id', '!=', $user->id)->exists()) {
+            $sortableFields[] = 'purchase_price';
         }
 
         $this->applyFilters(
             $query,
             $request,
             filterableFields: ['status', 'city', 'disposition'],
-            sortableFields: ['address', 'city', 'size', 'status', 'purchase_price', 'created_at'],
+            sortableFields: $sortableFields,
             searchableFields: ['address', 'city', 'description'],
         );
 
         return PropertyResource::collection($query->paginate(15));
     }
 
-    public function store(StorePropertyRequest $request): JsonResponse
+    public function store(StorePropertyRequest $request, SaveProperty $save): JsonResponse
     {
         $this->authorize('create', Property::class);
 
-        $property = Property::query()->create([
-            ...$request->validated(),
-            'landlord_id' => $request->user()->id,
-        ]);
+        $property = $save->handle($this->currentUser($request), $request->validated());
 
         return response()->json(new PropertyResource($property), 201);
     }
 
     public function show(Request $request, string $id): JsonResponse
     {
+        /** @var User $user */
+        $user = $this->currentUser($request);
+
         $property = Property::query()->with([
             'landlord',
-            'leases.tenant',
+            'leases' => $this->visibleLeases($user),
             'meters',
             'images',
-        ])->findOrFail($id);
+        ])->find($id);
+        if ($property === null) {
+            abort(404);
+        }
 
         $this->authorize('view', $property);
 
         return response()->json(new PropertyResource($property));
     }
 
-    public function update(UpdatePropertyRequest $request, string $id): JsonResponse
+    public function update(UpdatePropertyRequest $request, string $id, SaveProperty $save): JsonResponse
     {
-        $property = Property::query()->findOrFail($id);
+        $property = $this->findProperty($id);
 
         $this->authorize('update', $property);
 
-        $property->update($request->validated());
+        $save->handle($this->currentUser($request), $request->validated(), $property);
 
         return response()->json(new PropertyResource($property));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $id, DeleteProperty $delete): JsonResponse
     {
-        $property = Property::query()->findOrFail($id);
+        $property = $this->findProperty($id);
 
         $this->authorize('delete', $property);
 
-        $property->delete();
+        $delete->handle($property);
 
         return response()->json([
             'message' => 'Property deleted successfully.',
         ]);
     }
 
-    public function restore(Request $request, string $id): JsonResponse
+    public function restore(string $id, RestoreProperty $restore): JsonResponse
     {
-        $property = Property::withTrashed()->findOrFail($id);
+        $property = Property::withTrashed()->find($id);
+        if ($property === null) {
+            abort(404);
+        }
 
-        $this->authorize('update', $property);
+        $this->authorize('restore', $property);
 
-        $property->restore();
+        $restore->handle($property);
 
         return response()->json(new PropertyResource($property));
     }
 
-    protected function getDateField(): string
+    /**
+     * Smlouvy v nemovitosti podle Lease::visibleTo (#20): vlastník všechny, nájemník svou, přiřazený správce
+     * aktivní (částky skryje LeaseResource).
+     */
+    private function visibleLeases(User $user): Closure
     {
-        return 'created_at';
+        return fn ($leases) => $leases->visibleTo($user)->with('tenant');
     }
 }

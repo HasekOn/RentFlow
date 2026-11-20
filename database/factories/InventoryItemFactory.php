@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\InventoryCondition;
 use App\Models\Property;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -28,7 +29,7 @@ class InventoryItemFactory extends Factory
             'property_id' => Property::factory(),
             'name' => $item['name'],
             'category' => $item['category'],
-            'condition' => fake()->randomElement(['new', 'good', 'fair', 'poor']),
+            'condition' => fake()->randomElement([InventoryCondition::New, InventoryCondition::Good, InventoryCondition::Fair, InventoryCondition::Poor]),
             'purchase_date' => fake()->dateTimeBetween('-5 years', '-6 months'),
             'purchase_price' => fake()->randomFloat(2, 2000, 30000),
             'note' => null,

@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\PropertyImageType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdatePropertyImageRequest extends FormRequest
 {
@@ -11,12 +13,13 @@ class UpdatePropertyImageRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
-            'type' => ['sometimes', 'in:marketing,defect,document'],
-            'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'type' => ['sometimes', Rule::enum(PropertyImageType::class)],
+            'description' => ['nullable', 'string', 'max:255'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
         ];
     }
 }

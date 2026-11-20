@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
+use App\Enums\InventoryCondition;
+use Database\Factories\InventoryItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,9 +16,9 @@ use Illuminate\Support\Carbon;
  * @property int $property_id
  * @property string $name
  * @property string|null $category
- * @property string $condition
+ * @property InventoryCondition $condition
  * @property Carbon|null $purchase_date
- * @property float|null $purchase_price
+ * @property numeric-string|null $purchase_price
  * @property string|null $note
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -24,7 +27,17 @@ use Illuminate\Support\Carbon;
  */
 class InventoryItem extends Model
 {
+    /** @use HasFactory<InventoryItemFactory> */
     use HasFactory, SoftDeletes;
+
+    /**
+     * Výchozí hodnoty stejné jako DB default v migraci (Model::shouldBeStrict).
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'condition' => InventoryCondition::Good->value,
+    ];
 
     protected $fillable = [
         'property_id',
@@ -36,6 +49,7 @@ class InventoryItem extends Model
         'note',
     ];
 
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
@@ -44,7 +58,8 @@ class InventoryItem extends Model
     protected function casts(): array
     {
         return [
-            'purchase_date' => 'date',
+            'condition' => InventoryCondition::class,
+            'purchase_date' => DateOnly::class,
             'purchase_price' => 'decimal:2',
         ];
     }

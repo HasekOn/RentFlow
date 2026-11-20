@@ -11,6 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class NoticeResource extends JsonResource
 {
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [
@@ -19,7 +20,7 @@ class NoticeResource extends JsonResource
             'content' => $this->content,
             'is_active' => $this->is_active,
             'created_at' => $this->created_at->toDateTimeString(),
-            'created_by' => new UserResource($this->whenLoaded('createdBy')),
+            'created_by' => UserResource::nested($this->whenLoaded('createdBy'), $request),
         ];
     }
 }

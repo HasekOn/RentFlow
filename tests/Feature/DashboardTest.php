@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Enums\LeaseStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Expense;
 use App\Models\Lease;
 use App\Models\Payment;
@@ -150,6 +152,32 @@ class DashboardTest extends TestCase
         $this->assertArrayHasKey('income', $firstMonth);
         $this->assertArrayHasKey('expenses', $firstMonth);
         $this->assertArrayHasKey('cashflow', $firstMonth);
+    }
+
+    public function test_manager_dashboard_has_payment_overview_but_no_finance(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $this->property->managers()->attach($manager->id);
+        $active = $this->lease;
+        $ended = Lease::factory()->create(['property_id' => $this->property->id, 'status' => LeaseStatus::Ended]);
+        Payment::factory()->create(['lease_id' => $active->id, 'status' => PaymentStatus::Unpaid, 'amount' => 1000]);
+        Payment::factory()->create(['lease_id' => $active->id, 'status' => PaymentStatus::Overdue, 'amount' => 2500]);
+        Payment::factory()->create(['lease_id' => $active->id, 'status' => PaymentStatus::Paid, 'amount' => 9000]);
+        // ukončená smlouva a cizí nemovitost se nepočítají
+        Payment::factory()->create(['lease_id' => $ended->id, 'status' => PaymentStatus::Overdue]);
+        Payment::factory()->create(['status' => PaymentStatus::Unpaid]);
+
+        $response = $this->actingAs($manager)
+            ->getJson($this->apiUrl('/dashboard/stats'))
+            ->assertStatus(200)
+            ->assertJsonPath('properties.total', 1)
+            ->assertJsonPath('payments.unpaid.count', 1)
+            ->assertJsonPath('payments.overdue.count', 1)
+            ->assertJsonMissingPath('finance');
+        $this->assertEquals(1000, $response->json('payments.unpaid.amount'));
+        $this->assertEquals(2500, $response->json('payments.overdue.amount'));
+        $this->actingAs($this->landlord)->getJson($this->apiUrl('/dashboard/stats'))->assertJsonMissingPath('payments');
+        $this->actingAs($manager)->getJson($this->apiUrl('/dashboard/finance-chart'))->assertStatus(403);
     }
 
     public function test_tenant_cannot_access_finance_chart(): void

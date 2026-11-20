@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\ExpenseType;
+use App\Support\Limits;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateExpenseRequest extends FormRequest
 {
@@ -11,14 +14,14 @@ class UpdateExpenseRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
-            'type' => ['sometimes', 'in:repair,insurance,tax,maintenance,other'],
-            'amount' => ['sometimes', 'numeric', 'min:0'],
+            'type' => ['sometimes', Rule::enum(ExpenseType::class)],
+            'amount' => ['sometimes', 'numeric', 'min:0', 'max:'.Limits::AMOUNT],
             'expense_date' => ['sometimes', 'date'],
-            'description' => ['nullable', 'string'],
-            'invoice_path' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

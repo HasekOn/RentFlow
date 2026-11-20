@@ -19,18 +19,16 @@ use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\TicketCommentController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketImageController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Resources\UserResource;
-use App\Models\Lease;
-use App\Models\Rating;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // ─── Health check ─────────────────────────────────
 Route::get('/health', HealthController::class);
 
-// Public routes
-Route::middleware('throttle:60,1')->group(function () {
+// Public routes (prefix: vlastní počítadlo, ne sdílené s globálním throttle:200,1)
+Route::middleware('throttle:60,1,auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
@@ -41,25 +39,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', fn (Request $request) => new UserResource($request->user()));
 
-    // Ratings by user — parameter name must match route placeholder {user}
-    Route::get('users/{user}/ratings', function (string $user) {
-        $ratings = Rating::query()
-            ->whereIn('lease_id', Lease::withTrashed()->where('tenant_id', $user)->pluck('id'))
-            ->with(['ratedBy', 'lease.property'])
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(fn ($r) => [
-                'id' => $r->id,
-                'category' => $r->category,
-                'score' => $r->score,
-                'comment' => $r->comment,
-                'created_at' => $r->created_at->toDateTimeString(),
-                'rated_by' => $r->ratedBy ? ['id' => $r->ratedBy->id, 'name' => $r->ratedBy->name] : null,
-                'property' => $r->lease?->property ? ['address' => $r->lease->property->address] : null,
-            ]);
-
-        return response()->json($ratings);
-    });
+    // People (UserPolicy + User::visibleTo)
+    Route::get('users', [UserController::class, 'index']);
+    // hledání účtu podle e-mailu a pozvánka ke smlouvě sdílí jedno počítadlo (B-3)
+    Route::get('users/lookup', [UserController::class, 'lookup'])->middleware('throttle:30,1,tenant-lookup');
+    Route::get('users/{user}/ratings', [UserController::class, 'ratings']);
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'show']);
@@ -75,13 +59,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('properties/{property}/images', [PropertyImageController::class, 'store']);
     Route::put('property-images/{image}', [PropertyImageController::class, 'update']);
     Route::delete('property-images/{image}', [PropertyImageController::class, 'destroy']);
+    Route::get('property-images/{image}/file', [PropertyImageController::class, 'file'])->name('api.property-images.file');
 
     // Leases
-    Route::apiResource('leases', LeaseController::class);
+    Route::apiResource('leases', LeaseController::class)->middlewareFor('store', 'throttle:30,1,tenant-lookup');
     Route::get('leases/{lease}/generate-pdf', [LeaseController::class, 'generatePdf']);
+    Route::put('leases/{lease}/accept', [LeaseController::class, 'accept']);
+    Route::put('leases/{lease}/decline', [LeaseController::class, 'decline']);
 
     // Payments
-    Route::post('payments/import-csv', [PaymentController::class, 'importCsv']);
+    // import je drahý (parsování a párování v transakci), proto vlastní limit vedle globálního (S11); prefix
+    // u limitu na routě, jinak sdílí počítadlo s globálním throttle:200,1 a každý požadavek se počítá dvakrát
+    Route::post('payments/import-csv', [PaymentController::class, 'importCsv'])->middleware('throttle:10,1,import-csv');
     Route::put('payments/{payment}/mark-paid', [PaymentController::class, 'markPaid']);
     Route::post('payments/generate-monthly', [PaymentController::class, 'generateMonthly']);
     Route::apiResource('payments', PaymentController::class);
@@ -91,11 +80,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('tickets/{ticket}/comments', [TicketCommentController::class, 'index']);
     Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store']);
     Route::delete('tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy']);
+    Route::get('tickets/{ticket}/comments/{comment}/attachment', [TicketCommentController::class, 'attachment'])
+        ->name('api.ticket-comments.attachment');
 
     // Ticket images
     Route::get('tickets/{ticket}/images', [TicketImageController::class, 'index']);
     Route::post('tickets/{ticket}/images', [TicketImageController::class, 'store']);
     Route::delete('tickets/{ticket}/images/{image}', [TicketImageController::class, 'destroy']);
+    Route::get('tickets/{ticket}/images/{image}/file', [TicketImageController::class, 'file'])->name('api.ticket-images.file');
 
     // Meters (read for all, write checked in controller)
     Route::get('properties/{property}/meters', [MeterController::class, 'index']);
@@ -117,32 +109,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('notifications', [DashboardController::class, 'notifications']);
     Route::put('notifications/{notification}/read', [DashboardController::class, 'markNotificationRead']);
 
-    // Users list (for People page + tenant self-lookup)
-    Route::get('/users', function (Request $request) {
-        $query = User::query();
-
-        if ($request->filled('role')) {
-            $query->where('role', $request->input('role'));
-        }
-
-        return response()->json($query->get(['id', 'name', 'email', 'role', 'phone', 'trust_score', 'created_at']));
-    });
-
-    // ─── READ routes accessible to all authenticated users ───
-    // Expenses (read)
+    // Expenses (ExpensePolicy, jen vlastník)
     Route::get('expenses', [ExpenseController::class, 'index']);
+    Route::post('expenses', [ExpenseController::class, 'store']);
     Route::get('expenses/{expense}', [ExpenseController::class, 'show']);
+    Route::put('expenses/{expense}', [ExpenseController::class, 'update']);
+    Route::patch('expenses/{expense}', [ExpenseController::class, 'update']);
+    Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy']);
 
-    // Inventory (read)
+    // Inventory (InventoryItemPolicy)
     Route::get('properties/{property}/inventory', [InventoryItemController::class, 'index']);
+    Route::post('properties/{property}/inventory', [InventoryItemController::class, 'store']);
     Route::get('inventory/{item}', [InventoryItemController::class, 'show']);
+    Route::put('inventory/{item}', [InventoryItemController::class, 'update']);
+    Route::delete('inventory/{item}', [InventoryItemController::class, 'destroy']);
 
-    // Documents (read + download)
+    // Documents (DocumentPolicy)
     Route::get('properties/{property}/documents', [DocumentController::class, 'index']);
-    Route::get('documents/{document}/download', [DocumentController::class, 'download']);
+    Route::post('properties/{property}/documents', [DocumentController::class, 'store']);
+    Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
+    Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('api.documents.download');
 
-    // Ratings (read)
+    // Ratings (RatingPolicy: čte kdo vidí smlouvu, zapisuje vlastník nemovitosti)
     Route::get('leases/{lease}/ratings', [RatingController::class, 'index']);
+    Route::post('leases/{lease}/ratings', [RatingController::class, 'store']);
+    Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
 
     // Trust score (read)
     Route::get('tenants/{tenant}/trust-score', [DashboardController::class, 'trustScore']);
@@ -158,26 +149,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('dashboard/finance-chart', [DashboardController::class, 'financeChart']);
     Route::get('dashboard/occupancy-chart', [DashboardController::class, 'occupancyChart']);
-
-    // ─── Landlord-only WRITE routes ───
-    Route::middleware('role:landlord,manager')->group(function () {
-        // Expenses (write)
-        Route::post('expenses', [ExpenseController::class, 'store']);
-        Route::put('expenses/{expense}', [ExpenseController::class, 'update']);
-        Route::patch('expenses/{expense}', [ExpenseController::class, 'update']);
-        Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy']);
-
-        // Inventory (write)
-        Route::post('properties/{property}/inventory', [InventoryItemController::class, 'store']);
-        Route::put('inventory/{item}', [InventoryItemController::class, 'update']);
-        Route::delete('inventory/{item}', [InventoryItemController::class, 'destroy']);
-
-        // Documents (write)
-        Route::post('properties/{property}/documents', [DocumentController::class, 'store']);
-        Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
-
-        // Ratings (write)
-        Route::post('leases/{lease}/ratings', [RatingController::class, 'store']);
-        Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
-    });
 });

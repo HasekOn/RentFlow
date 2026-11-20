@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\PropertyStatus;
 use App\Models\Document;
 use App\Models\Expense;
 use App\Models\InventoryItem;
@@ -16,6 +17,7 @@ use App\Models\Rating;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\User;
+use App\Support\PrivateFile;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 
@@ -23,10 +25,6 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        Storage::disk('public')->makeDirectory('properties');
-        Storage::disk('public')->makeDirectory('documents');
-        Storage::disk('public')->makeDirectory('tickets');
-
         // ─── USERS ────────────────────────────────
         $landlord = User::factory()->landlord()->create([
             'name' => 'Jan Novák',
@@ -181,7 +179,19 @@ class DatabaseSeeder extends Seeder
             'variable_symbol' => '888888',
         ]);
 
-        $this->command->info('✓ Historical leases: 1 ended (with ratings) + 1 terminated');
+        // Pozvánka, kterou Marie zatím nepřijala (S1): nemovitost zůstává volná, platby se negenerují
+        Lease::factory()->pending()->create([
+            'property_id' => $properties[4]->id,
+            'tenant_id' => $tenants[0]->id,
+            'start_date' => now()->addMonth()->startOfMonth(),
+            'end_date' => now()->addMonths(13)->endOfMonth(),
+            'rent_amount' => 9500,
+            'deposit_amount' => 19000,
+            'utility_advances' => 2000,
+            'variable_symbol' => '777777',
+        ]);
+
+        $this->command->info('✓ Historical leases: 1 ended (with ratings) + 1 terminated, 1 pending invitation (Marie)');
 
         // ─── PAYMENTS ─────────────────────────────
         foreach ($activeLeases as $leaseIndex => $lease) {
@@ -429,7 +439,7 @@ class DatabaseSeeder extends Seeder
             $docs = collect($docTemplates)->random($count);
             foreach ($docs as $doc) {
                 $path = 'documents/'.$property->id.'/'.str_replace(' ', '_', $doc['name']);
-                Storage::disk('public')->put($path, '%PDF-1.4 dummy document content for '.$doc['name']);
+                Storage::disk(PrivateFile::DISK)->put($path, '%PDF-1.4 dummy document content for '.$doc['name']);
 
                 Document::create([
                     'property_id' => $property->id,
@@ -498,36 +508,45 @@ class DatabaseSeeder extends Seeder
     private function createPropertyImages($properties, $landlord): void
     {
         $rooms = [
-            ['name' => 'Obývací pokoj', 'color' => '#4A90D9', 'icon' => 'Living Room'],
-            ['name' => 'Kuchyně', 'color' => '#E67E22', 'icon' => 'Kitchen'],
-            ['name' => 'Koupelna', 'color' => '#1ABC9C', 'icon' => 'Bathroom'],
-            ['name' => 'Ložnice', 'color' => '#9B59B6', 'icon' => 'Bedroom'],
+            ['name' => 'Obývací pokoj', 'color' => '#4A90D9'],
+            ['name' => 'Kuchyně', 'color' => '#E67E22'],
+            ['name' => 'Koupelna', 'color' => '#1ABC9C'],
+            ['name' => 'Ložnice', 'color' => '#9B59B6'],
         ];
 
         foreach ($properties as $property) {
-            $count = $property->status === 'renovation' ? 2 : rand(3, 4);
+            $count = $property->status === PropertyStatus::Renovation ? 2 : rand(3, 4);
             for ($i = 0; $i < $count; $i++) {
                 $room = $rooms[$i % count($rooms)];
-                $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">'
-                    .'<rect width="800" height="600" fill="'.$room['color'].'"/>'
-                    .'<rect x="50" y="50" width="700" height="500" rx="20" fill="white" opacity="0.15"/>'
-                    .'<text x="400" y="280" text-anchor="middle" font-family="Arial" font-size="48" fill="white" font-weight="bold">'.$room['icon'].'</text>'
-                    .'<text x="400" y="340" text-anchor="middle" font-family="Arial" font-size="24" fill="white" opacity="0.8">'.$property->address.'</text>'
-                    .'</svg>';
-
-                $filename = 'property_'.$property->id.'_'.($i + 1).'.svg';
+                $filename = 'property_'.$property->id.'_'.($i + 1).'.png';
                 $path = 'properties/'.$property->id.'/'.$filename;
-                Storage::disk('public')->put($path, $svg);
+                Storage::disk(PrivateFile::DISK)->put($path, $this->solidPng($room['color']));
 
                 PropertyImage::factory()->create([
                     'property_id' => $property->id,
                     'uploaded_by' => $landlord->id,
                     'image_path' => $path,
-                    'type' => $i === 0 ? 'marketing' : ($property->status === 'renovation' ? 'defect' : 'marketing'),
+                    'type' => $i === 0 ? 'marketing' : ($property->status === PropertyStatus::Renovation ? 'defect' : 'marketing'),
                     'description' => $room['name'],
                     'sort_order' => $i + 1,
                 ]);
             }
         }
+    }
+
+    /**
+     * Jednobarevné PNG 800 × 600 bez GD (upload povoluje jen jpg, png a webp, SVG ne).
+     */
+    private function solidPng(string $hexColor): string
+    {
+        $width = 800;
+        $height = 600;
+        $row = "\0".str_repeat((string) hex2bin(ltrim($hexColor, '#')), $width);
+        $chunk = fn (string $type, string $data): string => pack('N', strlen($data)).$type.$data.pack('N', crc32($type.$data));
+
+        return "\x89PNG\r\n\x1a\n"
+            .$chunk('IHDR', pack('NNCCCCC', $width, $height, 8, 2, 0, 0, 0))
+            .$chunk('IDAT', (string) gzcompress(str_repeat($row, $height)))
+            .$chunk('IEND', '');
     }
 }

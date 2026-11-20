@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\PropertyImageType;
+use App\Support\PrivateFile;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePropertyImageRequest extends FormRequest
 {
@@ -11,13 +14,14 @@ class StorePropertyImageRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
-            'image' => ['required', 'image', 'max:5120'],
-            'type' => ['sometimes', 'in:marketing,defect,document'],
-            'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'image' => ['required', 'file', PrivateFile::IMAGE_MIMES, 'max:'.PrivateFile::IMAGE_MAX_KB],
+            'type' => ['sometimes', Rule::enum(PropertyImageType::class)],
+            'description' => ['nullable', 'string', 'max:255'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
         ];
     }
 

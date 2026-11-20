@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PropertyStatus;
 use App\Models\Lease;
 use App\Models\Property;
 use App\Models\User;
+use App\Support\PrivateFile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class LeaseTest extends TestCase
@@ -51,7 +54,7 @@ class LeaseTest extends TestCase
 
         $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-01-01',
             'end_date' => '2027-01-01',
             'rent_amount' => 15000,
@@ -62,13 +65,38 @@ class LeaseTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonPath('rent_amount', '15000.00')
-            ->assertJsonPath('variable_symbol', '12345');
+            ->assertJsonPath('variable_symbol', '12345')
+            ->assertJsonPath('status', 'pending');
 
         $this->assertDatabaseHas('leases', [
             'property_id' => $this->property->id,
             'tenant_id' => $tenant->id,
             'variable_symbol' => '12345',
         ]);
+        // nová smlouva je pozvánka (S1): nemovitost obsadí až přijetí nájemníkem
+        $this->assertSame(PropertyStatus::Available, $this->property->refresh()->status);
+
+        $this->actingAs($tenant)
+            ->putJson($this->apiUrl('/leases/'.$response->json('id').'/accept'))
+            ->assertStatus(200)
+            ->assertJsonPath('status', 'active');
+        $this->assertSame(PropertyStatus::Occupied, $this->property->refresh()->status);
+    }
+
+    public function test_cannot_create_lease_for_property_under_renovation(): void
+    {
+        $this->property->update(['status' => PropertyStatus::Renovation]);
+        $tenant = User::factory()->tenant()->create();
+
+        $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
+            'property_id' => $this->property->id,
+            'tenant_email' => $tenant->email,
+            'start_date' => '2026-01-01',
+            'rent_amount' => 10000,
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('leases', ['property_id' => $this->property->id]);
+        $this->assertSame(PropertyStatus::Renovation, $this->property->refresh()->status);
     }
 
     public function test_tenant_cannot_create_lease(): void
@@ -77,7 +105,7 @@ class LeaseTest extends TestCase
 
         $response = $this->actingAs($tenant)->postJson($this->apiUrl('/leases'), [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-01-01',
             'rent_amount' => 10000,
         ]);
@@ -92,7 +120,7 @@ class LeaseTest extends TestCase
 
         $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $otherProperty->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-01-01',
             'rent_amount' => 10000,
         ]);
@@ -106,7 +134,7 @@ class LeaseTest extends TestCase
 
         $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-06-01',
             'end_date' => '2026-01-01',
             'rent_amount' => 10000,
@@ -119,11 +147,13 @@ class LeaseTest extends TestCase
     public function test_store_validates_unique_variable_symbol(): void
     {
         $tenant = User::factory()->tenant()->create();
-        Lease::factory()->create(['variable_symbol' => '99999']);
+        // VS je unikátní jen u téhož pronajímatele (S10), proto existující smlouva na jeho jiné nemovitosti
+        $ownProperty = Property::factory()->create(['landlord_id' => $this->landlord->id]);
+        Lease::factory()->create(['property_id' => $ownProperty->id, 'variable_symbol' => '99999']);
 
         $response = $this->actingAs($this->landlord)->postJson($this->apiUrl('/leases'), [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => '2026-01-01',
             'rent_amount' => 10000,
             'variable_symbol' => '99999',
@@ -168,6 +198,31 @@ class LeaseTest extends TestCase
         $response = $this->actingAs($tenant)->getJson($this->apiUrl('/leases/'.$lease->id));
 
         $response->assertStatus(403);
+    }
+
+    public function test_contract_pdf_is_streamed_without_storing(): void
+    {
+        Storage::fake('public');
+        Storage::fake(PrivateFile::DISK);
+        $tenant = User::factory()->tenant()->create();
+        $lease = Lease::factory()->create(['property_id' => $this->property->id, 'tenant_id' => $tenant->id]);
+        $url = $this->apiUrl("/leases/{$lease->id}/generate-pdf");
+
+        foreach ([$this->landlord, $tenant] as $user) {
+            $this->actingAs($user)->get($url)
+                ->assertStatus(200)
+                ->assertHeader('Content-Type', 'application/pdf')
+                ->assertDownload("contract_lease_{$lease->id}.pdf");
+        }
+
+        $this->actingAs(User::factory()->tenant()->create())->get($url)->assertStatus(403);
+
+        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame([], Storage::disk(PrivateFile::DISK)->allFiles());
+        $this->assertNull($lease->refresh()->contract_path);
+        $this->actingAs($this->landlord)
+            ->getJson($this->apiUrl("/leases/{$lease->id}"))
+            ->assertJsonMissingPath('contract_path');
     }
 
     public function test_landlord_can_update_lease(): void
@@ -223,6 +278,19 @@ class LeaseTest extends TestCase
         $response = $this->actingAs($otherLandlord)->deleteJson($this->apiUrl('/leases/'.$lease->id));
 
         $response->assertStatus(403);
+    }
+
+    public function test_ending_last_active_lease_makes_property_available(): void
+    {
+        $this->property->update(['status' => PropertyStatus::Occupied]);
+        $lease = Lease::factory()->create(['property_id' => $this->property->id]);
+
+        $this->actingAs($this->landlord)
+            ->putJson($this->apiUrl('/leases/'.$lease->id), ['status' => 'ended'])
+            ->assertStatus(200)
+            ->assertJsonPath('status', 'ended');
+
+        $this->assertSame(PropertyStatus::Available, $this->property->refresh()->status);
     }
 
     protected function setUp(): void

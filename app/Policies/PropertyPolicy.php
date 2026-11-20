@@ -8,8 +8,7 @@ use App\Models\User;
 class PropertyPolicy
 {
     /**
-     * Can user see list of properties?
-     * Everyone who is logged in can see their relevant properties
+     * Seznam vidí každý přihlášený, obsah omezuje Property::visibleTo.
      */
     public function viewAny(User $user): bool
     {
@@ -17,60 +16,40 @@ class PropertyPolicy
     }
 
     /**
-     * Can user see this specific property?
-     * Landlord owns it OR tenant has active lease there
+     * Vlastník, přiřazený správce nebo nájemník s aktivní smlouvou (jedna pravda se scope visibleTo).
      */
     public function view(User $user, Property $property): bool
     {
-        if ($property->landlord_id === $user->id) {
-            return true;
-        }
-
-        if ($user->role === 'manager') {
-            if ($property->managers()->where('user_id', $user->id)->exists()) {
-                return true;
-            }
-        }
-
-        return $user->leases()
-            ->where('property_id', $property->id)
-            ->where('status', 'active')
-            ->exists();
+        return $property->landlord_id === $user->id
+            || Property::query()->visibleTo($user)->whereKey($property->id)->exists();
     }
 
-    /**
-     * Can user create properties?
-     * Only landlords
-     */
     public function create(User $user): bool
     {
-        return $user->role === 'landlord';
+        return $user->isLandlord();
     }
 
-    /**
-     * Can user update this property?
-     * Only the owner
-     */
     public function update(User $user, Property $property): bool
     {
         return $property->landlord_id === $user->id;
     }
 
     /**
-     * Can user delete this property?
-     * Only the owner
+     * Přiřazení a odebrání správce (i seznam správců s kontakty): jen vlastník (#14).
      */
+    public function assignManager(User $user, Property $property): bool
+    {
+        return $property->landlord_id === $user->id;
+    }
+
     public function delete(User $user, Property $property): bool
     {
         return $property->landlord_id === $user->id;
     }
 
-    /**
-     * restore and forceDelete not needed
-     */
     public function restore(User $user, Property $property): bool
     {
-        return false;
+        return $property->landlord_id === $user->id;
     }
 
     public function forceDelete(User $user, Property $property): bool

@@ -2,33 +2,30 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Users\RegisterUser;
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
-    public function register(Request $request): JsonResponse
+    public function register(Request $request, RegisterUser $register): JsonResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Password::min(8)],
-            'role' => ['sometimes', 'in:landlord,manager,tenant'],
+            'password' => ['required', 'string', 'max:255', 'confirmed', Password::min(8)],
+            // Správcem se uživatel stává jen povýšením od pronajímatele (ManagerController::promote).
+            'role' => ['sometimes', Rule::in([Role::Landlord->value, Role::Tenant->value])],
         ]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role' => $validated['role'] ?? 'tenant',
-        ]);
+        $user = $register->handle($validated);
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
@@ -41,8 +38,8 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string', 'max:255'],
         ]);
 
         if (! Auth::attempt($validated)) {
@@ -51,7 +48,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $user = Auth::user();
+        $user = $this->currentUser($request);
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
@@ -62,12 +59,8 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        /** @var PersonalAccessToken $token */
-        $token = $request->user()->currentAccessToken();
-
-        if ($token && method_exists($token, 'delete')) {
-            $token->delete();
-        }
+        // Smaže token, kterým se klient přihlásil. Bez Bearer tokenu (např. actingAs v testech) není co mazat.
+        PersonalAccessToken::findToken((string) $request->bearerToken())?->delete();
 
         return response()->json([
             'message' => 'Logged out successfully.',

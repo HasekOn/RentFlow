@@ -11,6 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class TicketResource extends JsonResource
 {
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [
@@ -27,20 +28,10 @@ class TicketResource extends JsonResource
                 : null,
             'created_at' => $this->created_at->toDateTimeString(),
             'property' => new PropertyResource($this->whenLoaded('property')),
-            'tenant' => new UserResource($this->whenLoaded('tenant')),
-            'assigned_user' => new UserResource($this->whenLoaded('assignedUser')),
+            'tenant' => UserResource::nested($this->whenLoaded('tenant'), $request),
+            'assigned_user' => UserResource::nested($this->whenLoaded('assignedUser'), $request),
             'comments' => TicketCommentResource::collection($this->whenLoaded('comments')),
-            'images' => $this->whenLoaded('images', fn () => $this->images->map(fn ($img) => [
-                'id' => $img->id,
-                'image_path' => $img->image_path,
-                'image_url' => $img->image_url,
-                'description' => $img->description,
-                'created_at' => $img->created_at->toDateTimeString(),
-                'uploader' => $img->uploader ? [
-                    'id' => $img->uploader->id,
-                    'name' => $img->uploader->name,
-                ] : null,
-            ])),
+            'images' => TicketImageResource::collection($this->whenLoaded('images')),
         ];
     }
 }
