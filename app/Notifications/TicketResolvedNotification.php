@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -15,20 +16,21 @@ class TicketResolvedNotification extends Notification
         private readonly Ticket $ticket
     ) {}
 
+    /** @return list<string> */
     public function via(object $notifiable): array
     {
         return ['mail', 'database'];
     }
 
-    public function toMail(object $notifiable): MailMessage
+    public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage)
             ->subject('Ticket resolved: '.$this->ticket->title)
             ->greeting('Hello '.$notifiable->name.',')
             ->line('Your reported issue has been resolved.')
-            ->line('Property: '.$this->ticket->property->address)
+            ->line('Property: '.$this->ticket->property?->address)
             ->line('Title: '.$this->ticket->title)
-            ->line('Resolved at: '.$this->ticket->resolved_at->format('d.m.Y H:i'))
+            ->line('Resolved at: '.$this->ticket->resolved_at?->format('d.m.Y H:i'))
             ->action('View in RentFlow', config('app.url'))
             ->line('If the issue persists, please create a new ticket.');
     }

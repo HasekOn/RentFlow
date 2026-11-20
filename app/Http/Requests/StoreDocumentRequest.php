@@ -14,6 +14,7 @@ class StoreDocumentRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
@@ -21,6 +22,8 @@ class StoreDocumentRequest extends FormRequest
             'document_type' => ['required', 'string', 'max:100'],
             'name' => ['required', 'string', 'max:255'],
             'visibility' => ['sometimes', Rule::enum(DocumentVisibility::class)],
+            // smlouva téže nemovitosti, ověří StoreDocument (S6)
+            'lease_id' => ['nullable', 'integer'],
         ];
     }
 

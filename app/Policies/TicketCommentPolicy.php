@@ -7,7 +7,8 @@ use App\Models\TicketComment;
 use App\Models\User;
 
 /**
- * Komentáře tiketu čte a píše každý, kdo vidí tiket (TicketPolicy::view, #10), maže jen autor komentáře.
+ * Komentáře tiketu čte každý, kdo vidí tiket (TicketPolicy::view, #10), píše jen kdo smí přispívat
+ * (TicketPolicy::contribute: autor bez aktivní smlouvy jen u otevřeného tiketu), maže jen autor komentáře.
  */
 class TicketCommentPolicy
 {
@@ -18,7 +19,7 @@ class TicketCommentPolicy
 
     public function create(User $user, Ticket $ticket): bool
     {
-        return $user->can('view', $ticket);
+        return $user->can('contribute', $ticket);
     }
 
     public function delete(User $user, TicketComment $comment): bool

@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\LeaseStatus;
+use App\Enums\PaymentType;
 use App\Models\Lease;
 use App\Models\Payment;
 use App\Models\User;
@@ -46,8 +47,11 @@ class PaymentPolicy
             return false;
         }
 
+        // kauci správce nevidí ani nepotvrzuje (S5)
         return $property->landlord_id === $user->id
-            || ($lease->status === LeaseStatus::Active && $property->managers()->whereKey($user->id)->exists());
+            || ($lease->status === LeaseStatus::Active
+                && $payment->type !== PaymentType::Deposit
+                && $property->managers()->whereKey($user->id)->exists());
     }
 
     public function update(User $user, Payment $payment): bool

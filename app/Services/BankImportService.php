@@ -35,6 +35,8 @@ class BankImportService
     /**
      * Parse CSV string into array of rows
      * Supports common Czech bank export formats
+     *
+     * @return list<array<string, string>>
      */
     private function parseCsv(string $content): array
     {
@@ -55,7 +57,7 @@ class BankImportService
 
         // Parse header
         $header = str_getcsv(array_shift($lines), $delimiter);
-        $header = array_map(fn ($h) => $this->normalizeHeader(trim($h)), $header);
+        $header = array_map(fn (?string $h) => $this->normalizeHeader($h ?? ''), $header);
 
         // Parse data rows
         foreach ($lines as $line) {
@@ -64,7 +66,8 @@ class BankImportService
                 continue;
             }
 
-            $values = str_getcsv($line, $delimiter);
+            // prázdná buňka může přijít jako null
+            $values = array_map(fn (?string $v) => $v ?? '', str_getcsv($line, $delimiter));
 
             if (count($values) !== count($header)) {
                 continue; // Skip malformed rows
@@ -136,7 +139,7 @@ class BankImportService
     {
         $vs = trim($vs);
         // Remove all non-numeric characters
-        $vs = preg_replace('/[^0-9]/', '', $vs);
+        $vs = preg_replace('/[^0-9]/', '', $vs) ?? '';
 
         return ltrim($vs, '0');
     }

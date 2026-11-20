@@ -4,5 +4,5 @@ includes:
 parameters:
     paths:
         - app/
-    # Plán: level 5, postupně 7 (docs/REWRITE_PLAN.md, krok 2.1).
-    level: 5
+    # Level 8 bez baseline jako JaTime (od uzavření fáze 2, docs/REWRITE_PLAN.md).
+    level: 8

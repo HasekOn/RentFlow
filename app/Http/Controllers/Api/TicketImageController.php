@@ -40,7 +40,7 @@ class TicketImageController extends Controller
             'description' => ['sometimes', 'string', 'max:255'],
         ]);
 
-        $image = $add->handle($ticket, $request->user(), $request->file('image'), $request->input('description'));
+        $image = $add->handle($ticket, $this->currentUser($request), $request->file('image'), $request->input('description'));
 
         $image->load('uploader');
 

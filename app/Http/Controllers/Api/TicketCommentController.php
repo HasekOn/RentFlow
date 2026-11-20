@@ -35,7 +35,7 @@ class TicketCommentController extends Controller
         $ticket = $this->findTicket($ticketId);
         $this->authorize('create', [TicketComment::class, $ticket]);
 
-        $comment = $add->handle($ticket, $request->user(), $request->validated('message'), $request->file('attachment'));
+        $comment = $add->handle($ticket, $this->currentUser($request), $request->validated('message'), $request->file('attachment'));
 
         $comment->load('user');
 

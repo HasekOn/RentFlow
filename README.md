@@ -34,7 +34,9 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 ### Nájemní smlouvy (Leases)
 
-- Vytváření smluv s automatickým propojením tenant ↔ property
+- Smlouva je pozvánka: pronajímatel ji pošle na e-mail nájemníka (`pending`), nájemník ji přijme (`active`) nebo
+  odmítne (`declined`). Obsazenost nemovitosti a kontrola překryvu smluv platí až od přijetí. Pozvánku nejde
+  upravit, pronajímatel ji jen odvolá (`terminated`) a pošle novou. Kontakty, platby, hodnocení a Trust Score nájemníka jen přes přijatou smlouvu (`accepted_at`).
 - Generování PDF smlouvy (DomPDF)
 - Automatická expirace smluv po uplynutí `end_date`
 - Blokace pronájmu nemovitosti v rekonstrukci
@@ -61,7 +63,8 @@ efektivně spravovat byty, nájemní smlouvy, platby, závady a komunikaci — v
 
 ### Dokumenty
 
-- Upload souborů (PDF, DOC, XLS, obrázky) k nemovitosti
+- Upload souborů (PDF, DOC, XLS, obrázky) k nemovitosti, volitelně navázaný na smlouvu (dokument pro nájemníka
+  pak vidí jen nájemník té smlouvy, ne další nájemník bytu)
 - Download s korektní příponou, mazání
 - Typy: smlouva, pojistka, revize, energetický štítek, faktura...
 
@@ -195,7 +198,12 @@ User (landlord/manager/tenant)
 
 - ✅ Plný přístup ke všem vlastním nemovitostem
 - ✅ CRUD: properties, leases, payments, expenses, inventory, documents, notices
-- ✅ Hodnocení nájemníků, generování PDF smluv
+- ✅ Hodnocení nájemníků (jen přijaté a neaktivní smlouvy), generování PDF smluv (jen přijatých)
+- ✅ Nájemníka vidí (kontakty, hodnocení, Trust Score) jen přes smlouvu, kterou nájemník přijal; u hodnocení
+  z cizích nemovitostí jen kategorii a skóre (komentář, hodnotitele a adresu vidí hodnocený, autor a vlastník
+  nemovitosti)
+- ✅ Variabilní symbol je unikátní jen mezi jeho smlouvami
+- ✅ U zaplacené platby mění jen poznámku
 - ✅ Povýšení/degradace managerů = přiřazení k vlastním properties (jen lidé, které vidí: nájemníci jeho smluv a jeho
   správci); sesazení odebere jen jeho přiřazení, role se přepočítá
 - ✅ Dashboard: finance grafy, obsazenost, statistiky
@@ -204,11 +212,14 @@ User (landlord/manager/tenant)
 ### Manager (Správce)
 
 - ✅ Vidí přiřazené properties + property kde je tenant
+- ✅ Vidí všechny tickety přiřazených properties včetně historie
 - ✅ Řeší tickety (status, řešitel, komentáře) pro přiřazené properties
+- ✅ Hodnocení nájemníka u smluv přiřazených properties vidí jen jako kategorii a skóre (bez komentáře
+  a hodnotitele), i u znovu aktivované smlouvy
 - ✅ Loguje meter odečty na přiřazených properties
 - ✅ Vytváří tickety pro přiřazené properties i ve svém bytě (kde je nájemníkem)
 - ✅ Vidí platby, nájemné, zálohy a VS aktivních smluv přiřazených properties a ručně je označí jako zaplacené
-  (ne svou vlastní platbu, kde je nájemníkem; platby ukončených smluv potvrzuje jen landlord)
+  (ne kauce; ne svou vlastní platbu, kde je nájemníkem; platby ukončených smluv potvrzuje jen landlord)
 - ✅ Dual dashboard: Manager View (nezaplacené a po splatnosti) + My Tenancy
 - ❌ Nevidí finance (expenses, cashflow), kauce ani PDF smluv
 - ❌ Negeneruje, neimportuje, nezakládá ani nemaže platby
@@ -216,8 +227,14 @@ User (landlord/manager/tenant)
 
 ### Tenant (Nájemník)
 
-- ✅ Vidí svůj byt, platby, smlouvy (read-only)
-- ✅ Vytváří tickety + komentáře s fotkami (u tiketů svého bytu), název a popis svého tiketu upraví, dokud je nový
+- ✅ Vidí svůj byt, platby, smlouvy (read-only) a pozvánky ke smlouvě, které přijme nebo odmítne. Smlouvu, PDF
+  a platby hned po přijetí, byt, oznámení, dokumenty, měřiče, inventář a tikety až od začátku smlouvy
+  (`start_date`); předchozí nájemník je vidí do konce své smlouvy
+- ✅ Vidí tickety svého bytu založené od začátku své smlouvy a své vlastní (ne tikety předchozích nájemníků)
+- ✅ Vytváří tickety + komentáře s fotkami (u tiketů svého bytu), název a popis svého tiketu upraví, dokud je nový;
+  po konci smlouvy komentuje svůj tiket, jen dokud je otevřený (new, in_progress), vyřešený už jen čte
+- ✅ Vidí inventář bytu včetně pořizovací ceny (předávací protokol)
+- ✅ Změna e-mailu v profilu jen se současným heslem (platí pro všechny role)
 - ✅ Vidí management tab (meters, inventory) — read-only
 - ✅ Dashboard: moje platby, tickety, trust score
 - ❌ Nevidí People, expenses, jiné nájemníky
@@ -228,21 +245,24 @@ User (landlord/manager/tenant)
 | Akce                 | Landlord | Manager | Tenant |
 |----------------------|:--------:|:-------:|:------:|
 | Properties CRUD      |    ✅     |    ❌    |   ❌    |
-| View property detail |    ✅     |   ✅*    |   ✅*   |
-| Create lease         |    ✅     |    ❌    |   ❌    |
+| View property detail |    ✅     |   ✅*    |  ✅**   |
+| Create lease (pozvánka) |  ✅     |    ❌    |   ❌    |
+| Accept / decline lease |   ❌     |  ✅ ¶   |  ✅ ¶   |
 | Create ticket        |    ✅     |   ✅*    |  ✅**   |
 | Resolve ticket       |    ✅     |   ✅*    |   ❌    |
-| Comment / photo      |    ✅     |   ✅*    |  ✅**   |
+| View tickets         |    ✅     |   ✅*    |  ✅ ◊   |
+| Comment / photo      |    ✅     |   ✅*    | ✅** ‖  |
 | Log meter reading    |    ✅     |   ✅*    |   ❌    |
-| View payments        |    ✅     |   ✅*    | ✅ own  |
+| View payments        |    ✅     |  ✅* ‡   | ✅ own  |
 | Mark paid            |   ✅ †    |  ✅* ‡   |   ❌    |
 | Generate/import/delete payments | ✅ |   ❌    |   ❌    |
+| Lease PDF            |   ✅ ¶    |    ❌    | ✅ own  |
 | Upload documents     |    ✅     |    ❌    |   ❌    |
-| Rate tenant          |    ✅     |    ❌    |   ❌    |
+| Rate tenant          |   ✅ ¶    |    ❌    |   ❌    |
 | View People          |    ✅     |    ✅    |   ❌    |
 | Promote/demote       |   ✅ §    |    ❌    |   ❌    |
 
-\* jen přiřazené properties | \*\* jen s aktivní smlouvou | † i u ukončené smlouvy (poslední nájem, nedoplatky) | ‡ jen aktivní smlouvy, ne svou platbu (správce, který je jinde nájemníkem) | § jen vlastní properties a lidé, které vidí
+\* jen přiřazené properties | \*\* jen s aktivní smlouvou, která už začala (`start_date`) | † i u ukončené smlouvy (poslední nájem, nedoplatky) | ‡ jen aktivní smlouvy, bez kaucí, ne svou platbu (správce, který je jinde nájemníkem) | § jen vlastní properties a lidé, které vidí | ¶ přijímá a odmítá jen nájemník smlouvy (i správce, který je nájemníkem), hodnotit a stáhnout PDF jde jen přijatou smlouvu | ‖ autor tiketu i po konci smlouvy, dokud je tiket otevřený | ◊ tikety bytu od začátku své smlouvy a vlastní
 
 ---
 
@@ -305,7 +325,7 @@ php artisan migrate:fresh --seed
 | Entita     | Počet | Detail                                               |
 |------------|-------|------------------------------------------------------|
 | Properties | 6     | 4 obsazené, 1 volná, 1 v rekonstrukci                |
-| Leases     | 6     | 4 aktivní, 1 ukončená (s ratings), 1 terminovaná     |
+| Leases     | 7     | 4 aktivní, 1 ukončená (s ratings), 1 terminovaná, 1 pozvánka pro Marii |
 | Payments   | ~60   | Rent + utilities + deposits, mix paid/unpaid/overdue |
 | Tickets    | 6     | Mix new/in_progress/resolved s komentáři v češtině   |
 | Meters     | 14+   | Voda + elektřina + plyn/teplo, 6 měsíců odečtů       |
@@ -344,8 +364,10 @@ Všechny endpointy pod prefixem `/api/v1/`. Autentizace přes Sanctum Bearer tok
 | Method | Endpoint                    | Popis                                           |
 |--------|-----------------------------|-------------------------------------------------|
 | GET    | `/leases`                   | Seznam (filtry: status, property_id, tenant_id) |
-| POST   | `/leases`                   | Vytvoření (guard: ne renovation)                |
+| POST   | `/leases`                   | Pozvánka `pending` podle `tenant_email`         |
 | GET    | `/leases/{id}/generate-pdf` | Download PDF smlouvy                            |
+| PUT    | `/leases/{id}/accept`       | Nájemník přijme pozvánku (pending → active)     |
+| PUT    | `/leases/{id}/decline`      | Nájemník odmítne pozvánku (pending → declined)  |
 
 ### Payments
 

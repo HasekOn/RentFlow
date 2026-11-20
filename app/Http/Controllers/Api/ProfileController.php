@@ -14,19 +14,19 @@ class ProfileController extends Controller
 {
     public function show(Request $request): JsonResponse
     {
-        return response()->json($request->user());
+        return response()->json($this->currentUser($request));
     }
 
     public function changePassword(Request $request, ChangePassword $change): JsonResponse
     {
         $validated = $request->validate([
-            'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', Password::min(8), 'confirmed'],
+            'current_password' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string', 'max:255', Password::min(8), 'confirmed'],
         ]);
 
         // token, kterým se heslo mění, zůstane, ostatní se smažou
         $change->handle(
-            $request->user(),
+            $this->currentUser($request),
             $validated['current_password'],
             $validated['password'],
             PersonalAccessToken::findToken((string) $request->bearerToken())?->id,
@@ -39,12 +39,14 @@ class ProfileController extends Controller
     {
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,'.$request->user()->id],
+            'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,'.$this->currentUser($request)->id],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
+            // povinné při změně e-mailu, ověří UpdateProfile (S9)
+            'current_password' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $update->handle($request->user(), $validated);
+        $update->handle($this->currentUser($request), $validated);
 
-        return response()->json($request->user()->fresh());
+        return response()->json($this->currentUser($request)->fresh());
     }
 }

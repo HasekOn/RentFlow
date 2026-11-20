@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Actions;
 
+use App\Actions\Leases\AcceptLease;
 use App\Actions\Leases\CreateLease;
 use App\Enums\LeaseStatus;
 use App\Enums\PropertyStatus;
@@ -69,7 +70,7 @@ class LeaseRulesTest extends TestCase
     {
         $property = Property::factory()->create(['landlord_id' => $this->landlord->id, 'status' => PropertyStatus::Available]);
         $tenant = User::factory()->tenant()->create();
-        $data = ['tenant_id' => $tenant->id, 'start_date' => '2027-01-01', 'end_date' => null, 'rent_amount' => 10000];
+        $data = ['tenant_email' => $tenant->email, 'start_date' => '2027-01-01', 'end_date' => null, 'rent_amount' => 10000];
 
         try {
             DB::transaction(function () use ($property, $data): void {
@@ -84,8 +85,11 @@ class LeaseRulesTest extends TestCase
         $this->assertDatabaseMissing('leases', ['tenant_id' => $tenant->id]);
         $this->assertSame(PropertyStatus::Available, $property->refresh()->status);
 
-        app(CreateLease::class)->handle($property, $data);
+        $lease = app(CreateLease::class)->handle($property, $data);
         Notification::assertSentToTimes($tenant, TenantInvitationNotification::class, 1);
+        // pozvánka nemovitost neobsadí, až přijetí (S1)
+        $this->assertSame(PropertyStatus::Available, $property->refresh()->status);
+        app(AcceptLease::class)->handle($lease);
         $this->assertSame(PropertyStatus::Occupied, $property->refresh()->status);
     }
 

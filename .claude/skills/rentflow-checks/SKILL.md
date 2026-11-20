@@ -50,8 +50,9 @@ Nápověda pro volajícího, kam se podívat:
 - **Pint:** `vendor/bin/pint <soubor>` opraví formát. `lang/` je z Pintu vyřazený (generuje ho laravel-lang).
   Když Pint „opravuje“ docblock nesmyslně (rozdělí větu), bývá v textu `@slovo` (např. `*@rentflow.cz`) – přeformulovat.
 - **Larastan:** typy v PHPDoc (`list<…>`, `array{…}`, `Collection<int, Model>`), generika relací
-  (`@return HasMany<Model, $this>`), `Builder<Model>` u scopů, žádné `?->` po non-null, `find()` + `abort(404)`
-  místo `findOrFail()`. Baseline se nezakládá.
+  (`@return HasMany<Model, $this>`), `@use HasFactory<…Factory>`, `Builder<Model>` u scopů, žádné `?->`
+  po non-null, `find()` + `abort(404)` místo `findOrFail()`, uživatel přes `currentUser()`. Level 8, baseline
+  se nezakládá.
 - **Build:** nové Tailwind třídy se objeví až po buildu – po změně Blade šablon je build nutný před kontrolou
   v prohlížeči. Chybějící komponenta bývá překlep v `<x-…>` nebo cesta v `@source`.
 - **Windows:** `composer require balik:^1.0` spolkne `^` → `~1.0` nebo úprava `composer.json` a `composer update`.

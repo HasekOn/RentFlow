@@ -11,6 +11,7 @@ use App\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Import bankovního výpisu (CSV) pronajímatele (#37, #48, #49). Řádek se páruje podle VS platby (zálohy mají
@@ -23,6 +24,9 @@ final class ImportBankPayments
 {
     public const string NOTE = 'Auto-matched from bank CSV import';
 
+    /** Nejvíc řádků v jednom výpisu (S11); měsíční výpis pronajímatele má řádově stovky. */
+    public const int MAX_ROWS = 5000;
+
     public function __construct(private readonly BankImportService $parser) {}
 
     /**
@@ -31,6 +35,11 @@ final class ImportBankPayments
     public function handle(User $landlord, string $csv): array
     {
         $rows = $this->parser->parse($csv);
+        if (count($rows) > self::MAX_ROWS) {
+            throw ValidationException::withMessages([
+                'file' => __('The file may contain at most :max rows.', ['max' => self::MAX_ROWS]),
+            ]);
+        }
 
         return DB::transaction(fn (): array => $this->import($landlord, $rows));
     }
@@ -142,7 +151,7 @@ final class ImportBankPayments
     /**
      * Platby zaplacené dřívějším importem ve dnech z výpisu (rozpoznání duplicitního řádku).
      *
-     * @param  list<int>  $leaseIds
+     * @param  array<int, int|string>  $leaseIds  klíče z modelKeys()
      * @param  list<array{row: array<string, string>, variable_symbol: string, amount: int|null, date: string|null}>  $rows
      * @return Collection<int, Payment>
      */

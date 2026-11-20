@@ -29,7 +29,7 @@ class RatingController extends Controller
             ->with('ratedBy')
             ->get();
 
-        return response()->json(RatingResource::collection($ratings));
+        return response()->json($ratings->map(fn (Rating $rating) => new RatingResource($rating, $lease)));
     }
 
     public function store(StoreRatingRequest $request, string $leaseId, CreateRating $create): JsonResponse
@@ -37,7 +37,7 @@ class RatingController extends Controller
         $lease = $this->findLease($leaseId);
         $this->authorize('create', [Rating::class, $lease]);
 
-        $rating = $create->handle($lease, $request->user(), $request->validated());
+        $rating = $create->handle($lease, $this->currentUser($request), $request->validated());
 
         $rating->load('ratedBy');
 

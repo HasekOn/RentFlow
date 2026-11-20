@@ -13,12 +13,13 @@ class UpdatePropertyImageRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
             'type' => ['sometimes', Rule::enum(PropertyImageType::class)],
-            'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
         ];
     }
 }

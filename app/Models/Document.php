@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\DocumentVisibility;
-use App\Enums\LeaseStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +12,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $property_id
+ * @property int|null $lease_id volitelně smlouva (S6): dokument pro nájemníka pak vidí jen nájemník té smlouvy
  * @property string $document_type
  * @property string $name
  * @property string $file_path
@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $updated_at
  * @property Carbon|null $deleted_at
  * @property-read Property|null $property
+ * @property-read Lease|null $lease
  * @property-read User|null $uploadedBy
  */
 class Document extends Model
@@ -44,6 +45,7 @@ class Document extends Model
 
     protected $fillable = [
         'property_id',
+        'lease_id',
         'document_type',
         'name',
         'file_path',
@@ -63,7 +65,9 @@ class Document extends Model
 
     /**
      * Dokumenty, které uživatel smí vidět. Rozhoduje vztah k nemovitosti, ne globální role:
-     * vlastník vidí vše, přiřazený správce landlord_manager + all, nájemník s aktivní smlouvou landlord_tenant + all.
+     * vlastník vidí vše, přiřazený správce landlord_manager + all, nájemník, který tu teď bydlí (Lease::current),
+     * landlord_tenant + all.
+     * Dokument landlord_tenant navázaný na smlouvu vidí jen nájemník té smlouvy, ne další nájemník (S6).
      *
      * @param  Builder<Document>  $query
      */
@@ -78,15 +82,27 @@ class Document extends Model
                     ->whereIn('visibility', [DocumentVisibility::LandlordTenant, DocumentVisibility::All])
                     ->whereHas('property.leases', fn (Builder $lease) => $lease
                         ->where('tenant_id', $user->id)
-                        ->where('status', LeaseStatus::Active)));
+                        ->current())
+                    ->where(fn (Builder $ownLease) => $ownLease
+                        ->where('visibility', DocumentVisibility::All)
+                        ->orWhereNull('lease_id')
+                        ->orWhereIn('lease_id', Lease::withTrashed()->where('tenant_id', $user->id)->select('id'))));
         });
     }
 
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
     }
 
+    /** @return BelongsTo<Lease, $this> */
+    public function lease(): BelongsTo
+    {
+        return $this->belongsTo(Lease::class);
+    }
+
+    /** @return BelongsTo<User, $this> */
     public function uploadedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');

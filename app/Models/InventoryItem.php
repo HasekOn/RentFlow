@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\DateOnly;
 use App\Enums\InventoryCondition;
+use Database\Factories\InventoryItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,7 @@ use Illuminate\Support\Carbon;
  */
 class InventoryItem extends Model
 {
+    /** @use HasFactory<InventoryItemFactory> */
     use HasFactory, SoftDeletes;
 
     /**
@@ -47,6 +49,7 @@ class InventoryItem extends Model
         'note',
     ];
 
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);

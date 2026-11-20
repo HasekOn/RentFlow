@@ -33,6 +33,7 @@ class HealthController extends Controller
         ], $allHealthy ? 200 : 503);
     }
 
+    /** @return array{healthy: bool, message: string, response_time_ms?: float} */
     private function checkDatabase(): array
     {
         try {
@@ -52,6 +53,7 @@ class HealthController extends Controller
         }
     }
 
+    /** @return array{healthy: bool, message: string} */
     private function checkStorage(): array
     {
         try {
@@ -70,6 +72,7 @@ class HealthController extends Controller
         }
     }
 
+    /** @return array{healthy: bool, message: string} */
     private function checkCache(): array
     {
         try {

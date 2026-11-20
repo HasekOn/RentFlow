@@ -179,7 +179,19 @@ class DatabaseSeeder extends Seeder
             'variable_symbol' => '888888',
         ]);
 
-        $this->command->info('✓ Historical leases: 1 ended (with ratings) + 1 terminated');
+        // Pozvánka, kterou Marie zatím nepřijala (S1): nemovitost zůstává volná, platby se negenerují
+        Lease::factory()->pending()->create([
+            'property_id' => $properties[4]->id,
+            'tenant_id' => $tenants[0]->id,
+            'start_date' => now()->addMonth()->startOfMonth(),
+            'end_date' => now()->addMonths(13)->endOfMonth(),
+            'rent_amount' => 9500,
+            'deposit_amount' => 19000,
+            'utility_advances' => 2000,
+            'variable_symbol' => '777777',
+        ]);
+
+        $this->command->info('✓ Historical leases: 1 ended (with ratings) + 1 terminated, 1 pending invitation (Marie)');
 
         // ─── PAYMENTS ─────────────────────────────
         foreach ($activeLeases as $leaseIndex => $lease) {

@@ -27,8 +27,8 @@ use Illuminate\Support\Facades\Route;
 // ─── Health check ─────────────────────────────────
 Route::get('/health', HealthController::class);
 
-// Public routes
-Route::middleware('throttle:60,1')->group(function () {
+// Public routes (prefix: vlastní počítadlo, ne sdílené s globálním throttle:200,1)
+Route::middleware('throttle:60,1,auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
@@ -41,7 +41,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // People (UserPolicy + User::visibleTo)
     Route::get('users', [UserController::class, 'index']);
-    Route::get('users/lookup', [UserController::class, 'lookup'])->middleware('throttle:30,1');
+    // hledání účtu podle e-mailu a pozvánka ke smlouvě sdílí jedno počítadlo (B-3)
+    Route::get('users/lookup', [UserController::class, 'lookup'])->middleware('throttle:30,1,tenant-lookup');
     Route::get('users/{user}/ratings', [UserController::class, 'ratings']);
 
     // Profile
@@ -61,11 +62,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('property-images/{image}/file', [PropertyImageController::class, 'file'])->name('api.property-images.file');
 
     // Leases
-    Route::apiResource('leases', LeaseController::class);
+    Route::apiResource('leases', LeaseController::class)->middlewareFor('store', 'throttle:30,1,tenant-lookup');
     Route::get('leases/{lease}/generate-pdf', [LeaseController::class, 'generatePdf']);
+    Route::put('leases/{lease}/accept', [LeaseController::class, 'accept']);
+    Route::put('leases/{lease}/decline', [LeaseController::class, 'decline']);
 
     // Payments
-    Route::post('payments/import-csv', [PaymentController::class, 'importCsv']);
+    // import je drahý (parsování a párování v transakci), proto vlastní limit vedle globálního (S11); prefix
+    // u limitu na routě, jinak sdílí počítadlo s globálním throttle:200,1 a každý požadavek se počítá dvakrát
+    Route::post('payments/import-csv', [PaymentController::class, 'importCsv'])->middleware('throttle:10,1,import-csv');
     Route::put('payments/{payment}/mark-paid', [PaymentController::class, 'markPaid']);
     Route::post('payments/generate-monthly', [PaymentController::class, 'generateMonthly']);
     Route::apiResource('payments', PaymentController::class);

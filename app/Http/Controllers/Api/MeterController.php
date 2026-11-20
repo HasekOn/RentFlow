@@ -59,7 +59,12 @@ class MeterController extends Controller
         $meter = $this->findMeter($id);
         $this->authorize('update', $meter);
 
-        $save->handle($meter->property, $request->validated(), $meter);
+        // u smazané nemovitosti vrátí policy 403 dřív, kontrola null jen zúží typ
+        $property = $meter->property;
+        if ($property === null) {
+            abort(404);
+        }
+        $save->handle($property, $request->validated(), $meter);
 
         return response()->json(new MeterResource($meter));
     }

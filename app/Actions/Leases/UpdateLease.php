@@ -11,7 +11,10 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Úprava smlouvy včetně přechodů stavu (#30, #22, #53): konec po uloženém začátku, překryv aktivních smluv,
- * reaktivace jen mimo rekonstrukci a obsazenost nemovitosti po každé změně stavu. Autorizaci dělá volající.
+ * reaktivace jen mimo rekonstrukci a obsazenost nemovitosti po každé změně stavu. Nepřijatou pozvánku (S1)
+ * aktivuje jen nájemník přijetím, pronajímatel ji může jen odvolat (`terminated`), ne upravit: nájemník by přijal
+ * jiné podmínky, než mu přišly e-mailem. Odmítnutá smlouva se nemění.
+ * Autorizaci dělá volající.
  */
 final class UpdateLease
 {
@@ -27,7 +30,26 @@ final class UpdateLease
     {
         return DB::transaction(function () use ($lease, $data): Lease {
             $oldStatus = $lease->status;
+            if ($oldStatus === LeaseStatus::Declined) {
+                throw ValidationException::withMessages([
+                    'status' => __('A declined lease cannot be changed, only deleted.'),
+                ]);
+            }
+
             $lease->fill($data);
+
+            $withdrawn = $lease->status === LeaseStatus::Terminated && array_keys($lease->getDirty()) === ['status'];
+            if ($oldStatus === LeaseStatus::Pending && $lease->isDirty() && ! $withdrawn) {
+                throw ValidationException::withMessages([
+                    'status' => __('A pending invitation cannot be changed. Withdraw it and send a new one.'),
+                ]);
+            }
+
+            if (! $lease->isAccepted() && $lease->isDirty('status') && $lease->status !== LeaseStatus::Terminated) {
+                throw ValidationException::withMessages([
+                    'status' => __('Only the tenant can activate a lease by accepting the invitation. You can only withdraw it.'),
+                ]);
+            }
 
             // konec po začátku i proti uloženému start_date (#30)
             if ($lease->isDirty(['start_date', 'end_date'])) {

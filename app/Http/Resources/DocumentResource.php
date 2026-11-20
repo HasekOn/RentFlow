@@ -12,6 +12,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class DocumentResource extends JsonResource
 {
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [
@@ -19,6 +20,7 @@ class DocumentResource extends JsonResource
             'document_type' => $this->document_type,
             'name' => $this->name,
             'visibility' => $this->visibility,
+            'lease_id' => $this->lease_id,
             'extension' => PrivateFile::extension($this->file_path),
             'download_url' => route('api.documents.download', $this->id),
             'created_at' => $this->created_at->toDateTimeString(),

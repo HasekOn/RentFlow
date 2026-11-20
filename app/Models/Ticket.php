@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\LeaseStatus;
 use App\Enums\TicketCategory;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use Database\Factories\TicketFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -36,6 +39,7 @@ use Illuminate\Support\Carbon;
  */
 class Ticket extends Model
 {
+    /** @use HasFactory<TicketFactory> */
     use HasFactory, SoftDeletes;
 
     /**
@@ -62,9 +66,10 @@ class Ticket extends Model
     ];
 
     /**
-     * Kdo tiket vidí: autor (i po skončení smlouvy) a každý, kdo vidí nemovitost (Property::visibleTo: vlastník,
-     * přiřazený správce, nájemník s aktivní smlouvou). Podle vztahu, ne podle role, takže správce, který je jinde
-     * nájemníkem, vidí tikety svého bytu i spravovaných nemovitostí (#24).
+     * Kdo tiket vidí: autor (i po skončení smlouvy), vlastník a přiřazený správce (celá historie) a nájemník
+     * s aktivní smlouvou jen tikety založené od začátku své smlouvy (ne tikety předchozích nájemníků). Podle
+     * vztahu, ne podle role, takže správce, který je jinde nájemníkem, vidí tikety svého bytu i spravovaných
+     * nemovitostí (#24).
      *
      * @param  Builder<Ticket>  $query
      */
@@ -72,24 +77,41 @@ class Ticket extends Model
     {
         $query->where(fn (Builder $visible) => $visible
             ->where('tenant_id', $user->id)
-            ->orWhereIn('property_id', Property::query()->visibleTo($user)->select('id')));
+            ->orWhereIn('property_id', Property::query()
+                ->where(fn (Builder $property) => $property
+                    ->where('landlord_id', $user->id)
+                    ->orWhereHas('managers', fn (Builder $manager) => $manager->whereKey($user->id)))
+                ->select('id'))
+            ->orWhere(fn (Builder $tenant) => $tenant
+                ->whereIn('property_id', Property::query()->select('id'))
+                ->whereExists(fn (QueryBuilder $lease) => $lease
+                    ->from('leases')
+                    ->whereColumn('leases.property_id', 'tickets.property_id')
+                    ->whereColumn('leases.start_date', '<=', 'tickets.created_at')
+                    ->where('leases.tenant_id', $user->id)
+                    ->where('leases.status', LeaseStatus::Active)
+                    ->whereNull('leases.deleted_at'))));
     }
 
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(User::class, 'tenant_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    /** @return HasMany<TicketComment, $this> */
     public function comments(): HasMany
     {
         return $this->hasMany(TicketComment::class);

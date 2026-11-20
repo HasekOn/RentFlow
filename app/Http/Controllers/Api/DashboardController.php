@@ -29,7 +29,7 @@ class DashboardController extends Controller
 {
     public function stats(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         if ($user->isLandlord()) {
             $propertyIds = $user->ownedProperties()->pluck('id');
@@ -100,8 +100,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * Nezaplacené a po splatnosti platby aktivních smluv daných nemovitostí (stejný výřez jako Payment::visibleTo
-     * pro správce): počet a součet v DB.
+     * Nezaplacené a po splatnosti platby aktivních smluv daných nemovitostí bez kauce (stejný výřez jako
+     * Payment::visibleTo pro správce, S5): počet a součet v DB.
      *
      * @param  Collection<int, int>  $propertyIds
      * @return array<string, array{count: int, amount: float}>
@@ -112,6 +112,7 @@ class DashboardController extends Controller
         foreach (['unpaid' => PaymentStatus::Unpaid, 'overdue' => PaymentStatus::Overdue] as $key => $status) {
             $payments = Payment::query()
                 ->where('status', $status)
+                ->where('type', '!=', PaymentType::Deposit)
                 ->whereHas('lease', fn ($lease) => $lease
                     ->where('status', LeaseStatus::Active)
                     ->whereIn('property_id', $propertyIds));
@@ -168,7 +169,7 @@ class DashboardController extends Controller
      */
     public function financeChart(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         // finance jen pronajímateli, správce ani nájemník je nevidí (#17)
         if (! $user->isLandlord()) {
@@ -235,7 +236,7 @@ class DashboardController extends Controller
      */
     public function occupancyChart(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         if ($user->isLandlord()) {
             $query = $user->ownedProperties();
@@ -271,7 +272,8 @@ class DashboardController extends Controller
         $service = new TrustScoreService;
         $score = $service->calculate($tenant);
 
-        $leaseIds = $tenant->leases()->pluck('id');
+        // stejně jako TrustScoreService jen přijaté smlouvy (S2); sdílí se skóre, souhrn a počet hodnocení (S3)
+        $leaseIds = $tenant->leases()->accepted()->pluck('id');
 
         $totalPayments = Payment::query()->whereIn('lease_id', $leaseIds)
             ->where('type', PaymentType::Rent)
@@ -284,11 +286,13 @@ class DashboardController extends Controller
             ->count();
 
         $averageRating = Rating::query()->whereIn('lease_id', $leaseIds)->avg('score');
+        $ratingsCount = Rating::query()->whereIn('lease_id', $leaseIds)->count();
 
         return response()->json([
             'tenant_id' => $tenant->id,
             'tenant_name' => $tenant->name,
             'trust_score' => $score,
+            'ratings_count' => $ratingsCount,
             'breakdown' => [
                 'total_payments' => $totalPayments,
                 'on_time_payments' => $onTimePayments,
@@ -306,7 +310,7 @@ class DashboardController extends Controller
      */
     public function markNotificationRead(Request $request, string $id, MarkNotificationRead $markRead): JsonResponse
     {
-        $notification = $request->user()->notifications()->find($id);
+        $notification = $this->currentUser($request)->notifications()->find($id);
         if ($notification === null) {
             abort(404);
         }
@@ -324,7 +328,7 @@ class DashboardController extends Controller
      */
     public function notifications(Request $request): JsonResponse
     {
-        $notifications = $request->user()
+        $notifications = $this->currentUser($request)
             ->notifications()
             ->take(20)
             ->get()
@@ -334,7 +338,7 @@ class DashboardController extends Controller
                     'type' => $notification->data['type'] ?? 'unknown',
                     'data' => $notification->data,
                     'read' => $notification->read_at !== null,
-                    'created_at' => $notification->created_at->toDateTimeString(),
+                    'created_at' => $notification->created_at?->toDateTimeString(),
                 ];
             });
 

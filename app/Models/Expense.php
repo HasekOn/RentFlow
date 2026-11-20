@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\DateOnly;
 use App\Enums\ExpenseType;
+use Database\Factories\ExpenseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,7 @@ use Illuminate\Support\Carbon;
  */
 class Expense extends Model
 {
+    /** @use HasFactory<ExpenseFactory> */
     use HasFactory, SoftDeletes;
 
     /**
@@ -56,6 +58,7 @@ class Expense extends Model
         $query->whereHas('property', fn (Builder $property) => $property->where('landlord_id', $user->id));
     }
 
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);

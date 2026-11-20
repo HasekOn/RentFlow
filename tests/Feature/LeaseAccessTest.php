@@ -91,11 +91,15 @@ class LeaseAccessTest extends TestCase
         $this->actingAs($this->landlord)
             ->postJson($this->apiUrl('/leases'), $this->payload($this->otherLandlord))
             ->assertStatus(422)
-            ->assertJsonValidationErrors('tenant_id');
+            ->assertJsonValidationErrors('tenant_email');
 
-        // období se překrývá s aktivní smlouvou nájemníka
-        $this->actingAs($this->landlord)
+        // období se překrývá s aktivní smlouvou: pozvánka vznikne, překryv se kontroluje až při přijetí (S1)
+        $overlapping = $this->actingAs($this->landlord)
             ->postJson($this->apiUrl('/leases'), $this->payload($this->formerTenant, now()->addMonth(), null))
+            ->assertStatus(201)
+            ->assertJsonPath('status', 'pending');
+        $this->actingAs($this->formerTenant)
+            ->putJson($this->apiUrl('/leases/'.$overlapping->json('id').'/accept'))
             ->assertStatus(422)
             ->assertJsonPath('errors.start_date.0', 'Another active lease on this property overlaps the given period.');
 
@@ -202,7 +206,7 @@ class LeaseAccessTest extends TestCase
 
         return [
             'property_id' => $this->property->id,
-            'tenant_id' => $tenant->id,
+            'tenant_email' => $tenant->email,
             'start_date' => $start->format('Y-m-d'),
             'end_date' => $end?->format('Y-m-d'),
             'rent_amount' => 12000,

@@ -48,7 +48,8 @@ class TrustScoreService
      */
     private function calculatePaymentScore(User $user): float
     {
-        $leaseIds = $user->leases()->pluck('id');
+        // jen přijaté smlouvy (S2): platby na pozvánce nebo odmítnuté smlouvě skóre neovlivní
+        $leaseIds = $user->leases()->accepted()->pluck('id');
 
         $payments = Payment::query()->whereIn('lease_id', $leaseIds)
             ->where('type', PaymentType::Rent)
@@ -101,7 +102,7 @@ class TrustScoreService
      */
     private function calculateRatingScore(User $user): ?float
     {
-        $leaseIds = $user->leases()->pluck('id');
+        $leaseIds = $user->leases()->accepted()->pluck('id');
 
         $averageScore = Rating::query()->whereIn('lease_id', $leaseIds)->avg('score');
 

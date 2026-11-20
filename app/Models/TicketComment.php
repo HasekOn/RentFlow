@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\TicketCommentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,7 @@ use Illuminate\Support\Carbon;
  */
 class TicketComment extends Model
 {
+    /** @use HasFactory<TicketCommentFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -29,11 +31,13 @@ class TicketComment extends Model
         'attachment_path',
     ];
 
+    /** @return BelongsTo<Ticket, $this> */
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
