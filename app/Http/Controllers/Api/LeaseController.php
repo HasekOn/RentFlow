@@ -17,18 +17,19 @@ use App\Traits\Filterable;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class LeaseController extends Controller
 {
     use Filterable, FindsLease, FindsProperty;
 
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Lease::class);
 
         /** @var User $user */
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         // smazané smlouvy jen v historii konkrétní osoby (filtr tenant_id)
         $query = ($this->stringInput($request, 'tenant_id') !== null ? Lease::withTrashed() : Lease::query())

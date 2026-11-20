@@ -29,7 +29,7 @@ class DashboardController extends Controller
 {
     public function stats(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         if ($user->isLandlord()) {
             $propertyIds = $user->ownedProperties()->pluck('id');
@@ -168,7 +168,7 @@ class DashboardController extends Controller
      */
     public function financeChart(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         // finance jen pronajímateli, správce ani nájemník je nevidí (#17)
         if (! $user->isLandlord()) {
@@ -235,7 +235,7 @@ class DashboardController extends Controller
      */
     public function occupancyChart(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         if ($user->isLandlord()) {
             $query = $user->ownedProperties();
@@ -306,7 +306,7 @@ class DashboardController extends Controller
      */
     public function markNotificationRead(Request $request, string $id, MarkNotificationRead $markRead): JsonResponse
     {
-        $notification = $request->user()->notifications()->find($id);
+        $notification = $this->currentUser($request)->notifications()->find($id);
         if ($notification === null) {
             abort(404);
         }
@@ -324,7 +324,7 @@ class DashboardController extends Controller
      */
     public function notifications(Request $request): JsonResponse
     {
-        $notifications = $request->user()
+        $notifications = $this->currentUser($request)
             ->notifications()
             ->take(20)
             ->get()
@@ -334,7 +334,7 @@ class DashboardController extends Controller
                     'type' => $notification->data['type'] ?? 'unknown',
                     'data' => $notification->data,
                     'read' => $notification->read_at !== null,
-                    'created_at' => $notification->created_at->toDateTimeString(),
+                    'created_at' => $notification->created_at?->toDateTimeString(),
                 ];
             });
 

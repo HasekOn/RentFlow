@@ -48,7 +48,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $user = Auth::user();
+        $user = $this->currentUser($request);
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([

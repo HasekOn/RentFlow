@@ -3,12 +3,22 @@
 namespace App\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 
 trait Filterable
 {
+    /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     * @param  list<string>  $filterableFields
+     * @param  list<string>  $sortableFields
+     * @param  list<string>  $searchableFields
+     * @return Builder<TModel>
+     */
     protected function applyFilters(
         Builder $query,
         Request $request,

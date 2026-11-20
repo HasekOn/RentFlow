@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\DateOnly;
 use App\Enums\PaymentStatus;
 use App\Enums\PaymentType;
+use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +30,7 @@ use Illuminate\Support\Carbon;
  */
 class Payment extends Model
 {
+    /** @use HasFactory<PaymentFactory> */
     use HasFactory, SoftDeletes;
 
     /**
@@ -77,6 +79,7 @@ class Payment extends Model
         return (int) round($this->due_date->copy()->startOfDay()->diffInDays(today()));
     }
 
+    /** @return BelongsTo<Lease, $this> */
     public function lease(): BelongsTo
     {
         return $this->belongsTo(Lease::class);

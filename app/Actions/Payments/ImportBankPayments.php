@@ -142,7 +142,7 @@ final class ImportBankPayments
     /**
      * Platby zaplacené dřívějším importem ve dnech z výpisu (rozpoznání duplicitního řádku).
      *
-     * @param  list<int>  $leaseIds
+     * @param  array<int, int|string>  $leaseIds  klíče z modelKeys()
      * @param  list<array{row: array<string, string>, variable_symbol: string, amount: int|null, date: string|null}>  $rows
      * @return Collection<int, Payment>
      */

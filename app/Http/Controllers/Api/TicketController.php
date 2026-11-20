@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TicketController extends Controller
 {
@@ -24,12 +25,12 @@ class TicketController extends Controller
     /** Pole, která smí autor upravit ve stavu new (#46); ostatní jen ten, kdo tiket řeší. */
     private const array DETAIL_FIELDS = ['title', 'description'];
 
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Ticket::class);
 
         /** @var User $user */
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         $query = Ticket::query()
             ->visibleTo($user)
@@ -51,7 +52,7 @@ class TicketController extends Controller
         $property = $this->findProperty((string) $request->validated('property_id'));
         $this->authorize('create', [Ticket::class, $property]);
 
-        $ticket = $create->handle($property, $request->user(), $request->validated());
+        $ticket = $create->handle($property, $this->currentUser($request), $request->validated());
         $ticket->load('tenant');
 
         return response()->json(new TicketResource($ticket), 201);

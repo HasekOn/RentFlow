@@ -13,6 +13,7 @@ class StorePropertyRequest extends FormRequest
         return true; // Handled by Policy
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

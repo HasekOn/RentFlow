@@ -25,7 +25,7 @@ class UserController extends Controller
         ]);
 
         $users = User::query()
-            ->visibleTo($request->user())
+            ->visibleTo($this->currentUser($request))
             ->when(isset($validated['role']), fn ($query) => $query->where('role', $validated['role']))
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'role', 'phone', 'trust_score', 'created_at']);

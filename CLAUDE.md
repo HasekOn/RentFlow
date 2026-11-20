@@ -38,7 +38,7 @@ stejný stack a vzory jako JaTime. Plán, fáze a checklist jsou v `docs/REWRITE
 | --- | --- |
 | Testy | `php artisan test` (filtr: `php artisan test --filter=Payment`; regex s `\|` v PowerShellu nepoužívej) |
 | Formát | `vendor/bin/pint --test` (opravit: `vendor/bin/pint <soubor>`) |
-| Larastan (`app/`, `phpstan.neon`) | `composer analyse` |
+| Larastan (level 8, `app/`, bez baseline) | `composer analyse` |
 | Pint + Larastan + testy | `composer check` |
 | Build nového UI | `npm run build` v kořeni (ne `npm run dev`; appka běží jen přes Herd) |
 | Audity | `composer audit`, `npm audit --omit=dev` |
@@ -77,6 +77,9 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
   endpointu neplatí a persistent middleware neběží v `Livewire::test()`. Validuj všechno, co přijde z klienta.
   Id, která klient nesmí měnit, označ `#[Locked]`. Sdílená logika komponent patří do traitů `app/Livewire/Concerns/`.
 - `find()` + `if ($x === null) { abort(404); }`, ne `findOrFail()` / `abort_if()` (Larastan, test harness).
+- Larastan level 8 bez baseline a bez `@phpstan-ignore`: generika relací (`@return HasMany<Model, $this>`),
+  `@use HasFactory<…Factory>`, typy polí (`array<string, mixed>`, `list<…>`, `array{…}`). Přihlášený uživatel
+  v controlleru přes `$this->currentUser($request)` (vrací `User`, ne `User|null`).
 - `Model::shouldBeStrict()` mimo produkci → eager loading všude. Model se sloupcem s DB defaultem
   má `$attributes` se stejnými výchozími hodnotami.
 - Blade: v `@props` / `@php` nepiš `<x-…>` ani v komentáři. Výstup jen přes `{{ }}`, `{!! !!}` jen u důvěryhodného
@@ -123,7 +126,7 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
   (design systém), `resources/css/app.css` (`@theme` tokeny), `app/Support/helpers.php` (`cz_*`).
 - Předloha pro přepis: `docs/FEATURES.md` (inventář funkcí, fáze 1) a React na větvi `main`
   (`git show main:frontend/src/pages/…`). `docs/REVIEW.md` je audit (fáze 1).
-- `lang/cs/*` + `lang/cs.json` (laravel-lang), `phpstan.neon` (+ `phpstan-baseline.neon`), `pint.json`.
+- `lang/cs/*` + `lang/cs.json` (laravel-lang), `phpstan.neon` (level 8, baseline se nezakládá), `pint.json`.
 - Demo účty (`php artisan migrate:fresh --seed`, heslo `password`): `landlord@rentflow.cz` (pronajímatel),
   `manager@rentflow.cz` (správce), `marie@rentflow.cz`, `tomas@rentflow.cz` (nájemníci). Další jsou v README.
 
@@ -132,5 +135,6 @@ ve Windows → `php`/`composer`/`npm` jsou v `.claude/settings.local.json` vyjmu
 `rentflow-step` (jeden krok z plánu od stavu repa po shrnutí, spouští uživatel) · `rentflow-checks` (kontroly,
 subagent – v argumentu co se změnilo) · `rentflow-browser` (proklikání, útoky, měření, záloha DB) ·
 `rentflow-review` (review větve před mergem, subagent, spouští uživatel) · `rentflow-backend` (změna logiky:
-policy, Action, scope, testy) · `rentflow-page` (převod React stránky na Livewire).
-Další skills (design, security, release, dlouhé texty) jsou naplánované ve fázích v `docs/REWRITE_PLAN.md`.
+policy, Action, scope, testy) · `rentflow-page` (převod React stránky na Livewire) · `rentflow-security`
+(bezpečnostní audit celé appky, subagent, spouští uživatel).
+Další skills (design, release, dlouhé texty) jsou naplánované ve fázích v `docs/REWRITE_PLAN.md`.

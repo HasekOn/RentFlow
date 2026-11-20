@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Lease;
+use App\Models\User;
 use App\Notifications\Concerns\CzechText;
 use App\Support\Money;
 use Illuminate\Bus\Queueable;
@@ -17,12 +18,13 @@ class TenantInvitationNotification extends Notification
         private readonly Lease $lease
     ) {}
 
+    /** @return list<string> */
     public function via(object $notifiable): array
     {
         return ['mail', 'database'];
     }
 
-    public function toMail(object $notifiable): MailMessage
+    public function toMail(User $notifiable): MailMessage
     {
         $property = $this->lease->property;
 
@@ -30,8 +32,8 @@ class TenantInvitationNotification extends Notification
             ->subject('Welcome to RentFlow — Your new lease')
             ->greeting('Hello '.$notifiable->name.',')
             ->line('You have been added as a tenant in RentFlow.')
-            ->line('Property: '.$property->address)
-            ->line('Disposition: '.$property->disposition)
+            ->line('Property: '.$property?->address)
+            ->line('Disposition: '.$property?->disposition)
             ->line('Monthly rent: '.Money::format(Money::cents($this->lease->rent_amount)))
             ->line('Lease starts: '.$this->lease->start_date->format('d.m.Y'))
             ->line('Lease ends: '.($this->lease->end_date ? $this->lease->end_date->format('d.m.Y') : 'Indefinite'))

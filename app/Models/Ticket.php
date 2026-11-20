@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TicketCategory;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use Database\Factories\TicketFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,6 +37,7 @@ use Illuminate\Support\Carbon;
  */
 class Ticket extends Model
 {
+    /** @use HasFactory<TicketFactory> */
     use HasFactory, SoftDeletes;
 
     /**
@@ -75,21 +77,25 @@ class Ticket extends Model
             ->orWhereIn('property_id', Property::query()->visibleTo($user)->select('id')));
     }
 
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(User::class, 'tenant_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    /** @return HasMany<TicketComment, $this> */
     public function comments(): HasMany
     {
         return $this->hasMany(TicketComment::class);

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -28,12 +29,12 @@ use Laravel\Sanctum\HasApiTokens;
  * @property Carbon|null $email_verified_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
- * @property-read Collection<Property> $ownedProperties
- * @property-read Collection<Lease> $leases
- * @property-read Collection<Ticket> $tickets
- * @property-read Collection<Ticket> $assignedTickets
- * @property-read Collection<Rating> $givenRatings
- * @property-read DatabaseNotificationCollection $notifications
+ * @property-read Collection<int, Property> $ownedProperties
+ * @property-read Collection<int, Lease> $leases
+ * @property-read Collection<int, Ticket> $tickets
+ * @property-read Collection<int, Ticket> $assignedTickets
+ * @property-read Collection<int, Rating> $givenRatings
+ * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
  */
 class User extends Authenticatable
 {
@@ -87,31 +88,37 @@ class User extends Authenticatable
         return $this->role === Role::Tenant;
     }
 
+    /** @return HasMany<Property, $this> */
     public function ownedProperties(): HasMany
     {
         return $this->hasMany(Property::class, 'landlord_id');
     }
 
+    /** @return HasMany<Lease, $this> */
     public function leases(): HasMany
     {
         return $this->hasMany(Lease::class, 'tenant_id');
     }
 
+    /** @return HasMany<Ticket, $this> */
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'tenant_id');
     }
 
+    /** @return HasMany<Ticket, $this> */
     public function assignedTickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'assigned_to');
     }
 
+    /** @return HasMany<Rating, $this> */
     public function givenRatings(): HasMany
     {
         return $this->hasMany(Rating::class, 'rated_by');
     }
 
+    /** @return BelongsToMany<Property, $this> */
     public function managedProperties(): BelongsToMany
     {
         return $this->belongsToMany(Property::class, 'property_manager');

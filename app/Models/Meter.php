@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MeterType;
+use Database\Factories\MeterFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,7 @@ use Illuminate\Support\Carbon;
  */
 class Meter extends Model
 {
+    /** @use HasFactory<MeterFactory> */
     use HasFactory;
 
     /**
@@ -51,6 +53,7 @@ class Meter extends Model
         ];
     }
 
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);

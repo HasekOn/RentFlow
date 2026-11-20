@@ -36,7 +36,7 @@ class PropertyImageController extends Controller
         $property = $this->findProperty($propertyId);
         $this->authorize('create', [PropertyImage::class, $property]);
 
-        $image = $store->handle($property, $request->user(), $request->file('image'), $request->safe()->except('image'));
+        $image = $store->handle($property, $this->currentUser($request), $request->file('image'), $request->safe()->except('image'));
 
         return response()->json(new PropertyImageResource($image), 201);
     }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RatingCategory;
+use Database\Factories\RatingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,7 @@ use Illuminate\Support\Carbon;
  */
 class Rating extends Model
 {
+    /** @use HasFactory<RatingFactory> */
     use HasFactory;
 
     /**
@@ -51,11 +53,13 @@ class Rating extends Model
         ];
     }
 
+    /** @return BelongsTo<Lease, $this> */
     public function lease(): BelongsTo
     {
         return $this->belongsTo(Lease::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function ratedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'rated_by');

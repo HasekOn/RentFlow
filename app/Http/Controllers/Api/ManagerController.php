@@ -51,7 +51,7 @@ class ManagerController extends Controller
 
         /** @var list<int> $propertyIds */
         $propertyIds = Property::withTrashed()
-            ->where('landlord_id', $request->user()->id)
+            ->where('landlord_id', $this->currentUser($request)->id)
             ->whereHas('managers', fn ($manager) => $manager->whereKey($user->id))
             ->pluck('id')
             ->all();

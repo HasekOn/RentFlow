@@ -33,7 +33,7 @@ class MeterReadingController extends Controller
         $meter = $this->findMeter($meterId);
         $this->authorize('create', [MeterReading::class, $meter]);
 
-        $reading = $create->handle($meter, $request->user(), $request->validated());
+        $reading = $create->handle($meter, $this->currentUser($request), $request->validated());
 
         $reading->load('submittedBy');
 

@@ -52,7 +52,12 @@ class InventoryItemController extends Controller
         $item = $this->findItem($id);
         $this->authorize('update', $item);
 
-        $save->handle($item->property, $request->validated(), $item);
+        // u smazané nemovitosti vrátí policy 403 dřív, kontrola null jen zúží typ
+        $property = $item->property;
+        if ($property === null) {
+            abort(404);
+        }
+        $save->handle($property, $request->validated(), $item);
 
         return response()->json(new InventoryItemResource($item));
     }

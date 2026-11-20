@@ -24,7 +24,7 @@ class DocumentController extends Controller
         $this->authorize('view', $property);
 
         $documents = $property->documents()
-            ->visibleTo($request->user())
+            ->visibleTo($this->currentUser($request))
             ->with('uploadedBy')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -37,7 +37,7 @@ class DocumentController extends Controller
         $property = $this->findProperty($propertyId);
         $this->authorize('create', [Document::class, $property]);
 
-        $document = $store->handle($property, $request->user(), $request->file('file'), $request->safe()->except('file'));
+        $document = $store->handle($property, $this->currentUser($request), $request->file('file'), $request->safe()->except('file'));
 
         $document->load('uploadedBy');
 

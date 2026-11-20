@@ -7,12 +7,21 @@ use App\Models\Lease;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use WeakMap;
 
 /**
  * @mixin Lease
  */
 class LeaseResource extends JsonResource
 {
+    /**
+     * Id nemovitostí přihlášeného za request (klíč = Request, uvolní se s ním).
+     *
+     * @var WeakMap<Request, array{owned: array<array-key, int|string>, managed: array<array-key, int|string>}>|null
+     */
+    private static ?WeakMap $propertyIds = null;
+
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         $finance = self::showsFinance($this->resource, $request);
@@ -63,19 +72,15 @@ class LeaseResource extends JsonResource
     }
 
     /**
-     * @return array{owned: array<int, int>, managed: array<int, int>}
+     * @return array{owned: array<array-key, int|string>, managed: array<array-key, int|string>}
      */
     private static function propertyIds(User $viewer, Request $request): array
     {
-        $ids = $request->attributes->get(self::class);
-        if (! is_array($ids)) {
-            $ids = [
-                'owned' => array_flip($viewer->ownedProperties()->pluck('id')->all()),
-                'managed' => array_flip($viewer->managedProperties()->pluck('properties.id')->all()),
-            ];
-            $request->attributes->set(self::class, $ids);
-        }
+        self::$propertyIds ??= new WeakMap;
 
-        return $ids;
+        return self::$propertyIds[$request] ??= [
+            'owned' => array_flip($viewer->ownedProperties()->pluck('id')->all()),
+            'managed' => array_flip($viewer->managedProperties()->pluck('properties.id')->all()),
+        ];
     }
 }

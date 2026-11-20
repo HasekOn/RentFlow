@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Payment;
+use App\Models\User;
 use App\Notifications\Concerns\CzechText;
 use App\Support\Money;
 use Illuminate\Bus\Queueable;
@@ -17,21 +18,22 @@ class PaymentOverdueNotification extends Notification
         private readonly Payment $payment
     ) {}
 
+    /** @return list<string> */
     public function via(object $notifiable): array
     {
         return ['mail', 'database'];
     }
 
-    public function toMail(object $notifiable): MailMessage
+    public function toMail(User $notifiable): MailMessage
     {
         $daysOverdue = $this->payment->due_date->diffInDays(now());
-        $property = $this->payment->lease->property;
+        $address = $this->payment->lease?->property?->address;
 
         return (new MailMessage)
-            ->subject('Payment overdue — '.$property->address)
+            ->subject('Payment overdue — '.$address)
             ->greeting('Hello '.$notifiable->name.',')
             ->line('You have an overdue payment.')
-            ->line('Property: '.$property->address)
+            ->line('Property: '.$address)
             ->line('Amount: '.Money::format(Money::cents($this->payment->amount)))
             ->line('Due date: '.$this->payment->due_date->format('d.m.Y'))
             ->line('Days overdue: '.$daysOverdue)

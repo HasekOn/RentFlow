@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PropertyImageType;
+use Database\Factories\PropertyImageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,7 @@ use Illuminate\Support\Carbon;
  */
 class PropertyImage extends Model
 {
+    /** @use HasFactory<PropertyImageFactory> */
     use HasFactory;
 
     /**
@@ -53,6 +55,7 @@ class PropertyImage extends Model
         ];
     }
 
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);

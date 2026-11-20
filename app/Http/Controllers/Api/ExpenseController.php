@@ -13,17 +13,18 @@ use App\Models\Expense;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ExpenseController extends Controller
 {
     use Filterable, FindsProperty;
 
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Expense::class);
 
         $query = Expense::query()
-            ->visibleTo($request->user())
+            ->visibleTo($this->currentUser($request))
             ->with('property');
 
         $this->applyFilters(
@@ -60,7 +61,12 @@ class ExpenseController extends Controller
         $expense = $this->findExpense($id);
         $this->authorize('update', $expense);
 
-        $save->handle($expense->property, $request->validated(), $expense);
+        // u smazané nemovitosti vrátí policy 403 dřív, kontrola null jen zúží typ
+        $property = $expense->property;
+        if ($property === null) {
+            abort(404);
+        }
+        $save->handle($property, $request->validated(), $expense);
 
         return response()->json(new ExpenseResource($expense));
     }

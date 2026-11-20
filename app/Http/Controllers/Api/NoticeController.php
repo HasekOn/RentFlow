@@ -34,7 +34,7 @@ class NoticeController extends Controller
         $property = $this->findProperty($propertyId);
         $this->authorize('create', [Notice::class, $property]);
 
-        $notice = $save->handle($property, $request->user(), $request->validated());
+        $notice = $save->handle($property, $this->currentUser($request), $request->validated());
 
         $notice->load('createdBy');
 
@@ -46,7 +46,12 @@ class NoticeController extends Controller
         $notice = $this->findNotice($id);
         $this->authorize('update', $notice);
 
-        $save->handle($notice->property, $request->user(), $request->validated(), $notice);
+        // u smazané nemovitosti vrátí policy 403 dřív, kontrola null jen zúží typ
+        $property = $notice->property;
+        if ($property === null) {
+            abort(404);
+        }
+        $save->handle($property, $this->currentUser($request), $request->validated(), $notice);
 
         return response()->json(new NoticeResource($notice));
     }

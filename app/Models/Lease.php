@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\DateOnly;
 use App\Enums\LeaseStatus;
 use Carbon\CarbonInterface;
+use Database\Factories\LeaseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,11 +32,12 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read Property|null $property
  * @property-read User|null $tenant
- * @property-read Collection<Payment> $payments
- * @property-read Collection<Rating> $ratings
+ * @property-read Collection<int, Payment> $payments
+ * @property-read Collection<int, Rating> $ratings
  */
 class Lease extends Model
 {
+    /** @use HasFactory<LeaseFactory> */
     use HasFactory, SoftDeletes;
 
     /**
@@ -90,21 +92,25 @@ class Lease extends Model
                 ->orWhere('end_date', '>=', $start->copy()->startOfDay()));
     }
 
+    /** @return BelongsTo<Property, $this> */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(User::class, 'tenant_id');
     }
 
+    /** @return HasMany<Payment, $this> */
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
     }
 
+    /** @return HasMany<Rating, $this> */
     public function ratings(): HasMany
     {
         return $this->hasMany(Rating::class);

@@ -426,7 +426,16 @@ pokrýt test.
       nálezy kroků 2.1–2.14 mají opravu s testem.
   - *Ověřeno 19.&nbsp;11.&nbsp;2026:* `composer check` zelený, Larastan level 5 bez baseline (soubor neexistuje),
     nálezy #1–#58 opravené s testem, nebo vědomě odložené (tabulka níž). Level 7 jako samostatný krok (návrh).
-- [ ] **Po fázi 2: skill `rentflow-security`** podle `jatime-security` a hned první běh (ověří opravy z REVIEW).
+- [x] **Po fázi 2: Larastan level 8 bez baseline** (jako JaTime)
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:* 233 chyb z levelu 8 opraveno bez baseline a bez `@phpstan-ignore`:
+    - přihlášený uživatel v API přes `Controller::currentUser()` (bez auth 401, dál do Actions jen `User`);
+    - generika relací (`@return BelongsTo<Model, $this>`), `@use HasFactory<…Factory>`,
+      `Collection<int, Model>`, typy polí u `rules()`, `toArray()`, `via()` a `Filterable` (`@template`);
+    - notifikace: `toMail(User $notifiable)`, nemovitost a datum přes `?->` (smazaná nemovitost nespadne);
+    - update nákladu, inventáře, měřiče a oznámení: kontrola null u nemovitosti (policy vrátí 403 dřív);
+    - `LeaseResource`: cache id nemovitostí za request ve `WeakMap` místo `$request->attributes`;
+    - CSV: prázdná buňka jako `''`, ne `null`.
+- [x] **Po fázi 2: skill `rentflow-security`** podle `jatime-security` a hned první běh (ověří opravy z REVIEW).
   - Audit celé aplikace jako subagent spouštěný uživatelem. Každý nález s `soubor:řádek` a scénářem zneužití.
   - A autentizace: Sanctum tokeny a jejich expirace, od fáze 4 session a limiter `login` (#25).
   - B autorizace: matice z README × každá API metoda a Livewire akce. Izolace pronajímatelů místo „více škol“,
@@ -436,6 +445,16 @@ pokrýt test.
   - D HTTP: `SecurityHeaders`, CORS (vypnutý od 2.1), trust proxies.
   - E data a provoz: fronta `database` a e-maily notifikací, logy, tajemství v repu, audity závislostí.
   - F osobní údaje: nájemníci, citlivé dokumenty, hodnocení a Trust Score.
+  - *Hotovo 19.&nbsp;11.&nbsp;2026:* skill `.claude/skills/rentflow-security` (argument `utoky` = útoky přes HTTP
+    se zálohou DB, od fáze 5 i Livewire z konzole). První běh A–F bez útoků: opravy z REVIEW drží, 12 nových
+    nálezů čeká na rozhodnutí (S1–S12):
+    - vysoké: smlouva bez souhlasu nájemníka zpřístupní jeho kontakty, hodnocení a Trust Score (S1) a dovolí
+      Trust Score zničit falešnými platbami a hodnoceními (S2);
+    - střední: hodnocení nájemníka prozradí adresy a komentáře cizích pronajímatelů (S3), Markdown v e-mailech
+      s uživatelskými texty (S4);
+    - nízké: kauce správci přes `/payments` (S5), dokumenty předchozího nájemníka (S6), texty a částky bez `max`
+      (S7), zaplacená platba přes `PUT status=unpaid` (S8), změna e-mailu bez hesla (S9), VS unikátní napříč
+      pronajímateli (S10), CSV bez limitu řádků (S11), workflow bez `permissions:` (S12).
 
 **Nálezy mimo fázi 2:**
 

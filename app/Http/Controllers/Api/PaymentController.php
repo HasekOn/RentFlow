@@ -17,17 +17,18 @@ use App\Models\Payment;
 use App\Traits\Filterable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PaymentController extends Controller
 {
     use Filterable, FindsLease;
 
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Payment::class);
 
         $query = Payment::query()
-            ->visibleTo($request->user())
+            ->visibleTo($this->currentUser($request))
             ->with(['lease.tenant', 'lease.property']);
 
         $this->applyFilters(
@@ -100,7 +101,7 @@ class PaymentController extends Controller
         ]);
 
         // páruje jen smlouvy nemovitostí přihlášeného pronajímatele
-        $results = $import->handle($request->user(), (string) $request->file('file')->get());
+        $results = $import->handle($this->currentUser($request), (string) $request->file('file')->get());
 
         return response()->json([
             'message' => 'CSV import completed.',
@@ -119,7 +120,7 @@ class PaymentController extends Controller
     {
         $this->authorize('generate', Payment::class);
 
-        $created = $generate->handle($request->user(), now());
+        $created = $generate->handle($this->currentUser($request), now());
 
         return response()->json([
             'message' => "Generated {$created} payments for current month.",

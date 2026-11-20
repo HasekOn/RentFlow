@@ -16,17 +16,18 @@ use App\Traits\Filterable;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PropertyController extends Controller
 {
     use Filterable, FindsProperty;
 
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Property::class);
 
         /** @var User $user */
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         $query = Property::query()
             ->visibleTo($user)
@@ -54,7 +55,7 @@ class PropertyController extends Controller
     {
         $this->authorize('create', Property::class);
 
-        $property = $save->handle($request->user(), $request->validated());
+        $property = $save->handle($this->currentUser($request), $request->validated());
 
         return response()->json(new PropertyResource($property), 201);
     }
@@ -62,7 +63,7 @@ class PropertyController extends Controller
     public function show(Request $request, string $id): JsonResponse
     {
         /** @var User $user */
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         $property = Property::query()->with([
             'landlord',
@@ -85,7 +86,7 @@ class PropertyController extends Controller
 
         $this->authorize('update', $property);
 
-        $save->handle($request->user(), $request->validated(), $property);
+        $save->handle($this->currentUser($request), $request->validated(), $property);
 
         return response()->json(new PropertyResource($property));
     }
